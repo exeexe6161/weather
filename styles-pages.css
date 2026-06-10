@@ -1,0 +1,308 @@
+/* ═══ Inter Variable Font (SIL OFL 1.1) ═══════════════════════
+ * Self-hosted für Lizenz-Compliance + Privacy (kein Google Fonts)
+ * Variable Font: alle Weights 100-900 in einer Datei
+ * Lizenz: /fonts/LICENSE.txt
+ * Quelle: https://github.com/rsms/inter (Version 4.x)
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations"),
+       url("/fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable-Italic.woff2") format("woff2-variations"),
+       url("/fonts/InterVariable-Italic.woff2") format("woff2");
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --blue:#2563eb;
+  --bg:#f2f2f7;
+  --s1:#ffffff;
+  --s2:#ebebf0;
+  --l1:#000000;
+  --l2:rgba(60,60,67,.82);
+  --l3:rgba(60,60,67,.58);
+  --l4:rgba(60,60,67,.32);
+  --sep:rgba(60,60,67,.10);
+  --card-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.06),0 0 0 0.5px rgba(0,0,0,.04);
+  /* Phase Z Sprint Z4 — Dashboard-Aesthetic auch auf Sub-Pages.
+     Karten 14px (statt 20px), kleinere Helper-Radii angeglichen. */
+  --rc:14px;
+  --r-md:12px;
+  --r-sm:10px;
+  --r-card:14px;
+  --gutter:16px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+}
+
+[data-theme="dark"]{
+  --bg:#000000;
+  --s1:#1c1c1e;
+  --s2:#2c2c2e;
+  --l1:#ffffff;
+  --l2:rgba(235,235,245,.82);
+  --l3:rgba(235,235,245,.60);
+  --l4:rgba(235,235,245,.36);
+  --sep:rgba(235,235,245,.10);
+  --card-shadow:0 1px 2px rgba(0,0,0,.30),0 6px 18px rgba(0,0,0,.40),0 0 0 0.5px rgba(255,255,255,.05);
+}
+
+html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth;}
+html,body{overflow-x:clip;}
+
+body{
+  font-family:"Inter",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--l1);
+  min-height:100vh;
+  min-width:0;
+  padding-bottom:calc(56px + var(--safe-bot));
+  padding-left:var(--safe-l);
+  padding-right:var(--safe-r);
+  -webkit-font-smoothing:antialiased;
+}
+
+.page{max-width:680px;margin:0 auto;padding:0 var(--gutter);}
+
+/* ══ Status-Bar-Cover (Mobile Safari hidden-address-bar / PWA standalone) ══
+   Deckt nur den env(safe-area-inset-top)-Bereich ab. In normalem Safari mit
+   sichtbarer Address-Bar oder auf Desktop ist env-Wert 0 → kein Visual-Effekt.
+   Translucent + Backdrop-Blur erhält den modernen Edge-to-Edge-Look.
+   z-index 100 darüber-Layering, pointer-events:none verhindert Tap-Block. */
+body::before{
+  content:"";
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:env(safe-area-inset-top,0px);
+  background:var(--bg);                /* Phase L.2 — Frosted-Glass entfernt, solid */
+  z-index:100;
+  pointer-events:none;
+}
+
+@media (max-width:480px){
+  :root{--gutter:14px;}
+}
+
+.nav{
+  display:flex;align-items:center;
+  padding:calc(14px + var(--safe-top)) 0 6px;
+  gap:4px;
+}
+.back-btn{
+  display:flex;align-items:center;gap:4px;
+  background:none;border:none;
+  color:var(--blue);font-size:17px;font-family:inherit;font-weight:500;
+  cursor:pointer;padding:6px 4px;min-height:44px;
+  border-radius:10px;
+  -webkit-tap-highlight-color:transparent;
+  transition:opacity .15s,background .15s;
+}
+.back-btn:hover{opacity:.78;}
+.back-btn:active{opacity:.6;}
+.back-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.28);}
+.back-chevron{font-size:22px;font-weight:300;line-height:1;}
+
+.theme-toggle{
+  margin-left:auto;
+  background:var(--s2);border:none;
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:opacity .15s,background .2s,transform .15s;
+}
+.theme-toggle:hover{background:var(--sep);}
+.theme-toggle:active{opacity:.7;transform:scale(.92);}
+.theme-toggle:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.28);}
+
+.page-header{padding:12px 0 4px;}
+.page-meta{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-bottom:10px;
+}
+
+/* Language switcher (Legal pages) — sits right-aligned in page-meta */
+.lang-switch{
+  display:inline-flex;
+  background:var(--s2);
+  border-radius:10px;
+  padding:2px;
+  margin-left:auto;
+  gap:0;
+}
+.lang-switch a.lang-switch__btn{
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.5px;
+  color:var(--l3);
+  padding:4px 9px;
+  border-radius:6px;
+  text-decoration:none;
+  min-height:24px;
+  display:inline-flex;align-items:center;
+  transition:background .15s,color .15s;
+}
+.lang-switch a.lang-switch__btn:hover{color:var(--l2);text-decoration:none;}
+.lang-switch a.lang-switch__btn--active{
+  background:var(--s1);
+  color:var(--l1);
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+[data-theme="dark"] .lang-switch a.lang-switch__btn--active{box-shadow:0 1px 2px rgba(0,0,0,.30);}
+
+/* Footnote at the bottom of legal pages */
+.legal-footnote{
+  font-size:12px;
+  color:var(--l4);
+  line-height:1.55;
+  text-align:center;
+  margin-top:24px;
+  padding:0 var(--gutter);
+  font-style:italic;
+}
+.page-tag{
+  font-size:11px;font-weight:600;
+  color:var(--blue);letter-spacing:.8px;
+  text-transform:uppercase;
+}
+.page-stand{
+  font-size:11px;
+  color:var(--l4);
+  letter-spacing:.2px;
+}
+.page-title{
+  font-size:36px;font-weight:700;
+  letter-spacing:-.9px;line-height:1.08;
+  padding-bottom:10px;
+}
+.page-subtitle{
+  font-size:15.5px;
+  color:var(--l3);
+  line-height:1.55;
+  padding-bottom:8px;
+}
+@media (max-width:480px){
+  .page-title{font-size:30px;letter-spacing:-.7px;}
+  .page-subtitle{font-size:15px;}
+}
+
+.card{
+  background:var(--s1);
+  border-radius:var(--r-card);
+  box-shadow:var(--card-shadow);
+  padding:22px 22px 22px;
+  margin-top:14px;
+  position:relative;
+  overflow:hidden;
+}
+/* Phase Z Sprint Z4 — Subtle Dashboard-Header-Strip auf Sub-Page Cards.
+   1px-Trennlinie statt großer Header — die Pages bestehen aus Plain-Text,
+   keine echten Daten-Sections, deshalb minimal. Der Strip macht das
+   Card-Top klar abgesetzt vom Body. */
+.card::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:3px;
+  background:linear-gradient(90deg, rgba(37,99,235,.6), rgba(37,99,235,.2));
+  opacity:.85;
+}
+[data-theme="dark"] .card::before{
+  background:linear-gradient(90deg, rgba(96,165,250,.55), rgba(96,165,250,.18));
+}
+
+.card-icon{
+  width:42px;height:42px;border-radius:var(--r-sm);
+  background:var(--s2);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:14px;
+  color:var(--l2);
+}
+
+h2{
+  font-size:17.5px;font-weight:600;
+  color:var(--l1);
+  margin-bottom:12px;
+  letter-spacing:-.25px;
+}
+
+p{
+  font-size:15.5px;
+  line-height:1.72;
+  color:var(--l2);
+}
+p + p{margin-top:12px;}
+
+.card ul{
+  list-style:disc;
+  padding-left:22px;
+  margin-top:10px;
+}
+.card li{
+  font-size:15.5px;
+  line-height:1.72;
+  color:var(--l2);
+  margin-bottom:6px;
+}
+.card li:last-child{margin-bottom:0;}
+ul + p{margin-top:12px;}
+
+strong{color:var(--l1);font-weight:500;}
+a{color:var(--blue);text-decoration:none;}
+a:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;}
+
+.footer{
+  text-align:center;
+  padding:44px 0 16px;
+  font-size:12.5px;
+}
+.footer-links{
+  display:flex;justify-content:center;align-items:center;
+  gap:4px 10px;flex-wrap:wrap;margin-bottom:10px;
+  max-width:560px;margin-left:auto;margin-right:auto;
+}
+.footer-links a{
+  color:var(--l3);
+  text-decoration:none;
+  padding:8px 6px;
+  border-radius:8px;
+  min-height:36px;
+  display:inline-flex;align-items:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.footer-links a:hover{color:var(--l2);text-decoration:underline;}
+.footer-links a:active{color:var(--l1);background:var(--s2);}
+.footer-links span{color:var(--l4);user-select:none;}
+.footer-note{color:var(--l4);line-height:1.7;max-width:380px;margin:0 auto;}
+
+@media (max-width:480px){
+  .nav{padding-top:calc(12px + var(--safe-top));}
+  .page-header{padding:10px 0 4px;}
+  .card{padding:20px 18px 18px;margin-top:12px;}
+  .card-icon{width:40px;height:40px;margin-bottom:12px;}
+  h2{font-size:16.5px;}
+  p{font-size:15px;line-height:1.7;}
+  .footer{padding:36px 0 14px;font-size:12px;}
+}
+@media (max-width:375px){
+  :root{--gutter:12px;}
+  .page-title{font-size:27px;letter-spacing:-.6px;}
+  .page-subtitle{font-size:14.5px;}
+  .card{padding:18px 16px 16px;}
+  .back-btn{font-size:16px;}
+  .theme-toggle{width:38px;height:38px;font-size:16px;}
+}

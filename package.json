@@ -1,0 +1,20 @@
+{
+  "name": "weather",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimalistische Wetter App (vanilla TS, esbuild, self-hosted Inter OFL, Lucide ISC, Wetterdaten Open-Meteo CC BY 4.0).",
+  "scripts": {
+    "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > styles-pages.min.css",
+    "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --sourcemap=external --target=es2020 --outfile=script.min.js",
+    "build:dist": "rm -rf dist && mkdir -p dist && cp index.html impressum.html datenschutz.html 404.html 404.css 404.js theme-init.js sw.js site.webmanifest browserconfig.xml robots.txt LICENSES.md favicon.ico favicon.svg favicon-*.png safari-pinned-tab.svg apple-touch-icon.png icon-*.png mstile-150x150.png og-image-*.png styles-app.min.css styles-pages.min.css script.min.js script.min.js.map dist/ && cp -R fonts dist/fonts",
+    "build": "npm run build:css && npm run build:js && npm run build:dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lucide": "^0.525.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.0",
+    "typescript": "^5.8.0"
+  }
+}

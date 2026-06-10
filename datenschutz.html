@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Datenschutzerklärung der Wetter App: lokale Speicherung im Browser, Wetterdaten von Open-Meteo, Standortabfrage nur nach Einwilligung, kein Tracking.">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<title>Datenschutz – Lokale Speicherung, Open-Meteo, kein Tracking | elegantweather</title>
+<script src="./theme-init.js?v=20260611-3"></script>
+<link rel="stylesheet" href="./styles-pages.min.css?v=20260611-3">
+</head>
+<body>
+<div class="page">
+  <nav class="nav">
+    <button class="back-btn" type="button" data-action="back">
+      <span class="back-chevron">‹</span> Zurück
+    </button>
+    <button class="theme-toggle" id="themeBtn" type="button" aria-label="Theme wechseln"></button>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-meta">
+      <span class="page-tag">Rechtliche Informationen</span>
+      <span class="page-stand">Stand: 11. Juni 2026</span>
+    </div>
+    <h1 class="page-title">Datenschutz</h1>
+    <p class="page-subtitle">Datenschutzerklärung nach Art. 13 DSGVO</p>
+  </div>
+
+  <main class="page-main">
+
+  <div class="card">
+    <h2>Verantwortlicher</h2>
+    <p><strong>Hakan Gür</strong><br>c/o COCENTER<br>Koppoldstr. 1<br>86551 Aichach<br>Deutschland</p>
+    <p>E-Mail: <a href="mailto:g.uer@aol.com">g.uer@aol.com</a></p>
+  </div>
+
+  <div class="card">
+    <h2>Allgemeines</h2>
+    <p>Diese Wetter App ist bewusst datensparsam gestaltet: kein Konto, keine Anmeldung, keine Cookies, kein Tracking und keine Analysedienste. Es existiert kein eigenes Backend des Betreibers; alle Einstellungen verbleiben im Browser.</p>
+  </div>
+
+  <div class="card">
+    <h2>Lokale Datenspeicherung (localStorage)</h2>
+    <p>Die App speichert folgende Daten ausschließlich lokal im Browser: gespeicherte Favoritenorte, der zuletzt angezeigte Ort, der zuletzt geladene Wetterbericht (für die Offline Anzeige), die gewählte Sprache und das gewählte Farbschema.</p>
+    <p>Diese Speicherung ist für den vom Nutzer gewünschten Dienst unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TTDSG). Eine Übermittlung an den Betreiber oder Dritte findet nicht statt. Die Daten lassen sich jederzeit über die Browserfunktion „Websitedaten löschen" entfernen.</p>
+  </div>
+
+  <div class="card">
+    <h2>Wetterdaten von Open-Meteo</h2>
+    <p>Wetter und Ortssuche werden über die Programmierschnittstelle von <strong>Open-Meteo</strong> (open-meteo.com) abgerufen. Beim Abruf wird technisch bedingt die IP-Adresse des Geräts an Open-Meteo übertragen, zusammen mit den Koordinaten beziehungsweise dem Suchbegriff des angefragten Ortes.</p>
+    <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Bereitstellung der angefragten Wetterinformationen). Die Wetterdaten stehen unter der Lizenz CC BY 4.0.</p>
+    <p>Weitere Informationen: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
+  </div>
+
+  <div class="card">
+    <h2>Standortabfrage (nur nach Einwilligung)</h2>
+    <p>Die Funktion „Meinen Standort verwenden" ist optional. Die Standortabfrage über den Browser startet erst nach aktivem Klick auf die Schaltfläche und zusätzlicher Freigabe im Browserdialog (Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TTDSG).</p>
+    <p>Die Koordinaten werden ausschließlich für den unmittelbaren Wetterabruf an Open-Meteo übertragen und nicht dauerhaft gespeichert. Die Einwilligung kann jederzeit über die Browsereinstellungen widerrufen werden; die App funktioniert vollständig auch ohne Standortfreigabe über die Ortssuche.</p>
+  </div>
+
+  <div class="card">
+    <h2>Service Worker / Offline Cache</h2>
+    <p>Für die Funktion als installierbare App (PWA) speichert ein Service Worker statische Dateien (HTML, CSS, JavaScript, Schriftart, Icons) im Browser Cache. Dabei werden keine personenbezogenen Daten verarbeitet, die über den normalen Seitenaufruf hinausgehen.</p>
+  </div>
+
+  <div class="card">
+    <h2>Hosting</h2>
+    <p>Diese Website wird bei <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA gehostet. Beim Aufruf verarbeitet Vercel technisch notwendige Verbindungsdaten (IP-Adresse, Zeitpunkt, User-Agent, aufgerufene URL) zur Auslieferung und Absicherung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO).</p>
+    <p>Mit Vercel besteht ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO. Eine Übermittlung in die USA wird durch EU Standardvertragsklauseln und die Zertifizierung unter dem EU-US Data Privacy Framework abgesichert.</p>
+  </div>
+
+  <div class="card">
+    <h2>Keine Cookies, kein Tracking</h2>
+    <p>Diese Website setzt keine Cookies und verwendet keine Analyse-, Werbe- oder Trackingdienste. Ein Cookie Banner ist daher nicht erforderlich.</p>
+  </div>
+
+  <div class="card">
+    <h2>Ihre Rechte als betroffene Person</h2>
+    <p>Sie haben gegenüber dem Verantwortlichen das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) sowie Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO).</p>
+    <p>Erteilte Einwilligungen (etwa zur Standortabfrage) können jederzeit mit Wirkung für die Zukunft widerrufen werden.</p>
+  </div>
+
+  <div class="card">
+    <h2>Aufsichtsbehörde</h2>
+    <p>Es besteht ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde, insbesondere beim <strong>Bayerischen Landesamt für Datenschutzaufsicht (BayLDA)</strong>, Promenade 18, 91522 Ansbach, <a href="https://www.lda.bayern.de/" rel="noopener noreferrer">www.lda.bayern.de</a>.</p>
+  </div>
+
+  <div class="card">
+    <h2>Kontakt in Datenschutzfragen</h2>
+    <p>Anfragen zur Verarbeitung personenbezogener Daten richten Sie bitte an: <a href="mailto:g.uer@aol.com">g.uer@aol.com</a></p>
+  </div>
+
+  </main>
+
+  <p class="legal-footnote">Diese Erklärung wird bei Funktionsänderungen aktualisiert. Keine Rechtsberatung.</p>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="./">Wetter</a>
+      <span>·</span>
+      <a href="./impressum">Impressum</a>
+      <span>·</span>
+      <a href="./datenschutz">Datenschutz</a>
+    </div>
+    <p class="footer-note">Wetterdaten von Open-Meteo.com · CC BY 4.0 · Keine Werbung · Kein Tracking</p>
+  </footer>
+</div>
+
+</body>
+</html>

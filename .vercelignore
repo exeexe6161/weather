@@ -1,0 +1,9 @@
+.DS_Store
+.claude/
+.git/
+node_modules/
+dist/
+evspend/
+elegantweather-brand-kit/
+weather-build-brief.md
+
