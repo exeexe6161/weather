@@ -4,7 +4,7 @@ import { uvHintKey } from "../lib/uv";
 import { pickIcon } from "../lib/wmo";
 import { getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatTemp, formatWind, formatHour, formatPercent } from "../lib/format";
+import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -16,6 +16,35 @@ export interface CurrentWeatherProps {
   updatedAt: string; // ISO Zeitpunkt des letzten erfolgreichen Abrufs
 }
 
+// Ticker für die lokale Ortszeit neben dem Ortsnamen. Modulweit genau einer:
+// jedes Re-Render (Stadtwechsel, Sprachwechsel, Favoriten-Toggle) stoppt den
+// alten Timer, bevor ein neuer startet — kein Leak.
+let localTimeTimer: ReturnType<typeof setTimeout> | undefined;
+
+function stopLocalTimeTicker(): void {
+  if (localTimeTimer !== undefined) {
+    clearTimeout(localTimeTimer);
+    localTimeTimer = undefined;
+  }
+}
+
+// Aktualisiert den Zeit-Span immer kurz NACH dem echten Minutenwechsel (statt
+// eines starren 60s-Intervalls, das bis zu 59s hinterherhinken würde). Die
+// Zeit wird je Tick frisch aus der echten Uhrzeit berechnet, nie aufaddiert.
+function startLocalTimeTicker(span: HTMLElement, timezone: unknown, locale: string): void {
+  const tick = (): void => {
+    const msToNextMinute = 60_000 - (Date.now() % 60_000) + 250;
+    localTimeTimer = setTimeout(() => {
+      const text = formatTimeInZone(timezone, locale);
+      // Span nicht mehr im DOM (inzwischen neu gerendert) → Kette beenden
+      if (text === null || !span.isConnected) return;
+      span.textContent = text;
+      tick();
+    }, msToNextMinute);
+  };
+  tick();
+}
+
 // Liegt die aktuelle Zeit zwischen Sonnenaufgang und Sonnenuntergang?
 // sunrise/sunset sind ISO-Strings in Stationszeit; "jetzt" muss daher ebenfalls
 // in Stationszeit vorliegen (Intl mit forecast.timezone), nicht in Nutzerzeit —
@@ -23,9 +52,12 @@ export interface CurrentWeatherProps {
 // YYYY-MM-DD HH:mm und ist nach dem Tausch des Trenners lexikalisch vergleichbar.
 // Alte Forecast-Caches ohne timezone fallen auf das is_day Flag zurück.
 function isDaytimeNow(sunrise: string, sunset: string, timezone: unknown, fallbackIsDay: boolean): boolean {
+  // Expliziter Check: Intl fiele bei undefined STILL auf die Nutzer-Zeitzone
+  // zurück statt zu werfen — der catch-Fallback griffe sonst nie.
+  if (typeof timezone !== "string" || timezone === "") return fallbackIsDay;
   try {
     const now = new Intl.DateTimeFormat("sv-SE", {
-      timeZone: timezone as string,
+      timeZone: timezone,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -42,6 +74,7 @@ function isDaytimeNow(sunrise: string, sunset: string, timezone: unknown, fallba
 }
 
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
+  stopLocalTimeTicker();
   const { place, forecast, isFav, fromCache, updatedAt } = props;
   const c = forecast.current;
   const icon = pickIcon(c.weatherCode, c.isDay);
@@ -65,12 +98,14 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     sunset !== null &&
     isDaytimeNow(sunrise, sunset, forecast.timezone, c.isDay);
   const locale = getLocale();
+  // Lokale Ortszeit; null ohne timezone (alte Caches) → Zeile entfällt einfach
+  const localTime = formatTimeInZone(forecast.timezone, locale);
 
   el.innerHTML = `
     <div class="cw-head">
       <div class="cw-place">
         <div class="cw-place-name">${esc(place.name)}</div>
-        ${region ? `<div class="cw-place-region">${esc(region)}</div>` : ""}
+        ${region || localTime ? `<div class="cw-place-region">${esc(region)}${region && localTime ? " · " : ""}${localTime ? `<span class="cw-local-time">${localTime}</span>` : ""}</div>` : ""}
       </div>
       ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
         aria-pressed="${isFav}"
@@ -126,4 +161,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     </div>` : ""}
     ${fromCache ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
+
+  const timeSpan = el.querySelector<HTMLElement>(".cw-local-time");
+  if (timeSpan) startLocalTimeTicker(timeSpan, forecast.timezone, locale);
 }

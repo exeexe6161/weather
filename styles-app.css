@@ -56,6 +56,8 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --accent-soft-active:rgba(46,127,224,.24);
   --accent-border:rgba(46,127,224,.35);      /* zarter Zenit Rand */
   --shimmer:rgba(46,127,224,.26); /* einmaliger Fokus-Schimmer im Suchfeld */
+  --pulse-line:rgba(46,127,224,.45); /* Atem-Spitze der Suchfeld Linie */
+  --pulse-glow:rgba(46,127,224,.08); /* dazugehöriges leises Glühen */
 
   /* ── Surfaces / text ── */
   --bg:var(--wp-bg);
@@ -121,6 +123,8 @@ html[data-theme="dark"]{
   --accent-soft-active:rgba(46,127,224,.38);
   --accent-border:rgba(127,177,240,.40);
   --shimmer:rgba(127,177,240,.32);
+  --pulse-line:rgba(127,177,240,.50);
+  --pulse-glow:rgba(127,177,240,.10);
   --s2:#262B30;
   --s3:#2F353B;
   --l2:#D4D9DE;
@@ -214,7 +218,7 @@ body::before{
 /* Tabellenziffern auf allen Wertelementen, die sich ändern oder in Spalten
    stehen — beim Stadtwechsel und in den Listen springt nichts horizontal.
    Bewusst nicht global auf body (Fließtext behält proportionale Ziffern). */
-.cw-temp,.cw-meta-val,.cw-sun-val,
+.cw-temp,.cw-meta-val,.cw-sun-val,.cw-local-time,
 .hour-time,.hour-temp,
 .day-max,.day-min,.day-rain{
   font-variant-numeric:tabular-nums;
@@ -368,6 +372,20 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .search-input:focus-visible{
   outline:none;
   box-shadow:0 0 0 2px var(--accent),0 0 0 6px var(--accent-soft);
+}
+/* Ruhezustand: die Feldlinie atmet langsam in heller Zenit Tönung — bewusst
+   träge (8s) und niedrig gedeckt, ein leises Glühen, kein Blinklicht. Fokus
+   stoppt das Atmen (:not(:focus)), dann übernimmt der Fokusring oben. Bei
+   reduzierter Bewegung steht der Rand ruhig in dezenter Zenit Tönung. */
+@media (prefers-reduced-motion:no-preference){
+  .search-input:not(:focus){animation:search-breathe 8s ease-in-out infinite;}
+}
+@media (prefers-reduced-motion:reduce){
+  .search-input:not(:focus){box-shadow:0 0 0 1px var(--accent-border);}
+}
+@keyframes search-breathe{
+  0%,100%{box-shadow:0 0 0 1px var(--sep),0 0 0 3px transparent;}
+  50%{box-shadow:0 0 0 1px var(--pulse-line),0 0 0 3px var(--pulse-glow);}
 }
 /* Einmaliger Schimmer bei Fokus: das Overlay clippt über den eigenen Radius,
    das Band läuft per background-position genau einmal durch und ruht dann
