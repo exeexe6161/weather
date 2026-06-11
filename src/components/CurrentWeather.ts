@@ -1,6 +1,7 @@
 import { GEO_PLACE_ID, type Place } from "../lib/geocoding";
 import type { Forecast } from "../lib/weather";
 import { uvHintKey } from "../lib/uv";
+import { summaryFor } from "../lib/summary";
 import { pickIcon } from "../lib/wmo";
 import { getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
@@ -73,6 +74,19 @@ function isDaytimeNow(sunrise: string, sunset: string, timezone: unknown, fallba
   }
 }
 
+// Baut den sichtbaren Satz aus dem Summary-Ergebnis: Ebene 1 ist ein fertiger
+// i18n Satz, Ebene 2 wird aus Muster und Bausteinen gefügt (", " als Fuge,
+// Punkt am Ende, erster Buchstabe groß).
+function summaryText(forecast: Forecast): string | null {
+  const summary = summaryFor(forecast);
+  if (summary === null) return null;
+  if (summary.kind === "fixed") return t(summary.key);
+  const base = t("sum_pattern").replace("{t}", t(summary.temp)).replace("{s}", t(summary.sky));
+  const parts = [base, summary.extra ? t(summary.extra) : null, summary.closer ? t(summary.closer) : null];
+  const sentence = parts.filter(Boolean).join(", ") + ".";
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+}
+
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   stopLocalTimeTicker();
   const { place, forecast, isFav, fromCache, updatedAt } = props;
@@ -100,6 +114,8 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const locale = getLocale();
   // Lokale Ortszeit; null ohne timezone (alte Caches) → Zeile entfällt einfach
   const localTime = formatTimeInZone(forecast.timezone, locale);
+  // Tageszusammenfassung; null wenn kein sinnvoller Satz möglich → Zeile entfällt
+  const summary = summaryText(forecast);
 
   el.innerHTML = `
     <div class="cw-head">
@@ -118,6 +134,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
       <div class="cw-temp">${formatTemp(c.temperature)}</div>
     </div>
     <div class="cw-label">${esc(label)}</div>
+    ${summary ? `<p class="cw-summary">${esc(summary)}</p>` : ""}
     <ul class="cw-meta" aria-label="${esc(label)}">
       <li class="cw-meta-item">
         <i data-lucide="thermometer" class="cw-meta-ico"></i>
