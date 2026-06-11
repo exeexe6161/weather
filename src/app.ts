@@ -1,9 +1,10 @@
 // WeatherApp: hält State (Ort, Forecast) und orchestriert die Komponenten.
 // Local first: letzter Ort + letzter Forecast liegen in localStorage, damit
 // die App offline mit den zuletzt geladenen Daten startet.
-import { GEO_PLACE_ID, type Place } from "./lib/geocoding";
+import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast } from "./lib/weather";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
+import { getLang } from "./i18n/ui";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -15,6 +16,7 @@ import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
 const FORECAST_CACHE_KEY = "weather:last-forecast";
+const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
 
 interface ForecastCache {
   placeId: number;
@@ -91,11 +93,22 @@ function renderContent(): void {
   });
 }
 
+// Hält die URL synchron zur angezeigten Stadt (ohne Reload). Der Geolocation-
+// Ort entfernt den Parameter: Er hat keinen echten Namen, und der Standort
+// darf nie in einer teilbaren URL landen (Datenschutzzusage).
+function syncCityParam(place: Place): void {
+  const url = new URL(location.href);
+  if (place.id === GEO_PLACE_ID) url.searchParams.delete(CITY_PARAM);
+  else url.searchParams.set(CITY_PARAM, place.name.toLowerCase());
+  history.replaceState(history.state, "", url);
+}
+
 export function selectPlace(place: Place): void {
   // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
   // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
   const isGeoPlace = place.id === GEO_PLACE_ID;
   state.place = place;
+  syncCityParam(place);
   if (!isGeoPlace) writeJson(LAST_PLACE_KEY, place);
   setView("loading");
   fetchWeather(place.latitude, place.longitude)
@@ -159,8 +172,25 @@ export function initApp(): void {
     renderIcons();
   });
 
-  // Letzten Ort wiederherstellen, sonst Empty State (Suche ist Default)
-  const lastPlace = readJson<Place>(LAST_PLACE_KEY);
-  if (lastPlace) selectPlace(lastPlace);
-  else setView("empty");
+  // Startreihenfolge: ?stadt= aus der URL hat Vorrang (teilbarer Link),
+  // dann letzter Ort, sonst Empty State (Suche ist Default).
+  const restoreLastPlace = (): void => {
+    const lastPlace = readJson<Place>(LAST_PLACE_KEY);
+    if (lastPlace) selectPlace(lastPlace);
+    else setView("empty");
+  };
+
+  const cityQuery = new URLSearchParams(location.search).get(CITY_PARAM)?.trim();
+  if (cityQuery) {
+    setView("loading");
+    searchCity(cityQuery, getLang())
+      .then((places) => {
+        // Erster Treffer der Geocoding-Suche; nicht auflösbar → stiller Fallback
+        if (places.length) selectPlace(places[0]);
+        else restoreLastPlace();
+      })
+      .catch(restoreLastPlace);
+  } else {
+    restoreLastPlace();
+  }
 }

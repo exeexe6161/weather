@@ -209,6 +209,15 @@ body::before{
   border-radius:4px;
 }
 
+/* Tabellenziffern auf allen Wertelementen, die sich ändern oder in Spalten
+   stehen — beim Stadtwechsel und in den Listen springt nichts horizontal.
+   Bewusst nicht global auf body (Fließtext behält proportionale Ziffern). */
+.cw-temp,.cw-meta-val,.cw-sun-val,
+.hour-time,.hour-temp,
+.day-max,.day-min,.day-rain{
+  font-variant-numeric:tabular-nums;
+}
+
 /* ══ Top controls (Sprache + Theme) ══ */
 .top-controls{
   position:fixed;
