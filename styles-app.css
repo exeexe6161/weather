@@ -679,6 +679,25 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .dress-rain-ico{width:16px;height:16px;color:var(--wp-zenit);flex:none;}
 .dress-rain-ico--calm{color:var(--wp-stahl);} /* ohne Regenfenster kein Akzent */
 
+/* ══ Pollen ══
+   Nur belastete Arten als ruhige Zeilen; Stufen dezent über Funktionsfarben
+   (gering neutral, kein Alarm). Sektion komplett hidden, wenn nichts ansteht. */
+.pollen-card{padding:var(--sp-2) var(--sp-4);text-align:left;}
+.pollen-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:11px 0;
+  border-bottom:1px solid var(--sep);
+}
+.pollen-row:last-child{border-bottom:none;}
+.pollen-name{font-size:var(--fs-md);font-weight:600;}
+.pollen-stage{font-size:var(--fs-sm);font-weight:600;}
+.pollen-stage--low{color:var(--l3);}
+.pollen-stage--moderate{color:var(--orange);}
+.pollen-stage--high{color:var(--red);}
+
 /* ══ Stundenleiste ══ */
 .hourly-strip{
   display:flex;

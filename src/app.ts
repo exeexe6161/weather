@@ -3,6 +3,8 @@
 // die App offline mit den zuletzt geladenen Daten startet.
 import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast } from "./lib/weather";
+import { fetchPollen, type PollenLevels } from "./lib/pollen";
+import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang } from "./i18n/ui";
 import { initSearchBar } from "./components/SearchBar";
@@ -29,11 +31,14 @@ interface ForecastCache {
 interface State {
   place: Place | null;
   forecast: Forecast | null;
+  // Bewusst ohne localStorage Cache (kein eigener Key nötig): offline oder bei
+  // API Ausfall fehlt die Pollensektion einfach, statt veraltete Werte zu zeigen
+  pollen: PollenLevels | null;
   fromCache: boolean;
   updatedAt: string;
 }
 
-const state: State = { place: null, forecast: null, fromCache: false, updatedAt: "" };
+const state: State = { place: null, forecast: null, pollen: null, fromCache: false, updatedAt: "" };
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
@@ -69,8 +74,13 @@ function renderFavorites(): void {
   });
 }
 
+function renderPollen(): void {
+  renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
+}
+
 function renderContent(): void {
   if (!state.place || !state.forecast) return;
+  renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
   renderCurrentWeather(byId("currentWeather"), {
     place: state.place,
     forecast: state.forecast,
@@ -111,6 +121,17 @@ export function selectPlace(place: Place): void {
   syncCityParam(place);
   if (!isGeoPlace) writeJson(LAST_PLACE_KEY, place);
   setView("loading");
+
+  // Pollen parallel zum Wetter holen: eigener Endpoint (Air Quality API),
+  // dessen Ausfall die Wetteranzeige nicht blockieren darf. fetchPollen wirft
+  // nie (Fehler intern → null = Sektion bleibt aus).
+  state.pollen = null;
+  fetchPollen(place.latitude, place.longitude).then((levels) => {
+    if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
+    state.pollen = levels;
+    renderPollen();
+  });
+
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
       if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
