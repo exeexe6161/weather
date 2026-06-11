@@ -4,9 +4,11 @@ import {
   todayHours,
   segmentsFor,
   rainWindowFor,
+  RAIN_PROB_THRESHOLD,
   type StageKey,
   type StageSegment,
 } from "../lib/clothing";
+import { formatPercent } from "../lib/format";
 import { t } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -15,9 +17,9 @@ function fill(template: string, params: Record<string, string | number>): string
   return template.replace(/\{(\w+)\}/g, (_m, key) => String(params[key] ?? ""));
 }
 
-// Verlauf von hinten verketten: "A bis HH Uhr, danach B bis HH Uhr, danach C"
+// Verlauf von hinten verketten: "A bis HH Uhr, danach B bis HH Uhr, danach C".
+// Wird nur ab zwei Segmenten gerendert, bei einem trägt die Überschrift allein.
 function courseText(segments: StageSegment[]): string {
-  if (segments.length === 1) return fill(t("dress_single"), { stage: t(segments[0].stage) });
   let text = t(segments[segments.length - 1].stage);
   for (let i = segments.length - 2; i >= 0; i--) {
     text = fill(t("dress_until"), { stage: t(segments[i].stage), time: segments[i].toHour, next: text });
@@ -39,15 +41,22 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
 
   const currentStage: StageKey = segments[0].stage;
   const headline = rain ? `${t(currentStage)}, ${t("dress_add_rain")}` : t(currentStage);
+
+  // Drei Regenvarianten: Fenster im Rest des Tages, kein Fenster mehr obwohl
+  // das Tagesmaximum über der Schwelle lag (Regen war am Vormittag), oder
+  // komplett trockener Tag
+  const todayMax = forecast.daily[0]?.precipitationProbabilityMax;
   const rainText = rain
-    ? fill(t("rain_window"), { prob: Math.round(rain.maxProb), from: rain.fromHour, to: rain.toHour })
-    : t("rain_none");
+    ? fill(t("rain_window"), { prob: formatPercent(rain.maxProb), from: rain.fromHour, to: rain.toHour })
+    : typeof todayMax === "number" && todayMax >= RAIN_PROB_THRESHOLD
+      ? t("rain_none_more")
+      : t("rain_none");
 
   el.innerHTML = `
     <div class="dress-stage">${esc(headline)}</div>
-    <div class="dress-course">${esc(courseText(segments))}</div>
+    ${segments.length > 1 ? `<div class="dress-course">${esc(courseText(segments))}</div>` : ""}
     <div class="dress-rain">
-      <i data-lucide="umbrella" class="dress-rain-ico"></i>
+      <i data-lucide="umbrella" class="dress-rain-ico${rain ? "" : " dress-rain-ico--calm"}"></i>
       <span>${esc(rainText)}</span>
     </div>
   `;

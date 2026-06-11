@@ -14,16 +14,16 @@
  * the next activate.
  */
 
-const CACHE_VERSION  = 'v20260611-6';
+const CACHE_VERSION  = 'v20260611-7';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260611-6',
-  '/theme-init.js?v=20260611-6',
-  '/script.min.js?v=20260611-6',
+  '/styles-app.min.css?v=20260611-7',
+  '/theme-init.js?v=20260611-7',
+  '/script.min.js?v=20260611-7',
   '/fonts/InterVariable.woff2',
   '/favicon.svg',
   '/apple-touch-icon.png',

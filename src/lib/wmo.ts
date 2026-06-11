@@ -45,3 +45,9 @@ export function pickIcon(code: number, isDay: boolean): string {
   const info = getWmo(code);
   return !isDay && info.iconNight ? info.iconNight : info.icon;
 }
+
+// Niederschlagscodes nach WMO: 51-99 (Niesel, Regen, gefrierender Regen,
+// Schnee, Schauer, Gewitter). Trockene Codes: 0-48.
+export function isPrecipCode(code: number): boolean {
+  return code >= 51 && code <= 99;
+}

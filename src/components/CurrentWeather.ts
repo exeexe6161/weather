@@ -4,7 +4,7 @@ import { uvHintKey } from "../lib/uv";
 import { pickIcon } from "../lib/wmo";
 import { getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatTemp, formatWind, formatHour } from "../lib/format";
+import { formatTemp, formatWind, formatHour, formatPercent } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -59,7 +59,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
       <li class="cw-meta-item">
         <i data-lucide="droplets" class="cw-meta-ico"></i>
         <span class="cw-meta-lbl">${t("humidity")}</span>
-        <span class="cw-meta-val">${Math.round(c.humidity)} %</span>
+        <span class="cw-meta-val">${formatPercent(c.humidity)}</span>
       </li>
       <li class="cw-meta-item">
         <i data-lucide="wind" class="cw-meta-ico"></i>
@@ -68,11 +68,12 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
       </li>
       ${rainProb !== null ? `<li class="cw-meta-item">
         <i data-lucide="cloud-rain" class="cw-meta-ico"></i>
-        <span class="cw-meta-lbl">${t("metric_rain")}</span>
-        <span class="cw-meta-val">${Math.round(rainProb)} %</span>
+        <span class="cw-meta-lbl">${t("metric_rain_today")}</span>
+        <span class="cw-meta-val">${formatPercent(rainProb)}</span>
       </li>` : ""}
     </ul>
-    ${sunrise || sunset ? `<div class="cw-sun">
+    ${sunrise || sunset ? `<div class="wp-riss-divider" aria-hidden="true"></div>
+    <div class="cw-sun">
       ${sunrise ? `<div class="cw-sun-item">
         <i data-lucide="sunrise" class="cw-sun-ico"></i>
         <span class="cw-sun-lbl">${t("sun_rise")}</span>

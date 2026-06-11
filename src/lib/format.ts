@@ -10,3 +10,6 @@ export function formatTemp(value: number): string {
 export function formatWind(value: number): string {
   return `${Math.round(value)} km/h`;
 }
+export function formatPercent(value: number): string {
+  return `${Math.round(value)}\u202F%`; // schmales geschütztes Leerzeichen
+}

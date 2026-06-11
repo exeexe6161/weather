@@ -42,6 +42,7 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --wp-bg:var(--wp-pur);
   --wp-surface:var(--wp-dunst);
   --wp-fg:var(--wp-karbon);
+  --wp-content-max:740px; /* Lesespalte am Desktop, mobil ohne Wirkung */
 
   --red:var(--wp-fehler);
   --orange:var(--wp-warnung);
@@ -163,7 +164,7 @@ body{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   transition:background-color .3s ease,color .3s ease;
-  max-width:680px;
+  max-width:var(--wp-content-max);
   margin:0 auto;
 }
 
@@ -418,7 +419,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   font-size:var(--fs-xs);
   color:var(--l4);
   padding:0 4px;
-  max-width:480px;
+  max-width:52ch; /* ruhiger Umbruch */
 }
 
 /* ══ Favoriten ══ */
@@ -545,7 +546,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   gap:14px;
   margin-top:var(--sp-4);
 }
-.cw-ico{width:56px;height:56px;color:var(--accent);}
+.cw-ico{width:56px;height:56px;color:var(--l2);} /* Zenit nur für Wasser und Aktionen */
 .cw-temp{font-size:52px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
 .cw-label{margin-top:var(--sp-2);font-size:var(--fs-lg);color:var(--l2);font-weight:600;}
 .cw-meta{
@@ -568,6 +569,11 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-meta-ico{width:16px;height:16px;color:var(--l4);}
 .cw-meta-lbl{font-size:var(--fs-xs);color:var(--l4);}
 .cw-meta-val{font-size:var(--fs-md);font-weight:700;}
+/* Der Riss als Naht über die volle Kartenbreite (negative Ränder heben das
+   Kartenpadding auf); einziger Riss Einsatz in der App */
+.cw-card .wp-riss-divider{
+  margin:var(--sp-4) calc(-1 * var(--sp-4)) 0;
+}
 .cw-sun{
   display:flex;
   flex-wrap:wrap;
@@ -608,6 +614,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--l2);
 }
 .dress-rain-ico{width:16px;height:16px;color:var(--wp-zenit);flex:none;}
+.dress-rain-ico--calm{color:var(--wp-stahl);} /* ohne Regenfenster kein Akzent */
 
 /* ══ Stundenleiste ══ */
 .hourly-strip{
@@ -617,6 +624,19 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   scrollbar-width:thin;
   -webkit-overflow-scrolling:touch;
   padding:var(--sp-3);
+}
+/* Scrollhinweis: rechts in die Kartenfarbe auslaufen. Sticky Flex Kind statt
+   Maske, damit Kartenhintergrund und Schatten am Rand nicht mit abblenden;
+   rein dekorativ, kein Fokusziel. */
+.hourly-strip::after{
+  content:"";
+  position:sticky;
+  right:0;
+  flex:none;
+  width:36px;
+  margin-left:-36px;
+  background:linear-gradient(to right,transparent,var(--s1));
+  pointer-events:none;
 }
 .hour-cell{
   display:flex;
@@ -638,7 +658,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   display:grid;
   /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen
      über alle Zeilen bündig bleiben (jede Zeile ist ein eigenes Grid) */
-  grid-template-columns:64px 26px 1fr 48px auto;
+  grid-template-columns:64px 26px 1fr 56px auto;
   align-items:center;
   gap:10px;
   padding:11px 0;
@@ -695,5 +715,5 @@ footer{margin-top:48px;padding:0 16px;}
 @media (max-width:380px){
   .cw-temp{font-size:44px;}
   .cw-ico{width:48px;height:48px;}
-  .day-row{grid-template-columns:56px 24px 1fr 42px auto;gap:8px;}
+  .day-row{grid-template-columns:56px 24px 1fr 48px auto;gap:8px;}
 }
