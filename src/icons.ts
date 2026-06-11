@@ -27,6 +27,8 @@ import {
   Thermometer,
   RefreshCw,
   Umbrella,
+  Sunrise,
+  Sunset,
 } from "lucide";
 
 const icons = {
@@ -54,6 +56,8 @@ const icons = {
   Thermometer,
   RefreshCw,
   Umbrella,
+  Sunrise,
+  Sunset,
 };
 
 export function renderIcons(): void {

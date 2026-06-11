@@ -551,7 +551,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-meta{
   list-style:none;
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  /* 4 Kacheln in einer Reihe, auf schmalen Breiten 2x2 statt quetschen */
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
   gap:8px;
   margin-top:var(--sp-4);
 }
@@ -567,6 +568,25 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-meta-ico{width:16px;height:16px;color:var(--l4);}
 .cw-meta-lbl{font-size:var(--fs-xs);color:var(--l4);}
 .cw-meta-val{font-size:var(--fs-md);font-weight:700;}
+.cw-sun{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 20px;
+  margin-top:var(--sp-3);
+}
+.cw-sun-item{display:flex;align-items:center;gap:6px;}
+.cw-sun-ico{width:16px;height:16px;color:var(--l4);flex:none;}
+.cw-sun-lbl{font-size:var(--fs-xs);color:var(--l4);}
+.cw-sun-val{font-size:var(--fs-sm);font-weight:600;}
+.cw-uv{
+  margin-top:var(--sp-2);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:var(--fs-sm);
+  color:var(--l3);
+}
+.cw-uv-ico{width:16px;height:16px;color:var(--l4);flex:none;}
 .cw-offline{
   margin-top:var(--sp-3);
   font-size:var(--fs-sm);
@@ -616,7 +636,9 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .daily-list{padding:var(--sp-2) var(--sp-4);text-align:left;}
 .day-row{
   display:grid;
-  grid-template-columns:64px 26px 1fr auto;
+  /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen
+     über alle Zeilen bündig bleiben (jede Zeile ist ein eigenes Grid) */
+  grid-template-columns:64px 26px 1fr 48px auto;
   align-items:center;
   gap:10px;
   padding:11px 0;
@@ -632,6 +654,16 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.day-rain{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:3px;
+  font-size:var(--fs-xs);
+  color:var(--l3);
+  white-space:nowrap;
+}
+.day-rain-ico{width:12px;height:12px;color:var(--wp-zenit);flex:none;}
 .day-temps{display:flex;gap:10px;align-items:baseline;}
 .day-max{font-size:var(--fs-md);font-weight:700;}
 .day-min{font-size:var(--fs-sm);color:var(--l4);}
@@ -663,5 +695,5 @@ footer{margin-top:48px;padding:0 16px;}
 @media (max-width:380px){
   .cw-temp{font-size:44px;}
   .cw-ico{width:48px;height:48px;}
-  .day-row{grid-template-columns:56px 24px 1fr auto;gap:8px;}
+  .day-row{grid-template-columns:56px 24px 1fr 42px auto;gap:8px;}
 }

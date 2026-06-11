@@ -1,5 +1,6 @@
 import type { Place } from "../lib/geocoding";
 import type { Forecast } from "../lib/weather";
+import { uvHintKey } from "../lib/uv";
 import { pickIcon } from "../lib/wmo";
 import { getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
@@ -21,6 +22,16 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const icon = pickIcon(c.weatherCode, c.isDay);
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
   const region = [place.admin1, place.country].filter(Boolean).join(", ");
+
+  // Heutiger Daily Eintrag; typeof Checks fangen Forecast Caches aus
+  // localStorage ab, die die Felder noch nicht kennen (dann einzeln ausblenden)
+  const today = forecast.daily[0];
+  const rainProb = typeof today?.precipitationProbabilityMax === "number" ? today.precipitationProbabilityMax : null;
+  const sunrise = typeof today?.sunrise === "string" ? today.sunrise : null;
+  const sunset = typeof today?.sunset === "string" ? today.sunset : null;
+  const uvRounded = typeof today?.uvIndexMax === "number" ? Math.round(today.uvIndexMax) : null;
+  const uvKey = uvRounded !== null ? uvHintKey(uvRounded) : null;
+  const locale = getLocale();
 
   el.innerHTML = `
     <div class="cw-head">
@@ -55,7 +66,28 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-meta-lbl">${t("wind")}</span>
         <span class="cw-meta-val">${formatWind(c.windSpeed)}</span>
       </li>
+      ${rainProb !== null ? `<li class="cw-meta-item">
+        <i data-lucide="cloud-rain" class="cw-meta-ico"></i>
+        <span class="cw-meta-lbl">${t("metric_rain")}</span>
+        <span class="cw-meta-val">${Math.round(rainProb)} %</span>
+      </li>` : ""}
     </ul>
-    ${fromCache ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, getLocale())}</div>` : ""}
+    ${sunrise || sunset ? `<div class="cw-sun">
+      ${sunrise ? `<div class="cw-sun-item">
+        <i data-lucide="sunrise" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("sun_rise")}</span>
+        <span class="cw-sun-val">${formatHour(sunrise, locale)}</span>
+      </div>` : ""}
+      ${sunset ? `<div class="cw-sun-item">
+        <i data-lucide="sunset" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("sun_set")}</span>
+        <span class="cw-sun-val">${formatHour(sunset, locale)}</span>
+      </div>` : ""}
+    </div>` : ""}
+    ${uvKey ? `<div class="cw-uv">
+      <i data-lucide="sun" class="cw-uv-ico"></i>
+      <span>${t("uv_label")} ${uvRounded}, ${esc(t(uvKey))}</span>
+    </div>` : ""}
+    ${fromCache ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
 }
