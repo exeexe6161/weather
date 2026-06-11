@@ -6,9 +6,9 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#1C1917">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#15171A">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="msapplication-TileColor" content="#1C1917">
+<meta name="msapplication-TileColor" content="#15171A">
 <meta name="msapplication-config" content="/browserconfig.xml">
 <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
 <!-- iOS Safari "Add to Home Screen" PWA hooks (W3C de-facto standard,
@@ -16,22 +16,22 @@
      for installable PWA support). -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="elegantweather">
+<meta name="apple-mobile-web-app-title" content="WeatherPure">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#FAFAF9" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1C1917" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15171A" media="(prefers-color-scheme: dark)">
 <meta name="referrer" content="same-origin">
-<meta name="description" content="elegantweather – minimalistische Wetter App. Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
+<meta name="description" content="WeatherPure – minimalistische Wetter App. Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="elegantweather">
-<meta property="og:title" content="elegantweather – Wetter ohne Tracking">
+<meta property="og:site_name" content="WeatherPure">
+<meta property="og:title" content="WeatherPure – Wetter ohne Tracking">
 <meta property="og:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
-<meta property="og:image" content="https://elegantweather.com/og-image-light.png">
+<meta property="og:image" content="/og-image-light.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<title>elegantweather – Wetter ohne Tracking</title>
-<script src="./theme-init.js?v=20260611-3"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=20260611-3">
+<title>WeatherPure – Wetter ohne Tracking</title>
+<script src="./theme-init.js?v=20260611-4"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=20260611-4">
 </head>
 <body>
 <noscript><div class="noscript-overlay"><p data-i18n="noscriptText">Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p></div></noscript>
@@ -53,9 +53,12 @@
 
 <header class="hero" role="banner">
   <div class="hdr">
-    <!-- Wortmarke nach Brand Kit: Inter 300 (elegant) + 600 (weather),
-         Laufweite minus 2 % — als Text statt Bild (Inter ist selbst gehostet) -->
-    <h1 class="wordmark"><span class="wordmark-light">elegant</span><span class="wordmark-bold">weather</span></h1>
+    <!-- Wortmarke als SVG aus dem Brand Kit (reine Vektorpfade, keine Webfont
+         Abhängigkeit). Hell: Karbon Variante, Dunkel: White Variante. -->
+    <h1 class="wordmark">
+      <img class="wordmark-img wordmark-img--light" src="/logos/weatherpure-wordmark-karbon.svg" alt="WeatherPure" width="166" height="30" decoding="async">
+      <img class="wordmark-img wordmark-img--dark" src="/logos/weatherpure-wordmark-white.svg" alt="WeatherPure" width="166" height="30" decoding="async">
+    </h1>
     <p class="hdr-sub" data-i18n="heroSubtitle">Schlicht, schnell und ohne Tracking</p>
   </div>
 </header>
@@ -132,6 +135,6 @@
   <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://open-meteo.com/" rel="noopener noreferrer">Open-Meteo.com</a> · <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener noreferrer">CC BY 4.0</a></p>
 </footer>
 
-<script src="./script.min.js?v=20260611-3"></script>
+<script src="./script.min.js?v=20260611-4"></script>
 </body>
 </html>

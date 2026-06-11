@@ -1,6 +1,6 @@
-# elegantweather
+# WeatherPure
 
-Minimalistische Wetter PWA mit Open-Meteo, lokaler Speicherung und ohne Tracking.
+Minimalistische Wetter PWA mit Open-Meteo, lokaler Speicherung und ohne Tracking. Live unter www.weatherpure.com.
 
 ## Entwicklung
 

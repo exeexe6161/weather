@@ -6,7 +6,7 @@
   // Verhindert weißen Streifen oben wenn iOS hell ist aber App auf dunkel steht.
   function syncThemeColor() {
     var isDark = html.getAttribute("data-theme") === "dark";
-    var color  = isDark ? "#1C1917" : "#FAFAF9";
+    var color  = isDark ? "#15171A" : "#FFFFFF";
     var metas  = document.querySelectorAll('meta[name="theme-color"]');
     if (!metas.length) {
       var m = document.createElement("meta");

@@ -13,9 +13,17 @@ Stand: 11. Juni 2026
 ## Schriftart — Inter (SIL OFL 1.1)
 
 - Quelle: https://github.com/rsms/inter (Version 4.x)
-- Lizenz: SIL Open Font License 1.1, Volltext unter `/fonts/LICENSE.txt`
+- Lizenz: SIL Open Font License 1.1, Volltext unter `/fonts/LICENSE.txt` und `/licenses/inter-OFL.txt`
 - © 2016 The Inter Project Authors
 - Selbst gehostet als Variable Font (`/fonts/InterVariable.woff2`), kein Google Fonts CDN.
+
+## Schriftart — Instrument Serif (SIL OFL 1.1)
+
+- Quelle: https://github.com/Instrument/instrument-serif
+- Lizenz: SIL Open Font License 1.1, Volltext unter `/licenses/instrument-serif-OFL.txt`
+- © 2022 The Instrument Serif Project Authors
+- Nicht als Webfont eingebunden: Die WeatherPure Wortmarke und das Icon liegen als
+  reine SVG Vektorpfade vor (laut Brand Guidelines unterliegen die Pfade selbst nicht der OFL).
 
 ## Icons — Lucide (ISC)
 

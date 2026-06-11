@@ -1,0 +1,46 @@
+:root {
+  --wp-karbon: #15171A;
+  --wp-pur: #FFFFFF;
+  --wp-dunst: #F3F5F6;
+  --wp-stahl: #65707B;
+  --wp-linie: #E2E6E9;
+  --wp-zenit: #2E7FE0;
+  --wp-erfolg: #1E9E5A;
+  --wp-warnung: #C8820E;
+  --wp-fehler: #D5453E;
+  --wp-bg: var(--wp-pur);
+  --wp-surface: var(--wp-dunst);
+  --wp-fg: var(--wp-karbon);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wp-bg: var(--wp-karbon);
+    --wp-surface: #1E2125;
+    --wp-fg: var(--wp-pur);
+    --wp-stahl: #9AA3AC;
+    --wp-linie: #2A2E33;
+  }
+}
+/* Signatur: der Riss. Schmaler Spalt bei 24 Grad, bricht den Balken genau einmal. */
+.wp-riss-bar {
+  width: 120px;
+  height: 8px;
+  background: linear-gradient(
+    66deg,
+    var(--wp-zenit) calc(74% - 3px),
+    transparent calc(74% - 3px),
+    transparent calc(74% + 3px),
+    var(--wp-zenit) calc(74% + 3px)
+  );
+}
+/* Abschnittstrenner mit Riss, fuer Karten und Listen */
+.wp-riss-divider {
+  height: 2px;
+  background: linear-gradient(
+    66deg,
+    var(--wp-linie) calc(74% - 2px),
+    transparent calc(74% - 2px),
+    transparent calc(74% + 2px),
+    var(--wp-linie) calc(74% + 2px)
+  );
+}

@@ -18,34 +18,50 @@
    hidden Attribut nie aushebeln */
 [hidden]{display:none !important;}
 html{color-scheme:light dark;}
-html,body{background:#FAFAF9;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}
+html,body{background:#FFFFFF;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}
 html,body{overflow-x:hidden;overflow-x:clip;}
 body{min-width:0;}
-html[data-theme="dark"],html[data-theme="dark"] body{background:#1C1917;}
+html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
 
-/* ── elegantweather Brand Tokens ──
-   Ink #1C1917 · Mist #FAFAF9 · Graphit #78716C · Linie #E7E5E4
-   Horizont #8CA3B5 (einzelner Akzent, sparsam einsetzen) */
+/* ── WeatherPure Brand Tokens (Quelle: brand/06-web/tokens.css) ──
+   Karbon #15171A · Pur #FFFFFF · Dunst #F3F5F6 · Stahl #65707B · Linie #E2E6E9
+   Zenit #2E7FE0 (einziger Akzent) · Erfolg / Warnung / Fehler als Funktionsfarben.
+   Dark Mode schaltet hier über data-theme (theme-init.js), nicht über
+   prefers-color-scheme wie in der Kit Datei — sonst kollidiert der manuelle
+   Theme Toggle mit der OS Einstellung. */
 :root{
-  --red:#b91c1c;
-  --orange:#b45309;
-  --accent:#8CA3B5;
-  --accent-soft:rgba(140,163,181,.16);
-  --accent-text:#4E6A7D;   /* dunklere Horizont Stufe, AA tauglich auf Mist */
-  --star:#8CA3B5;
-  --btn-bg:#1C1917;        /* Primärbutton: Ink Fläche, Mist Text */
-  --btn-fg:#FAFAF9;
+  --wp-karbon:#15171A;
+  --wp-pur:#FFFFFF;
+  --wp-dunst:#F3F5F6;
+  --wp-stahl:#65707B;
+  --wp-linie:#E2E6E9;
+  --wp-zenit:#2E7FE0;
+  --wp-erfolg:#1E9E5A;
+  --wp-warnung:#C8820E;
+  --wp-fehler:#D5453E;
+  --wp-bg:var(--wp-pur);
+  --wp-surface:var(--wp-dunst);
+  --wp-fg:var(--wp-karbon);
+
+  --red:var(--wp-fehler);
+  --orange:var(--wp-warnung);
+  --accent:var(--wp-zenit);
+  --accent-soft:rgba(46,127,224,.12);
+  --accent-text:#1D62B4;    /* dunklere Zenit Stufe, AA tauglich auf Pur */
+  --star:var(--wp-zenit);
+  --btn-bg:var(--wp-zenit); /* Primärbutton nach Design System: Zenit Fläche, Pur Text */
+  --btn-fg:var(--wp-pur);
 
   /* ── Surfaces / text ── */
-  --bg:#FAFAF9;
-  --s1:#ffffff;
-  --s2:#F5F5F4;
-  --s3:#E7E5E4;
-  --l1:#1C1917;
-  --l2:#44403C;
-  --l3:#57534E;
-  --l4:#78716C;
-  --sep:#E7E5E4;
+  --bg:var(--wp-bg);
+  --s1:var(--wp-surface);
+  --s2:#E9EDF0;
+  --s3:var(--wp-linie);
+  --l1:var(--wp-fg);
+  --l2:#343B43;
+  --l3:#4D565F;
+  --l4:var(--wp-stahl);
+  --sep:var(--wp-linie);
 
   /* ── Elevation (Border-zentriert, Tool-Style) ── */
   --shadow-1:0 0 0 1px var(--sep);
@@ -85,27 +101,49 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#1C1917;}
 }
 
 html[data-theme="dark"]{
-  --red:#fca5a5;
-  --orange:#fbbf24;
-  --accent:#8CA3B5;
-  --accent-soft:rgba(140,163,181,.18);
-  --accent-text:#A9BCCA;   /* hellere Horizont Stufe auf Ink */
-  --star:#A9BCCA;
-  --btn-bg:#FAFAF9;        /* Primärbutton invertiert: Mist Fläche, Ink Text */
-  --btn-fg:#1C1917;
-  --bg:#1C1917;
-  --s1:#252220;
-  --s2:#2E2A27;
-  --s3:#37322E;
-  --l1:#FAFAF9;
-  --l2:#D6D3D1;
-  --l3:#A8A29E;
-  --l4:#8C8782;
-  --sep:#292524;
+  --wp-bg:var(--wp-karbon);
+  --wp-surface:#1E2125;
+  --wp-fg:var(--wp-pur);
+  --wp-stahl:#9AA3AC;
+  --wp-linie:#2A2E33;
+
+  --red:#E4736D;            /* hellere Fehler Stufe auf Karbon */
+  --orange:#E2A94D;         /* hellere Warnung Stufe auf Karbon */
+  --accent-soft:rgba(46,127,224,.20);
+  --accent-text:#7FB1F0;    /* hellere Zenit Stufe auf Karbon */
+  --star:#7FB1F0;
+  --s2:#262B30;
+  --s3:#2F353B;
+  --l2:#D4D9DE;
+  --l3:#A6AEB6;
   --shadow-1:0 0 0 1px var(--sep);
   --shadow-2:0 0 0 1px var(--sep),0 1px 3px rgba(0,0,0,.40);
   --shadow-3:0 0 0 1px var(--sep),0 4px 12px rgba(0,0,0,.50);
   --card-shadow:var(--shadow-2);
+}
+
+/* Signatur Elemente aus brand/06-web/tokens.css: der Riss, 24 Grad,
+   bricht den Balken genau einmal. Einziges Schmuckelement des Systems. */
+.wp-riss-bar{
+  width:120px;
+  height:8px;
+  background:linear-gradient(
+    66deg,
+    var(--wp-zenit) calc(74% - 3px),
+    transparent calc(74% - 3px),
+    transparent calc(74% + 3px),
+    var(--wp-zenit) calc(74% + 3px)
+  );
+}
+.wp-riss-divider{
+  height:2px;
+  background:linear-gradient(
+    66deg,
+    var(--wp-linie) calc(74% - 2px),
+    transparent calc(74% - 2px),
+    transparent calc(74% + 2px),
+    var(--wp-linie) calc(74% + 2px)
+  );
 }
 
 html{
@@ -245,14 +283,13 @@ body::before{
 
 /* ══ Hero ══ */
 .hero{padding:calc(28px + var(--safe-top)) 16px 4px;}
-/* Wortmarke nach Brand Kit: Inter 300 + 600, Laufweite minus 2 % */
-.wordmark{
-  font-size:30px;
-  letter-spacing:-.02em;
-  font-weight:300;
-}
-.wordmark-light{font-weight:300;}
-.wordmark-bold{font-weight:600;}
+/* Wortmarke als SVG aus brand/01-logos: hell Karbon, dunkel White.
+   Mindestbreite laut Guidelines 130 px, hier 166 px. */
+.wordmark{line-height:0;}
+.wordmark-img{width:166px;height:30px;}
+.wordmark-img--dark{display:none;}
+html[data-theme="dark"] .wordmark-img--light{display:none;}
+html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .hdr-sub{
   margin-top:4px;
   font-size:var(--fs-md);

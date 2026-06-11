@@ -1,5 +1,5 @@
-// UI Sprachmechanik nach EVSpend Muster: data-i18n Attribute im statischen
-// Markup, Sprachwahl in localStorage, live Umschaltung ohne Reload.
+// UI Sprachmechanik: data-i18n Attribute im statischen Markup,
+// Sprachwahl in localStorage, live Umschaltung ohne Reload.
 
 export type Lang = "de" | "en" | "tr";
 

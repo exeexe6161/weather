@@ -1,4 +1,4 @@
-/* Wetter Service Worker (Muster aus EVSpend übernommen)
+/* WeatherPure Service Worker
  *
  * Strategy:
  *   - Versioned assets (?v=…)  → cache-first, immutable lifetime
@@ -14,21 +14,23 @@
  * the next activate.
  */
 
-const CACHE_VERSION  = 'v20260611-3';
+const CACHE_VERSION  = 'v20260611-4';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260611-3',
-  '/theme-init.js?v=20260611-3',
-  '/script.min.js?v=20260611-3',
+  '/styles-app.min.css?v=20260611-4',
+  '/theme-init.js?v=20260611-4',
+  '/script.min.js?v=20260611-4',
   '/fonts/InterVariable.woff2',
   '/favicon.svg',
   '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/logos/weatherpure-wordmark-karbon.svg',
+  '/logos/weatherpure-wordmark-white.svg',
 ];
 
 self.addEventListener('install', (event) => {

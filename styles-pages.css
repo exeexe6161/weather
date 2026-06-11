@@ -23,17 +23,32 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
+/* ── WeatherPure Brand Tokens (Quelle: brand/06-web/tokens.css) ──
+   Dark Mode über data-theme (theme-init.js), siehe styles-app.css. */
 :root{
-  --blue:#2563eb;
-  --bg:#f2f2f7;
-  --s1:#ffffff;
-  --s2:#ebebf0;
-  --l1:#000000;
-  --l2:rgba(60,60,67,.82);
-  --l3:rgba(60,60,67,.58);
-  --l4:rgba(60,60,67,.32);
-  --sep:rgba(60,60,67,.10);
-  --card-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.06),0 0 0 0.5px rgba(0,0,0,.04);
+  --wp-karbon:#15171A;
+  --wp-pur:#FFFFFF;
+  --wp-dunst:#F3F5F6;
+  --wp-stahl:#65707B;
+  --wp-linie:#E2E6E9;
+  --wp-zenit:#2E7FE0;
+  --wp-erfolg:#1E9E5A;
+  --wp-warnung:#C8820E;
+  --wp-fehler:#D5453E;
+  --wp-bg:var(--wp-pur);
+  --wp-surface:var(--wp-dunst);
+  --wp-fg:var(--wp-karbon);
+
+  --blue:var(--wp-zenit);
+  --bg:var(--wp-bg);
+  --s1:var(--wp-surface);
+  --s2:#E9EDF0;
+  --l1:var(--wp-fg);
+  --l2:#343B43;
+  --l3:#4D565F;
+  --l4:var(--wp-stahl);
+  --sep:var(--wp-linie);
+  --card-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.06),0 0 0 1px var(--sep);
   /* Phase Z Sprint Z4 — Dashboard-Aesthetic auch auf Sub-Pages.
      Karten 14px (statt 20px), kleinere Helper-Radii angeglichen. */
   --rc:14px;
@@ -48,15 +63,16 @@
 }
 
 [data-theme="dark"]{
-  --bg:#000000;
-  --s1:#1c1c1e;
-  --s2:#2c2c2e;
-  --l1:#ffffff;
-  --l2:rgba(235,235,245,.82);
-  --l3:rgba(235,235,245,.60);
-  --l4:rgba(235,235,245,.36);
-  --sep:rgba(235,235,245,.10);
-  --card-shadow:0 1px 2px rgba(0,0,0,.30),0 6px 18px rgba(0,0,0,.40),0 0 0 0.5px rgba(255,255,255,.05);
+  --wp-bg:var(--wp-karbon);
+  --wp-surface:#1E2125;
+  --wp-fg:var(--wp-pur);
+  --wp-stahl:#9AA3AC;
+  --wp-linie:#2A2E33;
+
+  --s2:#262B30;
+  --l2:#D4D9DE;
+  --l3:#A6AEB6;
+  --card-shadow:0 1px 2px rgba(0,0,0,.30),0 6px 18px rgba(0,0,0,.40),0 0 0 1px var(--sep);
 }
 
 html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth;}
@@ -113,7 +129,7 @@ body::before{
 }
 .back-btn:hover{opacity:.78;}
 .back-btn:active{opacity:.6;}
-.back-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.28);}
+.back-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(46,127,224,.28);}
 .back-chevron{font-size:22px;font-weight:300;line-height:1;}
 
 .theme-toggle{
@@ -127,7 +143,7 @@ body::before{
 }
 .theme-toggle:hover{background:var(--sep);}
 .theme-toggle:active{opacity:.7;transform:scale(.92);}
-.theme-toggle:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.28);}
+.theme-toggle:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(46,127,224,.28);}
 
 .page-header{padding:12px 0 4px;}
 .page-meta{
@@ -218,11 +234,11 @@ body::before{
   position:absolute;
   top:0; left:0; right:0;
   height:3px;
-  background:linear-gradient(90deg, rgba(37,99,235,.6), rgba(37,99,235,.2));
+  background:linear-gradient(90deg, rgba(46,127,224,.6), rgba(46,127,224,.2));
   opacity:.85;
 }
 [data-theme="dark"] .card::before{
-  background:linear-gradient(90deg, rgba(96,165,250,.55), rgba(96,165,250,.18));
+  background:linear-gradient(90deg, rgba(127,177,240,.55), rgba(127,177,240,.18));
 }
 
 .card-icon{
