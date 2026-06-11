@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="tr" data-legal="datenschutz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15171A" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Bu hava durumu uygulamasının gizlilik politikası: tarayıcıda yerel saklama, Open-Meteo hava verileri, yalnızca onayla konum sorgusu, takip yok.">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="alternate" hreflang="de" href="/datenschutz">
+<link rel="alternate" hreflang="en" href="/datenschutz-en">
+<link rel="alternate" hreflang="tr" href="/datenschutz-tr">
+<link rel="alternate" hreflang="x-default" href="/datenschutz">
+<title>Gizlilik – Yerel saklama, Open-Meteo, takip yok | WeatherPure</title>
+<script src="./theme-init.js?v=20260612-14"></script>
+<link rel="stylesheet" href="./styles-pages.min.css?v=20260612-14">
+</head>
+<body>
+<div class="page">
+  <nav class="nav">
+    <button class="back-btn" type="button" data-action="back">
+      <span class="back-chevron">‹</span> Geri
+    </button>
+    <div class="lang-links" role="group" aria-label="Dil">
+      <a href="./datenschutz" data-setlang="de">DE</a>
+      <a href="./datenschutz-en" data-setlang="en">EN</a>
+      <a href="./datenschutz-tr" data-setlang="tr" aria-current="page">TR</a>
+    </div>
+    <button class="theme-toggle" id="themeBtn" type="button" aria-label="Tema değiştir"></button>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-meta">
+      <span class="page-tag">Yasal bilgiler</span>
+      <span class="page-stand">Son güncelleme: 12 Haziran 2026</span>
+    </div>
+    <h1 class="page-title">Gizlilik</h1>
+    <p class="page-subtitle">Art. 13 DSGVO (AB Genel Veri Koruma Tüzüğü, GDPR) uyarınca gizlilik politikası</p>
+    <div class="wp-riss-divider" aria-hidden="true"></div>
+  </div>
+
+  <main class="page-main">
+
+  <h2 class="sh">Veri sorumlusu</h2>
+  <div class="card">
+    <p><strong>Hakan Gür</strong><br>c/o COCENTER<br>Koppoldstr. 1<br>86551 Aichach<br>Deutschland</p>
+    <p>E-posta: <a href="mailto:g.uer@aol.com">g.uer@aol.com</a></p>
+  </div>
+
+  <h2 class="sh">Genel bilgiler</h2>
+  <div class="card">
+    <p>Bu hava durumu uygulaması bilinçli olarak asgari veriyle çalışacak şekilde tasarlanmıştır: hesap yok, kayıt yok, çerez yok, takip yok ve analiz hizmeti yok. İşletmecinin kendi sunucu altyapısı (backend) yoktur; tüm ayarlar tarayıcıda kalır.</p>
+  </div>
+
+  <h2 class="sh">Yerel veri saklama (localStorage)</h2>
+  <div class="card">
+    <p>Uygulama şu verileri yalnızca tarayıcıda yerel olarak saklar: kayıtlı favori konumlar, son görüntülenen konum, son yüklenen hava durumu raporu (çevrimdışı görünüm için), seçilen dil ve seçilen renk şeması.</p>
+    <p>Bu saklama, kullanıcının talep ettiği hizmet için kesinlikle gereklidir (§ 25 Abs. 2 Nr. 2 TTDSG, Alman Telekomünikasyon Dijital Hizmetler Veri Koruma Yasası). İşletmeciye veya üçüncü taraflara aktarım yapılmaz. Veriler, tarayıcının site verilerini silme işleviyle her zaman kaldırılabilir.</p>
+  </div>
+
+  <h2 class="sh">Open-Meteo hava verileri</h2>
+  <div class="card">
+    <p>Hava durumu ve konum araması, <strong>Open-Meteo</strong> (open-meteo.com) programlama arayüzü üzerinden alınır. Alım sırasında cihazın IP adresi, sorgulanan konumun koordinatları veya arama terimiyle birlikte teknik nedenlerle Open-Meteo'ya iletilir.</p>
+    <p>Yasal dayanak Art. 6 Abs. 1 lit. f DSGVO'dur (GDPR; talep edilen hava durumu bilgilerinin sağlanmasındaki meşru menfaat). Hava verileri CC BY 4.0 lisansı altındadır.</p>
+    <p>Polen yoğunluğunun gösterilmesi için uygulama ek olarak Open-Meteo'nun air-quality-api.open-meteo.com adresindeki Air Quality API'sini çağırır. Bu sırada, seçilen konuma ait verilerin iletilebilmesi için cihazın IP adresi teknik nedenlerle bu hizmete aktarılır. Open-Meteo, kendi beyanına göre kişisel veri toplamaz, takip ve çerez kullanmaz. Burada da yasal dayanak, talep edilen hava durumu ve çevre verilerinin sağlanmasındaki meşru menfaat olan Art. 6 Abs. 1 lit. f DSGVO'dur (GDPR).</p>
+    <p>Daha fazla bilgi: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
+  </div>
+
+  <h2 class="sh">Konum sorgusu (yalnızca onayla)</h2>
+  <div class="card">
+    <p>"Konumumu kullan" özelliği isteğe bağlıdır. Tarayıcı üzerinden konum sorgusu, ancak düğmeye aktif tıklama ve tarayıcı iletişim kutusundaki ek izinden sonra başlar (Art. 6 Abs. 1 lit. a DSGVO/GDPR ve § 25 Abs. 1 TTDSG uyarınca onay).</p>
+    <p>Koordinatlar yalnızca anlık hava durumu sorgusu için Open-Meteo'ya iletilir ve kalıcı olarak saklanmaz. Onay, tarayıcı ayarlarından her zaman geri çekilebilir; uygulama, konum izni olmadan da şehir aramasıyla tam olarak çalışır.</p>
+  </div>
+
+  <h2 class="sh">Service Worker / çevrimdışı önbellek</h2>
+  <div class="card">
+    <p>Yüklenebilir uygulama (PWA) işlevi için bir Service Worker, statik dosyaları (HTML, CSS, JavaScript, yazı tipi, simgeler) tarayıcı önbelleğinde saklar. Bu sırada normal sayfa ziyaretinin ötesinde kişisel veri işlenmez.</p>
+  </div>
+
+  <h2 class="sh">Barındırma</h2>
+  <div class="card">
+    <p>Bu web sitesi <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA tarafından barındırılmaktadır. Siteye erişim sırasında Vercel, hizmetin sunulması ve güvenliği için teknik olarak gerekli bağlantı verilerini (IP adresi, zaman, tarayıcı kimliği, çağrılan URL) işler (Art. 6 Abs. 1 lit. f DSGVO/GDPR).</p>
+    <p>Vercel ile Art. 28 DSGVO (GDPR) uyarınca bir veri işleme sözleşmesi mevcuttur. ABD'ye aktarımlar, AB standart sözleşme maddeleri ve Vercel'in EU-US Data Privacy Framework sertifikasıyla güvence altına alınmıştır.</p>
+  </div>
+
+  <h2 class="sh">Çerez yok, takip yok</h2>
+  <div class="card">
+    <p>Bu web sitesi çerez kullanmaz; analiz, reklam veya takip hizmetlerinden yararlanmaz. Bu nedenle çerez bildirimi gerekli değildir.</p>
+  </div>
+
+  <h2 class="sh">İlgili kişi olarak haklarınız</h2>
+  <div class="card">
+    <p>Veri sorumlusuna karşı bilgi edinme (Art. 15 DSGVO/GDPR), düzeltme (Art. 16), silme (Art. 17), işlemenin kısıtlanması (Art. 18), veri taşınabilirliği (Art. 20) ve meşru menfaate dayalı işlemeye itiraz (Art. 21 DSGVO/GDPR) haklarına sahipsiniz.</p>
+    <p>Verilen onaylar (örneğin konum sorgusu için) geleceğe dönük olarak her zaman geri çekilebilir.</p>
+  </div>
+
+  <h2 class="sh">Denetim makamı</h2>
+  <div class="card">
+    <p>Bir veri koruma denetim makamına, özellikle <strong>Bayerisches Landesamt für Datenschutzaufsicht (BayLDA)</strong>, Promenade 18, 91522 Ansbach, Almanya, <a href="https://www.lda.bayern.de/" rel="noopener noreferrer">www.lda.bayern.de</a> nezdinde şikayette bulunma hakkınız vardır.</p>
+  </div>
+
+  <h2 class="sh">Gizlilik konularında iletişim</h2>
+  <div class="card">
+    <p>Kişisel verilerin işlenmesine ilişkin sorularınızı lütfen şu adrese iletin: <a href="mailto:g.uer@aol.com">g.uer@aol.com</a></p>
+  </div>
+
+  </main>
+
+  <p class="legal-footnote">Bu politika, işlevler değiştiğinde güncellenir. Hukuki danışmanlık değildir. Almanca sürüm esastır.</p>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="./">Hava durumu</a>
+      <span>·</span>
+      <a href="./impressum-tr">Künye</a>
+      <span>·</span>
+      <a href="./datenschutz-tr">Gizlilik</a>
+    </div>
+    <p class="footer-note">Hava verileri Open-Meteo.com · CC BY 4.0 · Reklam yok · Takip yok</p>
+  </footer>
+</div>
+
+</body>
+</html>

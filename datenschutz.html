@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-legal="datenschutz">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -12,9 +12,13 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
+<link rel="alternate" hreflang="de" href="/datenschutz">
+<link rel="alternate" hreflang="en" href="/datenschutz-en">
+<link rel="alternate" hreflang="tr" href="/datenschutz-tr">
+<link rel="alternate" hreflang="x-default" href="/datenschutz">
 <title>Datenschutz – Lokale Speicherung, Open-Meteo, kein Tracking | WeatherPure</title>
-<script src="./theme-init.js?v=20260612-13"></script>
-<link rel="stylesheet" href="./styles-pages.min.css?v=20260612-13">
+<script src="./theme-init.js?v=20260612-14"></script>
+<link rel="stylesheet" href="./styles-pages.min.css?v=20260612-14">
 </head>
 <body>
 <div class="page">
@@ -22,6 +26,11 @@
     <button class="back-btn" type="button" data-action="back">
       <span class="back-chevron">‹</span> Zurück
     </button>
+    <div class="lang-links" role="group" aria-label="Sprache">
+      <a href="./datenschutz" data-setlang="de" aria-current="page">DE</a>
+      <a href="./datenschutz-en" data-setlang="en">EN</a>
+      <a href="./datenschutz-tr" data-setlang="tr">TR</a>
+    </div>
     <button class="theme-toggle" id="themeBtn" type="button" aria-label="Theme wechseln"></button>
   </nav>
 

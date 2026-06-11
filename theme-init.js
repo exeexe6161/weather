@@ -1,6 +1,25 @@
-/* Pre-paint theme boot + theme toggle + back-button wiring (all pages). */
+/* Pre-paint theme boot + theme toggle + back-button wiring (all pages).
+ * Rechtsseiten: zusätzlich Sprachkopplung mit der App (weather:lang). */
 (function () {
   var html = document.documentElement;
+
+  // Rechtsseiten tragen data-legal="impressum|datenschutz". Beim Öffnen wird
+  // die in der App gespeicherte Sprache übernommen (gleicher localStorage Key
+  // wie src/i18n/ui.ts) und pre-paint auf die passende Sprachfassung
+  // umgeleitet, damit keine falschsprachige Seite aufblitzt. Deutsch ist die
+  // Basisdatei ohne Suffix, EN/TR liegen unter -en/-tr.
+  var legalBase = html.getAttribute("data-legal");
+  if (legalBase) {
+    try {
+      var appLang = localStorage.getItem("weather:lang");
+      if (
+        (appLang === "de" || appLang === "en" || appLang === "tr") &&
+        appLang !== html.getAttribute("lang")
+      ) {
+        location.replace("./" + legalBase + (appLang === "de" ? "" : "-" + appLang));
+      }
+    } catch (_) {}
+  }
 
   // Sync iOS Safari URL/Status-Bar Farbe mit data-theme (nicht prefers-color-scheme).
   // Verhindert weißen Streifen oben wenn iOS hell ist aber App auf dunkel steht.
@@ -64,5 +83,15 @@
 
     var back = document.querySelector('[data-action="back"]');
     if (back) back.addEventListener("click", function () { history.back(); });
+
+    // Sprachumschalter der Rechtsseiten: die Wahl in den App-Key schreiben,
+    // BEVOR der Link navigiert — sonst springt die Auto-Weiterleitung oben
+    // sofort zurück. Nebeneffekt gewollt: die App wechselt konsistent mit.
+    var langLinks = document.querySelectorAll("[data-setlang]");
+    for (var i = 0; i < langLinks.length; i++) {
+      langLinks[i].addEventListener("click", function () {
+        try { localStorage.setItem("weather:lang", this.getAttribute("data-setlang")); } catch (_) {}
+      });
+    }
   });
 })();

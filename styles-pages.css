@@ -158,6 +158,23 @@ body::before{
 .theme-toggle:active{opacity:.7;transform:scale(.92);}
 .theme-toggle:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(46,127,224,.28);}
 
+/* Sprachumschalter der Rechtsseiten: dezente Textlinks zwischen Zurück Link
+   und Theme Button, aktive Sprache betont. margin-left:auto schiebt die
+   Gruppe nach rechts; der Theme Button verliert dann sein auto-Margin. */
+.lang-links{margin-left:auto;display:flex;align-items:center;gap:2px;}
+.lang-links+.theme-toggle{margin-left:10px;}
+.lang-links a{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;min-height:36px;padding:0 6px;
+  font-size:13px;font-weight:600;letter-spacing:.3px;
+  color:var(--l4);text-decoration:none;border-radius:var(--r-sm);
+  -webkit-tap-highlight-color:transparent;
+  transition:color .15s,background .15s;
+}
+.lang-links a:hover{color:var(--l1);background:var(--s1);}
+.lang-links a:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(46,127,224,.28);}
+.lang-links a[aria-current="page"]{color:var(--l1);}
+
 .page-header{padding:12px 0 4px;}
 .page-meta{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
