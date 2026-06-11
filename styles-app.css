@@ -52,6 +52,9 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --star:var(--wp-zenit);
   --btn-bg:var(--wp-zenit); /* Primärbutton nach Design System: Zenit Fläche, Pur Text */
   --btn-fg:var(--wp-pur);
+  --btn-bg-hover:#2A74CE;   /* Zenit eine Stufe dunkler */
+  --btn-bg-active:#2569BD;
+  --shimmer:rgba(46,127,224,.12); /* einmaliger Fokus-Schimmer im Suchfeld */
 
   /* ── Surfaces / text ── */
   --bg:var(--wp-bg);
@@ -113,6 +116,9 @@ html[data-theme="dark"]{
   --accent-soft:rgba(46,127,224,.20);
   --accent-text:#7FB1F0;    /* hellere Zenit Stufe auf Karbon */
   --star:#7FB1F0;
+  --btn-bg-hover:#4A90E8;   /* auf Karbon hellere Stufe statt dunklerer */
+  --btn-bg-active:#5B9BEA;
+  --shimmer:rgba(127,177,240,.16);
   --s2:#262B30;
   --s3:#2F353B;
   --l2:#D4D9DE;
@@ -347,6 +353,33 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--l1);
 }
 .search-input::placeholder{color:var(--l4);}
+/* Weicher Zenit Fokusring statt des globalen Outlines */
+.search-input:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 1px var(--accent),0 0 0 4px var(--accent-soft);
+}
+/* Einmaliger Schimmer bei Fokus: das Overlay clippt über den eigenen Radius,
+   das Band läuft per background-position genau einmal durch und ruht dann
+   (fill-mode both friert den Endzustand außerhalb des Sichtbereichs ein). */
+.search-field::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:var(--r-input);
+  background:linear-gradient(105deg,transparent 42%,var(--shimmer) 50%,transparent 58%) no-repeat;
+  background-size:250% 100%;
+  opacity:0;
+  pointer-events:none;
+}
+@media (prefers-reduced-motion:no-preference){
+  .search-field:focus-within::after{
+    animation:search-shimmer .9s ease-out 1 both;
+  }
+}
+@keyframes search-shimmer{
+  from{opacity:1;background-position:170% 0;}
+  to{opacity:1;background-position:-70% 0;}
+}
 .search-results{
   position:absolute;
   top:54px;
@@ -393,25 +426,29 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--l3);
   padding:0 4px;
 }
-.geo-row{margin-top:var(--sp-3);}
+.geo-row{margin-top:var(--sp-4);}
+/* Primärbutton nach Design System: Zenit Fläche, Pur Text. Bewusst gefüllt,
+   damit er sich als eigenständige Aktion vom Suchfeld darüber abhebt;
+   inline-flex hält ihn auf Textbreite (360 px: nicht volle Breite). */
 .geo-btn{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  height:40px;
-  padding:0 16px;
-  background:var(--s1);
+  height:var(--h-btn-md);
+  padding:0 18px;
+  max-width:100%;
+  background:var(--btn-bg);
   border:none;
   border-radius:var(--r-btn);
-  box-shadow:var(--shadow-1);
   font-family:inherit;
-  font-size:var(--fs-base);
-  font-weight:600;
-  color:var(--accent-text);
+  font-size:var(--fs-md);
+  font-weight:700;
+  color:var(--btn-fg);
   cursor:pointer;
-  transition:transform var(--t-base);
+  transition:transform var(--t-base),background-color var(--t-base);
 }
-.geo-btn:active{transform:scale(var(--press-scale));}
+.geo-btn:hover{background:var(--btn-bg-hover);}
+.geo-btn:active{transform:scale(var(--press-scale));background:var(--btn-bg-active);}
 .geo-btn:disabled{opacity:.6;cursor:default;}
 .geo-btn-ico{width:16px;height:16px;}
 .geo-hint{
@@ -574,11 +611,13 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-card .wp-riss-divider{
   margin:var(--sp-4) calc(-1 * var(--sp-4)) 0;
 }
+/* Zentrierte Gruppe als ruhiger Abschluss der Karte unter dem Riss */
 .cw-sun{
   display:flex;
   flex-wrap:wrap;
-  gap:6px 20px;
-  margin-top:var(--sp-3);
+  justify-content:center;
+  gap:6px 24px;
+  margin-top:var(--sp-5);
 }
 .cw-sun-item{display:flex;align-items:center;gap:6px;}
 .cw-sun-ico{width:16px;height:16px;color:var(--l4);flex:none;}

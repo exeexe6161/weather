@@ -1,4 +1,4 @@
-import type { Place } from "../lib/geocoding";
+import { GEO_PLACE_ID, type Place } from "../lib/geocoding";
 import type { Forecast } from "../lib/weather";
 import { uvHintKey } from "../lib/uv";
 import { pickIcon } from "../lib/wmo";
@@ -39,11 +39,11 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <div class="cw-place-name">${esc(place.name)}</div>
         ${region ? `<div class="cw-place-region">${esc(region)}</div>` : ""}
       </div>
-      <button type="button" class="fav-toggle" id="favToggle"
+      ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
         aria-pressed="${isFav}"
         aria-label="${isFav ? t("favRemove") : t("favAdd")}">
         <i data-lucide="star" class="fav-toggle-ico${isFav ? " fav-toggle-ico--on" : ""}"></i>
-      </button>
+      </button>` : ""}
     </div>
     <div class="cw-main">
       <i data-lucide="${icon}" class="cw-ico"></i>

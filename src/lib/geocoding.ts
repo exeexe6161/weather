@@ -1,5 +1,10 @@
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
+// Marker-Id des per Geolocation ermittelten Ortes ("Mein Standort").
+// Orte mit dieser Id dürfen nie in localStorage landen (Datenschutzzusage:
+// Standort wird nicht gespeichert) — weder als Favorit noch als letzter Ort.
+export const GEO_PLACE_ID = -1;
+
 export interface Place {
   id: number;
   name: string;

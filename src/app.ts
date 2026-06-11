@@ -1,9 +1,9 @@
 // WeatherApp: hält State (Ort, Forecast) und orchestriert die Komponenten.
 // Local first: letzter Ort + letzter Forecast liegen in localStorage, damit
 // die App offline mit den zuletzt geladenen Daten startet.
-import type { Place } from "./lib/geocoding";
+import { GEO_PLACE_ID, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast } from "./lib/weather";
-import { getFavorites, isFavorite, addFavorite, removeFavorite } from "./lib/favorites";
+import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -79,7 +79,9 @@ function renderContent(): void {
   renderDressToday(byId("dressToday"), state.forecast);
   renderHourlyStrip(byId("hourlyStrip"), state.forecast.hourly);
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
-  byId("favToggle").addEventListener("click", () => {
+  // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
+  // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
+  document.getElementById("favToggle")?.addEventListener("click", () => {
     const place = state.place!;
     if (isFavorite(place.id)) removeFavorite(place.id);
     else addFavorite(place);
@@ -90,8 +92,11 @@ function renderContent(): void {
 }
 
 export function selectPlace(place: Place): void {
+  // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
+  // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
+  const isGeoPlace = place.id === GEO_PLACE_ID;
   state.place = place;
-  writeJson(LAST_PLACE_KEY, place);
+  if (!isGeoPlace) writeJson(LAST_PLACE_KEY, place);
   setView("loading");
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
@@ -99,7 +104,7 @@ export function selectPlace(place: Place): void {
       state.forecast = forecast;
       state.fromCache = false;
       state.updatedAt = new Date().toISOString();
-      writeJson(FORECAST_CACHE_KEY, {
+      if (!isGeoPlace) writeJson(FORECAST_CACHE_KEY, {
         placeId: place.id,
         latitude: place.latitude,
         longitude: place.longitude,
@@ -129,6 +134,16 @@ export function selectPlace(place: Place): void {
 }
 
 export function initApp(): void {
+  // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
+  // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
+  pruneGeoFavorites();
+  if (readJson<Place>(LAST_PLACE_KEY)?.id === GEO_PLACE_ID) {
+    localStorage.removeItem(LAST_PLACE_KEY);
+  }
+  if (readJson<ForecastCache>(FORECAST_CACHE_KEY)?.placeId === GEO_PLACE_ID) {
+    localStorage.removeItem(FORECAST_CACHE_KEY);
+  }
+
   initSearchBar(byId("searchBar"), { onSelect: selectPlace });
   renderFavorites();
   renderIcons();

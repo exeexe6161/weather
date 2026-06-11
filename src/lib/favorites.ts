@@ -1,4 +1,4 @@
-import type { Place } from "./geocoding";
+import { GEO_PLACE_ID, type Place } from "./geocoding";
 
 const KEY = "weather:favorites";
 
@@ -16,9 +16,20 @@ export function isFavorite(id: number): boolean {
 }
 
 export function addFavorite(place: Place): Place[] {
+  // Geolocation-Ort nie persistieren (Datenschutzzusage); UI blendet den
+  // Stern bereits aus, das hier ist die zweite Verteidigungslinie.
+  if (place.id === GEO_PLACE_ID) return getFavorites();
   const next = [...getFavorites().filter((p) => p.id !== place.id), place];
   persist(next);
   return next;
+}
+
+// Entfernt Altlasten: früher konnte "Mein Standort" favorisiert werden und
+// lag damit samt Koordinaten in localStorage. Einmal beim App-Start aufrufen.
+export function pruneGeoFavorites(): void {
+  const all = getFavorites();
+  const next = all.filter((p) => p.id !== GEO_PLACE_ID);
+  if (next.length !== all.length) persist(next);
 }
 
 export function removeFavorite(id: number): Place[] {
