@@ -71,6 +71,23 @@ function nowInZone(timezone: unknown): string | null {
   }
 }
 
+// Wert zur aktuellen Stunde. Wichtig: null in der Reihe ist ein PLATZHALTER
+// für noch nicht berechnete Stunden (die API füllt das Ende der Vorhersage mit
+// null auf), keine Belastung von 0. Steht zur aktuellen Stunde keiner, wird
+// rückwärts der letzte echte Wert desselben Tages genommen — Pollenbelastung
+// ändert sich über den Tag langsam, ein leicht versetzter Wert ist besser als
+// keine Anzeige. Echte Nullen (Art nicht aktiv, etwa Birke im Juni) kommen als
+// Zahl 0, bleiben erhalten und führen über die Schwellen zum Ausblenden.
+function readCurrentValue(series: unknown[], times: string[], idx: number): number | null {
+  const day = times[idx]?.slice(0, 10);
+  for (let i = idx; i >= 0; i--) {
+    if (times[i]?.slice(0, 10) !== day) break;
+    const value = series[i];
+    if (typeof value === "number") return value;
+  }
+  return null;
+}
+
 export async function fetchPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
   try {
     const params = new URLSearchParams({
@@ -85,14 +102,16 @@ export async function fetchPollen(latitude: number, longitude: number): Promise<
     const h = data?.hourly;
     if (!h?.time?.length) return null;
 
-    // Erste Stunde >= jetzt, dieselbe Logik wie beim Wetterabruf
+    // Erste Stunde >= jetzt, bestimmt aus der EIGENEN time Reihe dieser
+    // Antwort (die Air Quality Reihe beginnt am Vortag um Mitternacht und ist
+    // damit anders ausgerichtet als die Wetter Reihe)
     const now = nowInZone(data.timezone);
     const idx = now === null ? 0 : Math.max(0, h.time.findIndex((t: string) => t >= now));
 
     const levels = {} as PollenLevels;
     for (const kind of POLLEN_KINDS) {
-      const value = h[`${kind}_pollen`]?.[idx];
-      levels[kind] = typeof value === "number" ? value : null;
+      const series = h[`${kind}_pollen`];
+      levels[kind] = Array.isArray(series) ? readCurrentValue(series, h.time, idx) : null;
     }
     return levels;
   } catch {
