@@ -12,6 +12,8 @@ export interface CurrentWeather {
 export interface HourlyEntry {
   time: string;
   temperature: number;
+  apparentTemperature: number;
+  precipitationProbability: number;
   weatherCode: number;
 }
 export interface DailyEntry {
@@ -19,6 +21,7 @@ export interface DailyEntry {
   weatherCode: number;
   tempMax: number;
   tempMin: number;
+  precipitationProbabilityMax: number;
 }
 export interface Forecast {
   current: CurrentWeather;
@@ -32,8 +35,8 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     latitude: String(latitude),
     longitude: String(longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
-    hourly: "temperature_2m,weather_code",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min",
+    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
     timezone: "auto",
     forecast_days: "7",
   });
@@ -58,7 +61,13 @@ function normalize(data: any): Forecast {
   const start = Math.max(0, h.time.findIndex((t: string) => t >= c.time));
   const hourly: HourlyEntry[] = [];
   for (let i = start; i < start + 24 && i < h.time.length; i++) {
-    hourly.push({ time: h.time[i], temperature: h.temperature_2m[i], weatherCode: h.weather_code[i] });
+    hourly.push({
+      time: h.time[i],
+      temperature: h.temperature_2m[i],
+      apparentTemperature: h.apparent_temperature[i],
+      precipitationProbability: h.precipitation_probability?.[i] ?? 0,
+      weatherCode: h.weather_code[i],
+    });
   }
 
   const d = data.daily;
@@ -67,6 +76,7 @@ function normalize(data: any): Forecast {
     weatherCode: d.weather_code[i],
     tempMax: d.temperature_2m_max[i],
     tempMin: d.temperature_2m_min[i],
+    precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
   }));
 
   return { current, hourly, daily, timezone: data.timezone };

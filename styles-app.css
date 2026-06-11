@@ -574,6 +574,21 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   font-weight:600;
 }
 
+/* ══ Heute anziehen ══ */
+.dress-card{text-align:left;}
+.dress-stage{font-size:var(--fs-lg);font-weight:700;}
+.dress-course{margin-top:var(--sp-2);font-size:var(--fs-sm);color:var(--l3);}
+.dress-rain{
+  margin-top:var(--sp-3);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:var(--fs-sm);
+  font-weight:600;
+  color:var(--l2);
+}
+.dress-rain-ico{width:16px;height:16px;color:var(--wp-zenit);flex:none;}
+
 /* ══ Stundenleiste ══ */
 .hourly-strip{
   display:flex;

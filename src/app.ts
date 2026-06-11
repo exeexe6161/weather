@@ -6,6 +6,7 @@ import { fetchWeather, type Forecast } from "./lib/weather";
 import { getFavorites, isFavorite, addFavorite, removeFavorite } from "./lib/favorites";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
+import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
@@ -75,6 +76,7 @@ function renderContent(): void {
     fromCache: state.fromCache,
     updatedAt: state.updatedAt,
   });
+  renderDressToday(byId("dressToday"), state.forecast);
   renderHourlyStrip(byId("hourlyStrip"), state.forecast.hourly);
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
   byId("favToggle").addEventListener("click", () => {
