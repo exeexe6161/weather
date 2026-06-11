@@ -16,6 +16,31 @@ export interface CurrentWeatherProps {
   updatedAt: string; // ISO Zeitpunkt des letzten erfolgreichen Abrufs
 }
 
+// Liegt die aktuelle Zeit zwischen Sonnenaufgang und Sonnenuntergang?
+// sunrise/sunset sind ISO-Strings in Stationszeit; "jetzt" muss daher ebenfalls
+// in Stationszeit vorliegen (Intl mit forecast.timezone), nicht in Nutzerzeit —
+// sonst stimmt der Vergleich bei entfernten Städten nicht. sv-SE formatiert als
+// YYYY-MM-DD HH:mm und ist nach dem Tausch des Trenners lexikalisch vergleichbar.
+// Alte Forecast-Caches ohne timezone fallen auf das is_day Flag zurück.
+function isDaytimeNow(sunrise: string, sunset: string, timezone: unknown, fallbackIsDay: boolean): boolean {
+  try {
+    const now = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: timezone as string,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .format(new Date())
+      .replace(" ", "T");
+    return now >= sunrise && now <= sunset;
+  } catch {
+    return fallbackIsDay;
+  }
+}
+
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   const { place, forecast, isFav, fromCache, updatedAt } = props;
   const c = forecast.current;
@@ -31,6 +56,14 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const sunset = typeof today?.sunset === "string" ? today.sunset : null;
   const uvRounded = typeof today?.uvIndexMax === "number" ? Math.round(today.uvIndexMax) : null;
   const uvKey = uvRounded !== null ? uvHintKey(uvRounded) : null;
+  // uv_index_max ist der Tagesspitzenwert, nicht der Wert jetzt: nachts wäre
+  // eine Warnung vor der Mittagssonne sinnlos. Daher nur tagsüber zeigen
+  // (zusätzlich zur Schwelle in uvHintKey).
+  const showUv =
+    uvKey !== null &&
+    sunrise !== null &&
+    sunset !== null &&
+    isDaytimeNow(sunrise, sunset, forecast.timezone, c.isDay);
   const locale = getLocale();
 
   el.innerHTML = `
@@ -72,7 +105,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-meta-val">${formatPercent(rainProb)}</span>
       </li>` : ""}
     </ul>
-    ${sunrise || sunset ? `<div class="wp-riss-divider" aria-hidden="true"></div>
+    ${sunrise || sunset || showUv ? `<div class="wp-riss-divider" aria-hidden="true"></div>
     <div class="cw-sun">
       ${sunrise ? `<div class="cw-sun-item">
         <i data-lucide="sunrise" class="cw-sun-ico"></i>
@@ -84,10 +117,12 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-sun-lbl">${t("sun_set")}</span>
         <span class="cw-sun-val">${formatHour(sunset, locale)}</span>
       </div>` : ""}
-    </div>` : ""}
-    ${uvKey ? `<div class="cw-uv">
-      <i data-lucide="sun" class="cw-uv-ico"></i>
-      <span>${t("uv_label")} ${uvRounded}, ${esc(t(uvKey))}</span>
+      ${showUv ? `<div class="cw-sun-item">
+        <i data-lucide="sun" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("uv_label")}</span>
+        <span class="cw-sun-val">${uvRounded}</span>
+        <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
+      </div>` : ""}
     </div>` : ""}
     ${fromCache ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
