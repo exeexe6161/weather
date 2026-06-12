@@ -6,7 +6,10 @@ import { fetchWeather, type Forecast } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
-import { getLang } from "./i18n/ui";
+import { getLang, t } from "./i18n/ui";
+import { getWmo } from "./lib/wmo";
+import { weatherLabelShort } from "./i18n/weather-labels";
+import { formatTemp } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -60,11 +63,29 @@ function writeJson(key: string, value: unknown): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
+// Tab-Titel mit dem aktuellen Wetter, z. B. "14° Regen · WeatherPure" —
+// sichtbar bei mehreren offenen Tabs ohne Tabwechsel. Bewusst NIE der
+// Ortsname: für den Geo-Ort darf er nicht erscheinen (Datenschutzzusage),
+// und ein Format ohne Ortsname braucht dafür keinen Sonderfall. Wird nur
+// bei State-Übergängen gesetzt (Ortswahl, frischer Abruf, Sprachwechsel),
+// nie in einer Schleife — kein Flackern. Die Sofort-Anzeige des letzten
+// Stands setzt ihn aus den Cache-Daten, der frische Abruf danach erneut.
+function updateDocTitle(): void {
+  if (!state.place || !state.forecast) return;
+  const c = state.forecast.current;
+  const cond = weatherLabelShort(getWmo(c.weatherCode).labelKey, getLang());
+  document.title = `${formatTemp(c.temperature)} ${cond}\u202F·\u202FWeatherPure`;
+}
+
 function setView(view: "empty" | "loading" | "error" | "content"): void {
   byId("weatherEmpty").hidden = view !== "empty";
   byId("weatherLoading").hidden = view !== "loading";
   byId("weatherError").hidden = view !== "error";
   byId("weatherContent").hidden = view !== "content";
+  // Ohne angezeigten Ort (Empty, Fehler, Laden eines Orts ohne letzten Stand)
+  // gilt wieder der sprachabhängige Basistitel; den Wettertitel setzt
+  // renderContent nach setView("content") synchron neu
+  if (view !== "content") document.title = t("docTitle");
 }
 
 function renderFavorites(): void {
@@ -85,6 +106,7 @@ function renderPollen(): void {
 
 function renderContent(): void {
   if (!state.place || !state.forecast) return;
+  updateDocTitle(); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
   renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
   renderCurrentWeather(byId("currentWeather"), {
     place: state.place,

@@ -35,3 +35,56 @@ export const weatherLabels: Record<string, Record<Lang, string>> = {
 export function weatherLabel(key: string, lang: Lang): string {
   return weatherLabels[key]?.[lang] ?? weatherLabels.wmo_unknown[lang];
 }
+
+// Kurzformen für den Tab-Titel: Tab-Titel werden schmal abgeschnitten, daher
+// Intensitäten und Zusätze weglassen ("Leichter Regen" → "Regen"). Bewusst
+// nach Gruppen statt je Code — die Nuance trägt im Tab keine Information.
+const shortLabels: Record<string, Record<Lang, string>> = {
+  clear:   { de: "Klar",        en: "Clear",    tr: "Açık" },
+  cloudy:  { de: "Wolkig",      en: "Cloudy",   tr: "Bulutlu" },
+  overcast:{ de: "Bedeckt",     en: "Overcast", tr: "Kapalı" },
+  fog:     { de: "Nebel",       en: "Fog",      tr: "Sis" },
+  drizzle: { de: "Nieselregen", en: "Drizzle",  tr: "Çiseleme" },
+  rain:    { de: "Regen",       en: "Rain",     tr: "Yağmur" },
+  snow:    { de: "Schnee",      en: "Snow",     tr: "Kar" },
+  showers: { de: "Schauer",     en: "Showers",  tr: "Sağanak" },
+  thunder: { de: "Gewitter",    en: "Storm",    tr: "Fırtına" },
+};
+
+const shortGroupByKey: Record<string, keyof typeof shortLabels> = {
+  wmo_clear: "clear",
+  wmo_mainly_clear: "clear",
+  wmo_partly_cloudy: "cloudy",
+  wmo_overcast: "overcast",
+  wmo_fog: "fog",
+  wmo_rime_fog: "fog",
+  wmo_drizzle_light: "drizzle",
+  wmo_drizzle_moderate: "drizzle",
+  wmo_drizzle_dense: "drizzle",
+  wmo_freezing_drizzle_light: "drizzle",
+  wmo_freezing_drizzle_dense: "drizzle",
+  wmo_rain_slight: "rain",
+  wmo_rain_moderate: "rain",
+  wmo_rain_heavy: "rain",
+  wmo_freezing_rain_light: "rain",
+  wmo_freezing_rain_heavy: "rain",
+  wmo_snow_slight: "snow",
+  wmo_snow_moderate: "snow",
+  wmo_snow_heavy: "snow",
+  wmo_snow_grains: "snow",
+  wmo_rain_showers_slight: "showers",
+  wmo_rain_showers_moderate: "showers",
+  wmo_rain_showers_violent: "showers",
+  wmo_snow_showers_slight: "snow",
+  wmo_snow_showers_heavy: "snow",
+  wmo_thunderstorm: "thunder",
+  wmo_thunderstorm_hail_slight: "thunder",
+  wmo_thunderstorm_hail_heavy: "thunder",
+};
+
+// Ohne Kurzform (unbekannter Code) fällt der Titel auf die volle Beschreibung
+// zurück — gleiche Quelle wie das Label in der Karte, nie ein leerer Text.
+export function weatherLabelShort(key: string, lang: Lang): string {
+  const group = shortGroupByKey[key];
+  return group ? shortLabels[group][lang] : weatherLabel(key, lang);
+}
