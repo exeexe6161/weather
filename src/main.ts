@@ -2,6 +2,7 @@
 // Service Worker verdrahten. Theme übernimmt theme-init.js (pre-paint).
 import { initLang, setLang, getLang, LANGS, type Lang } from "./i18n/ui";
 import { initApp } from "./app";
+import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
 
 function initLangMenu(): void {
@@ -58,6 +59,8 @@ function boot(): void {
   initLang();
   initLangMenu();
   initApp();
+  const installHint = document.getElementById("installHint");
+  if (installHint) initInstallHint(installHint);
   renderIcons();
   registerServiceWorker();
 }

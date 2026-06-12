@@ -772,6 +772,70 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .pollen-stage--moderate{color:var(--orange);}
 .pollen-stage--high{color:var(--red);}
 
+/* ══ Installationshinweis (PWA) ══
+   Dezente Karte am unteren Rand, verdeckt nichts Bleibendes, wegklickbar.
+   Kein Modal, kein greller Akzent — Knopf in getönter Zenit Fläche wie der
+   Standort Button. */
+.install-hint{
+  position:fixed;
+  left:16px;
+  right:16px;
+  bottom:calc(16px + var(--safe-bot));
+  max-width:calc(var(--wp-content-max) - 32px);
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:var(--sp-3) var(--sp-4);
+  background:var(--s1);
+  border-radius:var(--r-card);
+  box-shadow:var(--shadow-3);
+  text-align:left;
+  z-index:300;
+}
+@media (prefers-reduced-motion:no-preference){
+  .install-hint{animation:hint-rise .35s ease-out;}
+}
+@keyframes hint-rise{
+  from{opacity:0;transform:translateY(12px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.install-hint-copy{flex:1;min-width:0;}
+.install-hint-title{font-size:var(--fs-md);font-weight:700;}
+.install-hint-text{margin-top:2px;font-size:var(--fs-sm);color:var(--l3);}
+.install-hint-btn{
+  flex:none;
+  height:36px;
+  padding:0 14px;
+  background:var(--accent-soft);
+  border:none;
+  border-radius:var(--r-btn);
+  box-shadow:0 0 0 1px var(--accent-border);
+  font-family:inherit;
+  font-size:var(--fs-base);
+  font-weight:600;
+  color:var(--accent-text);
+  cursor:pointer;
+  transition:transform var(--t-base),background-color var(--t-base);
+}
+.install-hint-btn:hover{background:var(--accent-soft-hover);}
+.install-hint-btn:active{transform:scale(var(--press-scale));background:var(--accent-soft-active);}
+.install-hint-x{
+  flex:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  background:none;
+  border:none;
+  border-radius:var(--r-pill);
+  color:var(--l4);
+  cursor:pointer;
+}
+.install-hint-x:hover{color:var(--l1);background:var(--s2);}
+.install-hint-x-ico{width:16px;height:16px;}
+
 /* ══ Stundenleiste ══ */
 .hourly-strip{
   display:flex;
