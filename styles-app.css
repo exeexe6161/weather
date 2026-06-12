@@ -891,7 +891,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    (bleibt auf jeder Breite in nativer Schriftgröße). */
 .tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4) var(--sp-2);}
 .tc-wrap{position:relative;}
-.tc-svg{display:block;width:100%;height:88px;}
+.tc-svg{display:block;width:100%;height:96px;} /* = H in TempCurve.ts */
 /* Nacht-Tönung: nur eine Andeutung hinter der Linie, kein harter Kontrast */
 .tc-night{fill:#11161C;opacity:.05;}
 html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
@@ -932,7 +932,7 @@ html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
 .tc-axis{
   display:flex;
   justify-content:space-between;
-  margin-top:6px;
+  margin-top:8px; /* = AXIS_MARGIN in TempCurve.ts */
   font-size:var(--fs-xs);
   line-height:12px;
   color:var(--l4);

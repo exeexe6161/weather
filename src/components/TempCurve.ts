@@ -16,12 +16,24 @@ import { esc } from "../dom";
 // Beschriftungen liegen als HTML-Overlay in Prozent darüber und bleiben auf
 // jeder Breite in nativer Schriftgröße, unverzerrt und überlappungsfrei.
 
-// SVG-Koordinatenraum: W wird auf die Kartenbreite gedehnt, H ist die echte
-// Pixelhöhe (nur die x-Achse verzerrt — für Rechtecke und Linie unschädlich)
+// SVG-Koordinaten- und Etagenraum: W wird auf die Kartenbreite gedehnt, H ist
+// die echte Pixelhöhe (nur die x-Achse verzerrt — für Rechtecke und Linie
+// unschädlich). Vertikale Etagen, von oben nach unten:
+//   [0 .. H]                 Kurvenbereich inkl. ALLER Wertelabels
+//   [H+AXIS_MARGIN .. ]      Zeitanker-Zeile (jetzt / Mitte / Ende)
+// Wertelabels werden auf LABEL_TOP_MAX geklemmt: ihre Unterkante bleibt
+// IMMER mindestens AXIS_BUFFER über der SVG-Unterkante und damit mindestens
+// AXIS_BUFFER+AXIS_MARGIN über jedem der drei Zeitanker — egal wo Hoch und
+// Tief liegen. Die Trennung gilt per Konstruktion, nicht per Einzelfall.
 const W = 1000;
-const H = 88;
+const H = 96;
 const PAD_TOP = 20; // Raum für das Hoch-Label über der Linie (LABEL_H + GAP)
-const PAD_BOTTOM = 26; // Raum für das Tief-Label unter der Linie, im SVG
+// Raum unter der Linie: Tief-Label unter dem Punkt (GAP + LABEL_H) plus der
+// Sicherheitspuffer zur SVG-Unterkante — so passt das Label unter den
+// tiefstmöglichen Punkt, ohne je an die Etagengrenze zu stoßen
+const PAD_BOTTOM = 32;
+const AXIS_BUFFER = 8; // Mindestluft Label-Unterkante ↔ SVG-Unterkante
+const AXIS_MARGIN = 8; // Abstand SVG-Unterkante ↔ Zeitanker-Zeile (CSS margin-top)
 // Mindestspanne der y-Skala in Grad: ein sehr flacher Verlauf bleibt eine
 // ruhige Linie in der Mitte, statt rauschhaft die volle Höhe zu füllen
 const MIN_SPAN_DEG = 2;
@@ -92,8 +104,12 @@ interface Mark {
   text: string;
 }
 
+// Tiefste erlaubte Label-Oberkante: Unterkante bleibt AXIS_BUFFER über der
+// SVG-Unterkante — die Etagengrenze, die KEIN Label überschreiten kann
+const LABEL_TOP_MAX = H - LABEL_H - AXIS_BUFFER;
+
 function clampLabelTop(top: number): number {
-  return Math.min(H - LABEL_H, Math.max(0, top));
+  return Math.min(LABEL_TOP_MAX, Math.max(0, top));
 }
 
 function placeMark(p: Pt, kind: "hi" | "lo"): Mark {
@@ -103,7 +119,12 @@ function placeMark(p: Pt, kind: "hi" | "lo"): Mark {
   // Punkt auf Punkthöhe — nie in die Ecke, nie über den Kartenrand hinaus
   if (pct < 6) return { pct, dotY: p.y, labelTop: clampLabelTop(p.y - LABEL_H / 2), mode: "side-r", text };
   if (pct > 94) return { pct, dotY: p.y, labelTop: clampLabelTop(p.y - LABEL_H / 2), mode: "side-l", text };
-  const labelTop = kind === "hi" ? p.y - LABEL_GAP - LABEL_H : p.y + LABEL_GAP;
+  // Hoch bevorzugt ÜBER dem Punkt, Tief bevorzugt DARUNTER; passt die
+  // bevorzugte Seite nicht in die Etage (Punkt zu nah am Rand), wird auf
+  // die andere Seite des Punktes geflippt — nie aus dem Kurvenbereich hinaus
+  let labelTop = kind === "hi" ? p.y - LABEL_GAP - LABEL_H : p.y + LABEL_GAP;
+  if (kind === "hi" && labelTop < 0) labelTop = p.y + LABEL_GAP;
+  if (kind === "lo" && labelTop > LABEL_TOP_MAX) labelTop = p.y - LABEL_GAP - LABEL_H;
   return { pct, dotY: p.y, labelTop: clampLabelTop(labelTop), mode: "mid", text };
 }
 
