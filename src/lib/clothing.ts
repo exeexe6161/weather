@@ -62,9 +62,13 @@ export function segmentsFor(hours: HourlyEntry[]): StageSegment[] {
 
 // ── Verlaufszeile kompakt halten (nur die Anzeige, nicht die Headline) ──
 // Höchstens so viele Abschnitte; sehr kurze Stufen gelten als Lärm und gehen im
-// Nachbarn auf. Beide Schwellen kalibrierbar.
+// Nachbarn auf. Alle Schwellen kalibrierbar.
 export const MAX_SEGMENTS = 3;
 export const MIN_SEGMENT_HOURS = 3;
+// Erst ab diesem Stufenabstand gelten zwei Abschnitte als wirklich verschieden.
+// Darunter sind sie Nuancen derselben Grundstufe (Shirt neben Shirt mit dünner
+// Lage) und verschmelzen, statt nebeneinander genannt zu werden.
+export const STAGE_DISTINCT_GAP = 2;
 
 // Stufen von warm nach kalt; der Abstand im Array misst die Ähnlichkeit zweier
 // Stufen (Nachbarn = fast gleich, z. B. Shirt und Shirt mit dünner Lage).
@@ -120,9 +124,57 @@ function absorbSegment(segments: StageSegment[], i: number): StageSegment[] {
   return [...segments.slice(0, i), mergeSegments(segments[i], right!), ...segments.slice(i + 2)];
 }
 
-// Verlaufssegmente entschlacken: kurze Blitzstufen schlucken, gleiche Nachbarn
-// zusammenziehen, Anzahl deckeln. Liefert evtl. nur ein Segment, dann entfällt
-// die Verlaufszeile (die Komponente rendert sie erst ab zwei Segmenten).
+// Nuancen derselben Grundstufe verschmelzen: Nachbarn werden in eine Gruppe
+// gezogen, solange die Spannweite ALLER aufgenommenen Stufen unter
+// STAGE_DISTINCT_GAP bleibt. Das mitgeführte min/max der Ränge verhindert den
+// Ketten-Kollaps (Jacke → Leichte Jacke → Shirt würde sonst über lauter
+// Einzelschritte zu einem Abschnitt) — echte Wechsel über mehrere Stufen
+// bleiben getrennt. Innerhalb einer Gruppe gewinnt die Stufe mit den meisten
+// Stunden, bei Gleichstand die wärmere.
+function mergeNuances(segments: StageSegment[]): StageSegment[] {
+  interface Group {
+    fromHour: number;
+    toHour: number;
+    minRank: number;
+    maxRank: number;
+    hoursByStage: Map<StageKey, number>;
+  }
+  const groups: Group[] = [];
+  for (const seg of segments) {
+    const rank = stageRank(seg.stage);
+    const last = groups[groups.length - 1];
+    if (last && Math.max(last.maxRank, rank) - Math.min(last.minRank, rank) < STAGE_DISTINCT_GAP) {
+      last.toHour = seg.toHour;
+      last.minRank = Math.min(last.minRank, rank);
+      last.maxRank = Math.max(last.maxRank, rank);
+      last.hoursByStage.set(seg.stage, (last.hoursByStage.get(seg.stage) ?? 0) + durationOf(seg));
+    } else {
+      groups.push({
+        fromHour: seg.fromHour,
+        toHour: seg.toHour,
+        minRank: rank,
+        maxRank: rank,
+        hoursByStage: new Map([[seg.stage, durationOf(seg)]]),
+      });
+    }
+  }
+  return groups.map((g) => {
+    let stage: StageKey = STAGE_ORDER[g.minRank];
+    let best = -1;
+    for (const [s, h] of g.hoursByStage) {
+      if (h > best || (h === best && stageRank(s) < stageRank(stage))) {
+        stage = s;
+        best = h;
+      }
+    }
+    return { stage, fromHour: g.fromHour, toHour: g.toHour };
+  });
+}
+
+// Verlaufssegmente entschlacken: kurze Blitzstufen schlucken, Nuancen derselben
+// Grundstufe verschmelzen, gleiche Nachbarn zusammenziehen, Anzahl deckeln.
+// Liefert evtl. nur ein Segment, dann entfällt die Verlaufszeile (die
+// Komponente rendert sie erst ab zwei Segmenten).
 export function simplifySegments(input: StageSegment[]): StageSegment[] {
   let segs = coalesceSegments(input);
 
@@ -140,7 +192,11 @@ export function simplifySegments(input: StageSegment[]): StageSegment[] {
     segs = coalesceSegments(absorbSegment(segs, shortest));
   }
 
-  // 2) Anzahl deckeln: das ähnlichste Nachbarpaar verschmelzen (bei gleicher
+  // 2) Nuancen derselben Grundstufe verschmelzen (z. B. Shirt im Wechsel mit
+  //    Shirt plus dünner Lage → ein Abschnitt, ggf. gar keine Verlaufszeile)
+  segs = coalesceSegments(mergeNuances(segs));
+
+  // 3) Anzahl deckeln: das ähnlichste Nachbarpaar verschmelzen (bei gleicher
   //    Nähe das kürzeste), bis MAX_SEGMENTS erreicht ist
   while (segs.length > MAX_SEGMENTS) {
     let bestI = 0;
