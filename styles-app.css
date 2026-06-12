@@ -886,12 +886,12 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 
 /* ══ Temperaturverlauf ══
-   Eine ruhige Linie unter der Stundenleiste: kein Gitternetz, keine Tooltips,
-   keine Animation. Geometrie im gedehnten SVG, Beschriftung als HTML-Overlay
-   (bleibt auf jeder Breite in nativer Schriftgröße). */
-.tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4) var(--sp-2);}
-.tc-wrap{position:relative;}
-.tc-svg{display:block;width:100%;height:96px;} /* = H in TempCurve.ts */
+   Eine ruhige Linie unter der Stundenleiste — ALLES in EINEM SVG (Linie,
+   Punkte, Werte, Zeitanker, Nacht-Tönung) in einem Koordinatensystem: was
+   TempCurve.ts berechnet, rendert der Browser identisch. Kein HTML-Overlay,
+   kein Gitternetz, keine Tooltips, keine Animation. */
+.tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4);}
+.tc-svg{display:block;width:100%;height:auto;}
 /* Nacht-Tönung: nur eine Andeutung hinter der Linie, kein harter Kontrast */
 .tc-night{fill:#11161C;opacity:.05;}
 html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
@@ -900,44 +900,14 @@ html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
 .tc-line{
   stroke:var(--wp-stahl);
   stroke:color-mix(in srgb,var(--wp-zenit) 35%,var(--wp-stahl));
-  stroke-width:1.8;
+  stroke-width:2;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-/* Hoch/Tief: left/top kommen fertig berechnet aus TempCurve.ts (inkl.
-   Kollisionsauflösung); hier nur Aussehen und die minimale Zentrierung.
-   Der Punkt wird über Margins zentriert (kein transform, kein Anker). */
-.tc-dot{
-  position:absolute;
-  width:6px;height:6px;
-  margin:-3px 0 0 -3px;
-  border-radius:50%;
-  background:var(--l3);
-}
-.tc-val{
-  position:absolute;
-  font-size:var(--fs-xs);
-  line-height:12px; /* = LABEL_H in TempCurve.ts, Basis der Kollisionsrechnung */
-  font-weight:600;
-  color:var(--l3);
-  font-variant-numeric:tabular-nums;
-  white-space:nowrap;
-}
-.tc-val--mid{transform:translateX(-50%);} /* mittig über/unter dem Punkt */
-.tc-val--side-r{margin-left:10px;} /* am linken Rand: rechts neben dem Punkt */
-.tc-val--side-l{margin-left:-10px;transform:translateX(-100%);} /* rechter Rand */
-/* Zeitanker als ruhige Fußzeile: "jetzt" links, Mitte und Ende als Maßstab.
-   Eigene Flusszeile UNTER dem SVG mit klarem Abstand — die Wertelabels sind
-   im Code auf das SVG geklemmt, Kollision ist konstruktiv ausgeschlossen */
-.tc-axis{
-  display:flex;
-  justify-content:space-between;
-  margin-top:8px; /* = AXIS_MARGIN in TempCurve.ts */
-  font-size:var(--fs-xs);
-  line-height:12px;
-  color:var(--l4);
-  font-variant-numeric:tabular-nums;
-}
+/* SVG-Text: fill statt color; Dark Mode kommt über die Tokens mit */
+.tc-dot{fill:var(--l3);}
+.tc-val{font-size:11px;fill:var(--wp-stahl);font-variant-numeric:tabular-nums;}
+.tc-anchor{font-size:11px;fill:var(--l4);}
 
 /* ══ 7 Tage ══ */
 .daily-list{padding:var(--sp-2) var(--sp-4);text-align:left;}

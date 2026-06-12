@@ -38,8 +38,15 @@ export function nightSpans(daily: DailyEntry[] | undefined): Span[] | null {
   return spans;
 }
 
+// Kern der Nachtprüfung auf Minutenebene — von isNightAt (Stundenleiste)
+// und vom TempCurve-Adapter in app.ts genutzt: wörtlich dieselbe Prüfung,
+// damit Mond-Symbole und Nacht-Tönung nie auseinanderlaufen können.
+export function isNightAtMinutes(stationMinutes: number, spans: Span[]): boolean {
+  return spans.some(([from, to]) => stationMinutes >= from && stationMinutes < to);
+}
+
 export function isNightAt(iso: string, spans: Span[]): boolean {
   const m = toMinutes(iso);
   if (m === null) return false;
-  return spans.some(([from, to]) => m >= from && m < to);
+  return isNightAtMinutes(m, spans);
 }
