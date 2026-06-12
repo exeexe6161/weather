@@ -729,8 +729,9 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--orange);
   font-weight:600;
 }
-/* Ehrlicher Zeitstempel der Sofort-Anzeige ("Stand 14:30"): unaufdringlich,
-   kein Zenit; verschwindet, sobald frische Daten gerendert sind */
+/* Ehrlicher Zeitstempel der Anzeige ("Stand 14:30" beim letzten Stand,
+   "Aktualisiert 14:32" bei frischen Daten): leise Fußnote, unaufdringlich,
+   kein Zenit — die Frische ist durchgehend ablesbar */
 .cw-stale{
   margin-top:var(--sp-3);
   font-size:var(--fs-xs);
