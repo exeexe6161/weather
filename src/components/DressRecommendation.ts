@@ -3,6 +3,7 @@ import {
   stageFor,
   todayHours,
   segmentsFor,
+  simplifySegments,
   rainWindowFor,
   RAIN_PROB_THRESHOLD,
   type StageKey,
@@ -39,8 +40,13 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
     : [{ stage: stageFor(forecast.current.apparentTemperature), fromHour: 0, toHour: 24 }];
   const rain = usable ? rainWindowFor(hours) : null;
 
+  // Headline = Stufe der aktuellen Stunde, unverändert aus den Rohsegmenten.
   const currentStage: StageKey = segments[0].stage;
   const headline = rain ? `${t(currentStage)}, ${t("dress_add_rain")}` : t(currentStage);
+
+  // Verlaufszeile: entschlackt (kurze Blitzstufen weg, höchstens drei
+  // Abschnitte). Bleibt nur eine Stufe übrig, entfällt die Zeile ganz.
+  const courseSegments = simplifySegments(segments);
 
   // Drei Regenvarianten: Fenster im Rest des Tages, kein Fenster mehr obwohl
   // das Tagesmaximum über der Schwelle lag (Regen war am Vormittag), oder
@@ -54,7 +60,7 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
 
   el.innerHTML = `
     <div class="dress-stage">${esc(headline)}</div>
-    ${segments.length > 1 ? `<div class="dress-course">${esc(courseText(segments))}</div>` : ""}
+    ${courseSegments.length > 1 ? `<div class="dress-course">${esc(courseText(courseSegments))}</div>` : ""}
     <div class="dress-rain">
       <i data-lucide="umbrella" class="dress-rain-ico${rain ? "" : " dress-rain-ico--calm"}"></i>
       <span>${esc(rainText)}</span>

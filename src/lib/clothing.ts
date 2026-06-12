@@ -60,6 +60,111 @@ export function segmentsFor(hours: HourlyEntry[]): StageSegment[] {
   return segments;
 }
 
+// ── Verlaufszeile kompakt halten (nur die Anzeige, nicht die Headline) ──
+// Höchstens so viele Abschnitte; sehr kurze Stufen gelten als Lärm und gehen im
+// Nachbarn auf. Beide Schwellen kalibrierbar.
+export const MAX_SEGMENTS = 3;
+export const MIN_SEGMENT_HOURS = 3;
+
+// Stufen von warm nach kalt; der Abstand im Array misst die Ähnlichkeit zweier
+// Stufen (Nachbarn = fast gleich, z. B. Shirt und Shirt mit dünner Lage).
+const STAGE_ORDER: StageKey[] = [
+  "stage_shirt",
+  "stage_shirt_layer",
+  "stage_light_jacket",
+  "stage_jacket",
+  "stage_heavy_jacket",
+  "stage_winter",
+];
+const stageRank = (stage: StageKey): number => STAGE_ORDER.indexOf(stage);
+const stageGap = (a: StageKey, b: StageKey): number => Math.abs(stageRank(a) - stageRank(b));
+const durationOf = (s: StageSegment): number => s.toHour - s.fromHour;
+
+// Verschmilzt zwei benachbarte Segmente; das längere bestimmt die Stufe (bei
+// Gleichstand die wärmere, also frühere im STAGE_ORDER).
+function mergeSegments(a: StageSegment, b: StageSegment): StageSegment {
+  const stage =
+    durationOf(a) > durationOf(b) ? a.stage
+    : durationOf(b) > durationOf(a) ? b.stage
+    : stageRank(a.stage) <= stageRank(b.stage) ? a.stage : b.stage;
+  return { stage, fromHour: a.fromHour, toHour: b.toHour };
+}
+
+// Aufeinanderfolgende Segmente gleicher Stufe zusammenziehen
+function coalesceSegments(segments: StageSegment[]): StageSegment[] {
+  const out: StageSegment[] = [];
+  for (const seg of segments) {
+    const last = out[out.length - 1];
+    if (last && last.stage === seg.stage) out[out.length - 1] = { ...last, toHour: seg.toHour };
+    else out.push({ ...seg });
+  }
+  return out;
+}
+
+// Kurzes Segment in den ähnlichsten Nachbarn schlucken (bei gleicher Nähe in
+// den längeren). Am Rand gibt es nur einen Nachbarn.
+function absorbSegment(segments: StageSegment[], i: number): StageSegment[] {
+  const left = i > 0 ? segments[i - 1] : null;
+  const right = i < segments.length - 1 ? segments[i + 1] : null;
+  let intoLeft: boolean;
+  if (left && right) {
+    const gl = stageGap(segments[i].stage, left.stage);
+    const gr = stageGap(segments[i].stage, right.stage);
+    intoLeft = gl < gr ? true : gr < gl ? false : durationOf(left) >= durationOf(right);
+  } else {
+    intoLeft = left !== null;
+  }
+  if (intoLeft) {
+    return [...segments.slice(0, i - 1), mergeSegments(left!, segments[i]), ...segments.slice(i + 1)];
+  }
+  return [...segments.slice(0, i), mergeSegments(segments[i], right!), ...segments.slice(i + 2)];
+}
+
+// Verlaufssegmente entschlacken: kurze Blitzstufen schlucken, gleiche Nachbarn
+// zusammenziehen, Anzahl deckeln. Liefert evtl. nur ein Segment, dann entfällt
+// die Verlaufszeile (die Komponente rendert sie erst ab zwei Segmenten).
+export function simplifySegments(input: StageSegment[]): StageSegment[] {
+  let segs = coalesceSegments(input);
+
+  // 1) Kürzeste Stufe unter der Schwelle in den Nachbarn schlucken, bis keine
+  //    zu kurze mehr übrig ist (kürzeste zuerst: der größte Lärm geht zuerst)
+  while (segs.length > 1) {
+    let shortest = -1;
+    for (let i = 0; i < segs.length; i++) {
+      if (durationOf(segs[i]) < MIN_SEGMENT_HOURS &&
+          (shortest === -1 || durationOf(segs[i]) < durationOf(segs[shortest]))) {
+        shortest = i;
+      }
+    }
+    if (shortest === -1) break;
+    segs = coalesceSegments(absorbSegment(segs, shortest));
+  }
+
+  // 2) Anzahl deckeln: das ähnlichste Nachbarpaar verschmelzen (bei gleicher
+  //    Nähe das kürzeste), bis MAX_SEGMENTS erreicht ist
+  while (segs.length > MAX_SEGMENTS) {
+    let bestI = 0;
+    let bestGap = Infinity;
+    let bestDur = Infinity;
+    for (let i = 0; i < segs.length - 1; i++) {
+      const gap = stageGap(segs[i].stage, segs[i + 1].stage);
+      const dur = durationOf(segs[i]) + durationOf(segs[i + 1]);
+      if (gap < bestGap || (gap === bestGap && dur < bestDur)) {
+        bestGap = gap;
+        bestDur = dur;
+        bestI = i;
+      }
+    }
+    segs = coalesceSegments([
+      ...segs.slice(0, bestI),
+      mergeSegments(segs[bestI], segs[bestI + 1]),
+      ...segs.slice(bestI + 2),
+    ]);
+  }
+
+  return segs;
+}
+
 export interface RainWindow {
   maxProb: number;
   fromHour: number;
