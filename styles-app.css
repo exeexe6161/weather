@@ -328,17 +328,38 @@ body::before{
 .theme-btn:active{transform:scale(var(--press-scale));}
 
 /* ══ Hero ══ */
-.hero{padding:calc(28px + var(--safe-top)) 16px 4px;}
+.hero{
+  padding:calc(28px + var(--safe-top)) 16px 4px;
+  /* ── JUSTIERSTELLE Wortmarken-Skala ──────────────────────────────
+     Flüssige Größe von Wortmarke und Claim. Zum Nachjustieren nur die
+     sechs Werte hier ändern:
+     min  = Untergrenze (sehr schmale Geräte, ~320px)
+     fluid = viewport-bezogene Mitte; bestimmt die Handy-Größe
+             (54vw → bei 390px Display ≈ 210px Wortmarke)
+     max  = Obergrenze, damit große Bildschirme nicht übergroß werden */
+  --wordmark-min:172px;
+  --wordmark-fluid:54vw;
+  --wordmark-max:212px;
+  --claim-min:14px;
+  --claim-fluid:3.8vw;
+  --claim-max:16px;
+}
 /* Wortmarke als SVG aus brand/01-logos: hell Karbon, dunkel White.
-   Mindestbreite laut Guidelines 130 px, hier 166 px. */
+   Mindestbreite laut Guidelines 130 px. height:auto plus viewBox im SVG
+   skalieren proportional — das gebrochene p und die Buchstabenabstände
+   bleiben unverzerrt, nur die Gesamtgröße ändert sich. */
 .wordmark{line-height:0;}
-.wordmark-img{width:166px;height:30px;}
+.wordmark-img{
+  width:clamp(var(--wordmark-min), var(--wordmark-fluid), var(--wordmark-max));
+  height:auto;
+}
 .wordmark-img--dark{display:none;}
 html[data-theme="dark"] .wordmark-img--light{display:none;}
 html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
+/* Claim skaliert mit, bleibt aber deutlich kleiner als die Marke */
 .hdr-sub{
   margin-top:4px;
-  font-size:var(--fs-md);
+  font-size:clamp(var(--claim-min), var(--claim-fluid), var(--claim-max));
   color:var(--l3);
 }
 
