@@ -13,7 +13,9 @@ export interface CurrentWeatherProps {
   place: Place;
   forecast: Forecast;
   isFav: boolean;
-  fromCache: boolean;
+  // "stale": Sofort-Anzeige des letzten Stands, Netzabruf läuft noch ("Stand
+  // HH:MM"); "offline": Abruf gescheitert, Offline-Hinweis; "fresh": kein Hinweis
+  freshness: "fresh" | "stale" | "offline";
   updatedAt: string; // ISO Zeitpunkt des letzten erfolgreichen Abrufs
 }
 
@@ -89,7 +91,7 @@ function summaryText(forecast: Forecast): string | null {
 
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   stopLocalTimeTicker();
-  const { place, forecast, isFav, fromCache, updatedAt } = props;
+  const { place, forecast, isFav, freshness, updatedAt } = props;
   const c = forecast.current;
   const icon = pickIcon(c.weatherCode, c.isDay);
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
@@ -116,6 +118,13 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const localTime = formatTimeInZone(forecast.timezone, locale);
   // Tageszusammenfassung; null wenn kein sinnvoller Satz möglich → Zeile entfällt
   const summary = summaryText(forecast);
+  // Ehrlicher Zeitstempel der Sofort-Anzeige, in der Ortszeit des Ortes; alte
+  // Caches ohne timezone fallen auf die Nutzerzeit zurück (besser als kein
+  // Hinweis, der Stempel ist das Sicherheitsnetz gegen veraltete Daten)
+  const staleTime =
+    freshness === "stale"
+      ? formatTimeInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)
+      : null;
 
   el.innerHTML = `
     <div class="cw-head">
@@ -176,7 +185,8 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
       </div>` : ""}
     </div>` : ""}
-    ${fromCache ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
+    ${staleTime ? `<div class="cw-stale" role="status">${esc(t("staleNote").replace("{time}", staleTime))}</div>` : ""}
+    ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
 
   const timeSpan = el.querySelector<HTMLElement>(".cw-local-time");

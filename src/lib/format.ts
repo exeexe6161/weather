@@ -13,12 +13,13 @@ export function formatWind(value: number): string {
 export function formatPercent(value: number): string {
   return `${Math.round(value)}\u202F%`; // schmales geschütztes Leerzeichen
 }
-// Aktuelle Uhrzeit in einer IANA-Zeitzone (24h, lokalisiert). Wie bei der
-// UV-Tageslicht-Prüfung über Intl statt manueller Offsets — deckt halbe und
-// viertel Stunden (Indien, Nepal) und Sommerzeit ab. null wenn timezone fehlt
-// (alte Forecast-Caches; Intl fiele sonst STILL auf die Nutzer-Zeitzone
-// zurück) oder ungültig ist.
-export function formatTimeInZone(timezone: unknown, locale = "de-DE"): string | null {
+// Uhrzeit in einer IANA-Zeitzone (24h, lokalisiert), standardmäßig "jetzt",
+// optional ein konkreter Zeitpunkt (z. B. der savedAt des letzten Stands).
+// Wie bei der UV-Tageslicht-Prüfung über Intl statt manueller Offsets — deckt
+// halbe und viertel Stunden (Indien, Nepal) und Sommerzeit ab. null wenn
+// timezone fehlt (alte Forecast-Caches; Intl fiele sonst STILL auf die
+// Nutzer-Zeitzone zurück) oder ungültig ist.
+export function formatTimeInZone(timezone: unknown, locale = "de-DE", at: Date = new Date()): string | null {
   if (typeof timezone !== "string" || timezone === "") return null;
   try {
     return new Intl.DateTimeFormat(locale, {
@@ -26,7 +27,7 @@ export function formatTimeInZone(timezone: unknown, locale = "de-DE"): string | 
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    }).format(new Date());
+    }).format(at);
   } catch {
     return null;
   }

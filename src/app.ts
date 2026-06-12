@@ -28,17 +28,22 @@ interface ForecastCache {
   forecast: Forecast;
 }
 
+// Frische der Anzeige: "fresh" = aktuelle Netzdaten, "stale" = Sofort-Anzeige
+// des letzten Stands während der Netzabruf läuft (Hinweis "Stand HH:MM"),
+// "offline" = Netzabruf gescheitert, letzter Stand bleibt mit Offline-Hinweis
+type Freshness = "fresh" | "stale" | "offline";
+
 interface State {
   place: Place | null;
   forecast: Forecast | null;
   // Bewusst ohne localStorage Cache (kein eigener Key nötig): offline oder bei
   // API Ausfall fehlt die Pollensektion einfach, statt veraltete Werte zu zeigen
   pollen: PollenLevels | null;
-  fromCache: boolean;
+  freshness: Freshness;
   updatedAt: string;
 }
 
-const state: State = { place: null, forecast: null, pollen: null, fromCache: false, updatedAt: "" };
+const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "" };
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
@@ -85,7 +90,7 @@ function renderContent(): void {
     place: state.place,
     forecast: state.forecast,
     isFav: isFavorite(state.place.id),
-    fromCache: state.fromCache,
+    freshness: state.freshness,
     updatedAt: state.updatedAt,
   });
   renderDressToday(byId("dressToday"), state.forecast);
@@ -120,7 +125,25 @@ export function selectPlace(place: Place): void {
   state.place = place;
   syncCityParam(place);
   if (!isGeoPlace) writeJson(LAST_PLACE_KEY, place);
-  setView("loading");
+
+  // Sofort-Anzeige: liegt für genau diesen Ort ein letzter Stand vor, wird er
+  // ohne Spinner gerendert ("Stand HH:MM"), während parallel IMMER frisch
+  // geholt wird — die lokale Kopie ist nur die Brücke, nie die Quelle der
+  // Wahrheit. Für den Geo-Ort wird der Cache gar nicht erst gelesen: er wird
+  // nie persistiert (Datenschutzzusage), die Sofort-Anzeige darf das nicht
+  // aufweichen.
+  const cached = !isGeoPlace ? readJson<ForecastCache>(FORECAST_CACHE_KEY) : null;
+  if (cached !== null && cached.placeId === place.id) {
+    state.forecast = cached.forecast;
+    state.freshness = "stale";
+    state.updatedAt = cached.savedAt;
+    setView("content");
+    renderContent();
+    renderFavorites();
+    renderIcons();
+  } else {
+    setView("loading");
+  }
 
   // Pollen parallel zum Wetter holen: eigener Endpoint (Air Quality API),
   // dessen Ausfall die Wetteranzeige nicht blockieren darf. fetchPollen wirft
@@ -136,7 +159,7 @@ export function selectPlace(place: Place): void {
     .then((forecast) => {
       if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
       state.forecast = forecast;
-      state.fromCache = false;
+      state.freshness = "fresh";
       state.updatedAt = new Date().toISOString();
       if (!isGeoPlace) writeJson(FORECAST_CACHE_KEY, {
         placeId: place.id,
@@ -145,6 +168,8 @@ export function selectPlace(place: Place): void {
         savedAt: state.updatedAt,
         forecast,
       } satisfies ForecastCache);
+      // Lautloser Tausch: die Sektionen werden synchron in place neu gefüllt,
+      // ohne Loading-Zwischenzustand — kein Flackern, kein Scroll-Sprung
       setView("content");
       renderContent();
       renderFavorites();
@@ -152,16 +177,14 @@ export function selectPlace(place: Place): void {
     })
     .catch(() => {
       if (state.place?.id !== place.id) return;
-      const cached = readJson<ForecastCache>(FORECAST_CACHE_KEY);
-      if (cached && cached.placeId === place.id) {
-        state.forecast = cached.forecast;
-        state.fromCache = true;
-        state.updatedAt = cached.savedAt;
-        setView("content");
+      if (state.forecast && state.freshness === "stale") {
+        // Sofort-Anzeige steht bereits: nur den Hinweis von "Stand HH:MM" auf
+        // den Offline-Hinweis umstellen, die Anzeige selbst bleibt stehen
+        state.freshness = "offline";
         renderContent();
-        renderFavorites();
         renderIcons();
       } else {
+        // Nichts anzeigbar (kein Stand für diesen Ort): ehrliche Fehlermeldung
         setView("error");
       }
     });

@@ -696,6 +696,14 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--orange);
   font-weight:600;
 }
+/* Ehrlicher Zeitstempel der Sofort-Anzeige ("Stand 14:30"): unaufdringlich,
+   kein Zenit; verschwindet, sobald frische Daten gerendert sind */
+.cw-stale{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-xs);
+  color:var(--l4);
+  font-variant-numeric:tabular-nums;
+}
 
 /* ══ Heute anziehen ══ */
 .dress-card{text-align:left;}

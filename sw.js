@@ -6,24 +6,27 @@
  *   - HTML / navigation         → stale-while-revalidate
  *   - Everything else / cross-origin → pass-through (no SW handling)
  *
- * Die Open-Meteo API läuft cross-origin und damit bewusst am SW vorbei;
- * der letzte Forecast wird stattdessen von der App in localStorage
- * gehalten (local first, offline Anzeige mit Zeitstempel).
+ * WETTERDATEN WERDEN HIER NIE GECACHT: Beide Open-Meteo APIs (Forecast und
+ * Air Quality) laufen cross-origin und damit am SW komplett vorbei (early
+ * return im fetch Handler) — der SW kann also nie veraltete Wetterwerte
+ * servieren. Die Sofort-Anzeige beim Start kommt stattdessen aus localStorage
+ * (weather:last-forecast, von app.ts verwaltet): sie ist nur die Brücke bis
+ * das Netz antwortet, parallel wird immer frisch geholt.
  *
  * Cache invalidation: bumping CACHE_VERSION below drops both caches on
- * the next activate.
+ * the next activate (skipWaiting + clients.claim übernehmen sofort).
  */
 
-const CACHE_VERSION  = 'v20260612-20';
+const CACHE_VERSION  = 'v20260612-21';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260612-20',
-  '/theme-init.js?v=20260612-20',
-  '/script.min.js?v=20260612-20',
+  '/styles-app.min.css?v=20260612-21',
+  '/theme-init.js?v=20260612-21',
+  '/script.min.js?v=20260612-21',
   '/fonts/InterVariable.woff2',
   '/fonts/InstrumentSerif-Italic-latin.woff2',
   '/fonts/InstrumentSerif-Italic-latin-ext.woff2',

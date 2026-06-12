@@ -40,6 +40,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   loadError:       { de: "Wetterdaten konnten nicht geladen werden", en: "Weather data could not be loaded", tr: "Hava verileri yüklenemedi" },
   retry:           { de: "Erneut versuchen", en: "Try again", tr: "Tekrar dene" },
   offlineNote:     { de: "Keine Verbindung. Gespeicherte Daten werden angezeigt.", en: "No connection. Showing saved data.", tr: "Bağlantı yok. Kayıtlı veriler gösteriliyor." },
+  staleNote:       { de: "Stand {time}", en: "As of {time}", tr: "{time} itibarıyla" },
   updatedAt:       { de: "Zuletzt aktualisiert", en: "Last updated", tr: "Son güncelleme" },
   feelsLike:       { de: "Gefühlt", en: "Feels like", tr: "Hissedilen" },
   humidity:        { de: "Luftfeuchte", en: "Humidity", tr: "Nem" },
