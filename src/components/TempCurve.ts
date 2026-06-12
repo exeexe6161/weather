@@ -1,4 +1,5 @@
 import type { Forecast, HourlyEntry } from "../lib/weather";
+import { nightSpans, toMinutes } from "../lib/daylight";
 import { formatHour, formatTemp } from "../lib/format";
 import { t, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
@@ -34,16 +35,6 @@ interface Pt {
   v: number; // gefühlte Temperatur
 }
 
-// "YYYY-MM-DDTHH:mm" (Stationszeit) → Minuten auf einer linearen Skala.
-// Bewusst über Date.UTC statt new Date(iso): der String trägt keine Zone,
-// und nur Differenzen zählen — so rechnet keine Nutzer-Zeitzone (DST) hinein.
-function toMinutes(iso: unknown): number | null {
-  if (typeof iso !== "string") return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso);
-  if (!m) return null;
-  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 60_000;
-}
-
 // Weiche Linienführung: quadratische Kurven durch die Mittelpunkte der
 // Segmente, die Stundenwerte als Kontrollpunkte — glättet ruhig, ohne über
 // die echten Werte hinauszuschwingen (kein Überschießen wie bei Splines).
@@ -58,24 +49,13 @@ function smoothPath(p: Pt[]): string {
   return `${d} L ${last.x.toFixed(1)} ${last.y.toFixed(1)}`;
 }
 
-// Nacht-Tönung: Rechtecke für die Zeiträume vor Sonnenaufgang heute, zwischen
-// Sonnenuntergang heute und Sonnenaufgang morgen, und nach Sonnenuntergang
-// morgen (das 24h-Fenster kann beide berühren). Fehlen die heutigen Zeiten
-// (alte Caches), entfällt die Tönung einfach — die Linie steht für sich.
+// Nacht-Tönung aus der geteilten Tag/Nacht-Quelle (lib/daylight) — dieselben
+// Intervalle, nach denen die Stundenleiste ihre Mond-Symbole wählt: beide
+// kippen zur selben Minute. Fehlen die Sonnenzeiten (alte Caches), entfällt
+// die Tönung einfach — die Linie steht für sich.
 function nightRects(forecast: Forecast, m0: number, mEnd: number): string {
-  const d0 = forecast.daily?.[0];
-  const d1 = forecast.daily?.[1];
-  const sr0 = toMinutes(d0?.sunrise);
-  const ss0 = toMinutes(d0?.sunset);
-  const sr1 = toMinutes(d1?.sunrise);
-  const ss1 = toMinutes(d1?.sunset);
-  if (sr0 === null || ss0 === null) return "";
-
-  const spans: Array<[number, number]> = [
-    [Number.NEGATIVE_INFINITY, sr0],
-    [ss0, sr1 ?? Number.POSITIVE_INFINITY],
-  ];
-  if (sr1 !== null && ss1 !== null) spans.push([ss1, Number.POSITIVE_INFINITY]);
+  const spans = nightSpans(forecast.daily);
+  if (spans === null) return "";
 
   return spans
     .map(([from, to]) => {
@@ -90,14 +70,17 @@ function nightRects(forecast: Forecast, m0: number, mEnd: number): string {
 }
 
 // Hoch-/Tief-Markierung als HTML: Punkt exakt auf der Linie (Prozent/Pixel),
-// Wert darüber bzw. darunter; an den Rändern wird nur das Label umgelenkt,
-// nie der Punkt — der muss auf der Linie sitzen.
+// Wert darüber bzw. darunter. Liegt der Punkt am Kartenrand — typisch der
+// Hochwert "jetzt" am linken Rand —, wandert der Wert SEITLICH neben den
+// Punkt (rechts bzw. links davon, auf Punkthöhe): so kollidiert er weder
+// mit dem Kartenrand noch mit dem "jetzt"-Zeitanker darunter. Der Punkt
+// selbst bleibt immer auf der Linie.
 function markHtml(p: Pt, kind: "hi" | "lo"): string {
   const pct = (p.x / W) * 100;
-  const edge = pct < 5 ? " tc-val--left" : pct > 95 ? " tc-val--right" : "";
+  const side = pct < 6 ? " tc-val--side-r" : pct > 94 ? " tc-val--side-l" : "";
   return `<div class="tc-mark" style="left:${pct.toFixed(2)}%;top:${p.y.toFixed(1)}px">
     <span class="tc-dot"></span>
-    <span class="tc-val tc-val--${kind}${edge}">${formatTemp(p.v)}</span>
+    <span class="tc-val tc-val--${kind}${side}">${formatTemp(p.v)}</span>
   </div>`;
 }
 
@@ -156,6 +139,7 @@ export function renderTempCurve(el: HTMLElement, forecast: Forecast): void {
     </div>
     <div class="tc-axis" aria-hidden="true">
       <span>${esc(t("tc_now"))}</span>
+      <span>${formatHour(valid[Math.floor(valid.length / 2)].time, locale)}</span>
       <span>${formatHour(valid[valid.length - 1].time, locale)}</span>
     </div>
   `;

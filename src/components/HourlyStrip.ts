@@ -1,22 +1,27 @@
-import type { HourlyEntry } from "../lib/weather";
+import type { Forecast } from "../lib/weather";
 import { pickIcon, getWmo } from "../lib/wmo";
+import { nightSpans, isNightAt } from "../lib/daylight";
 import { weatherLabel } from "../i18n/weather-labels";
 import { formatHour, formatTemp } from "../lib/format";
 import { getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
-// Heuristik: hourly liefert kein is_day Flag (src/lib bleibt brief-exakt),
-// daher gelten 06:00 bis 19:59 lokaler Stationszeit als Tag.
-function hourIsDay(iso: string): boolean {
+// Fallback-Heuristik für alte Forecast-Caches ohne sunrise/sunset:
+// 06:00 bis 19:59 lokaler Stationszeit gelten als Tag. Mit Sonnenzeiten
+// kippen die Symbole exakt am echten Sonnenauf-/untergang — dieselbe
+// Quelle wie die Nacht-Tönung des Temperaturverlaufs darunter.
+function hourIsDayHeuristic(iso: string): boolean {
   const hour = Number(iso.slice(11, 13));
   return hour >= 6 && hour < 20;
 }
 
-export function renderHourlyStrip(el: HTMLElement, hourly: HourlyEntry[]): void {
+export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
   const locale = getLocale();
-  el.innerHTML = hourly
+  const spans = nightSpans(forecast.daily);
+  el.innerHTML = forecast.hourly
     .map((h) => {
-      const icon = pickIcon(h.weatherCode, hourIsDay(h.time));
+      const isDay = spans !== null ? !isNightAt(h.time, spans) : hourIsDayHeuristic(h.time);
+      const icon = pickIcon(h.weatherCode, isDay);
       const label = weatherLabel(getWmo(h.weatherCode).labelKey, getLang());
       return `<div class="hour-cell" role="listitem">
         <div class="hour-time">${formatHour(h.time, locale)}</div>

@@ -117,7 +117,7 @@ function renderContent(): void {
     updatedAt: state.updatedAt,
   });
   renderDressToday(byId("dressToday"), state.forecast);
-  renderHourlyStrip(byId("hourlyStrip"), state.forecast.hourly);
+  renderHourlyStrip(byId("hourlyStrip"), state.forecast);
   renderTempCurve(byId("tempCurve"), state.forecast);
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort

@@ -924,14 +924,17 @@ html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
 }
 .tc-val--hi{bottom:7px;}
 .tc-val--lo{top:7px;}
-/* Am Kartenrand das Label vom Punkt weg einwärts lenken, der Punkt bleibt */
-.tc-val--left{transform:none;left:-3px;}
-.tc-val--right{transform:translateX(-100%);left:3px;}
-/* Zwei Zeitanker als ruhige Fußzeile: "jetzt" links, Endzeit rechts */
+/* Am Kartenrand den Wert seitlich neben den Punkt setzen (auf Punkthöhe,
+   rechts bzw. links davon) statt darüber/darunter — entzerrt die linke
+   untere Ecke, wo sonst Wert und "jetzt"-Anker zusammenfielen */
+.tc-val--side-r{left:8px;right:auto;top:0;bottom:auto;transform:translateY(-50%);}
+.tc-val--side-l{right:8px;left:auto;top:0;bottom:auto;transform:translateY(-50%);}
+/* Zeitanker als ruhige Fußzeile: "jetzt" links, Mitte und Ende als Maßstab —
+   eigene Zeile unterhalb des Diagramms, kollidiert nie mit den Werten */
 .tc-axis{
   display:flex;
   justify-content:space-between;
-  margin-top:2px;
+  margin-top:4px;
   font-size:var(--fs-xs);
   color:var(--l4);
   font-variant-numeric:tabular-nums;
