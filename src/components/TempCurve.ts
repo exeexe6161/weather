@@ -20,8 +20,8 @@ import { esc } from "../dom";
 // Pixelhöhe (nur die x-Achse verzerrt — für Rechtecke und Linie unschädlich)
 const W = 1000;
 const H = 88;
-const PAD_TOP = 18; // Raum für das Hoch-Label über der Linie
-const PAD_BOTTOM = 22; // Raum für das Tief-Label unter der Linie
+const PAD_TOP = 20; // Raum für das Hoch-Label über der Linie (LABEL_H + GAP)
+const PAD_BOTTOM = 26; // Raum für das Tief-Label unter der Linie, im SVG
 // Mindestspanne der y-Skala in Grad: ein sehr flacher Verlauf bleibt eine
 // ruhige Linie in der Mitte, statt rauschhaft die volle Höhe zu füllen
 const MIN_SPAN_DEG = 2;
@@ -69,19 +69,73 @@ function nightRects(forecast: Forecast, m0: number, mEnd: number): string {
     .join("");
 }
 
-// Hoch-/Tief-Markierung als HTML: Punkt exakt auf der Linie (Prozent/Pixel),
-// Wert darüber bzw. darunter. Liegt der Punkt am Kartenrand — typisch der
-// Hochwert "jetzt" am linken Rand —, wandert der Wert SEITLICH neben den
-// Punkt (rechts bzw. links davon, auf Punkthöhe): so kollidiert er weder
-// mit dem Kartenrand noch mit dem "jetzt"-Zeitanker darunter. Der Punkt
-// selbst bleibt immer auf der Linie.
-function markHtml(p: Pt, kind: "hi" | "lo"): string {
+// ── Hoch-/Tief-Markierungen: deterministisch berechnete Positionen ──
+// Jedes Label bekommt fertige left/top Koordinaten aus TypeScript (keine
+// bottom-Verankerung, keine 0×0-Anker mit statischer Position — deren
+// Zusammenspiel war browserabhängig fragil). Kollisionsfreiheit wird hier
+// im Code geprüft und aufgelöst, nicht dem CSS überlassen. Der "jetzt"-
+// Zeitanker kann per Konstruktion nie kollidieren: Labels sind auf das
+// SVG (y ≤ H) geklemmt, die Ankerzeile ist eine eigene Flusszeile darunter.
+const LABEL_H = 12; // Zeilenhöhe der Wertelabels (fs-xs), fest fürs Layout
+const LABEL_W = 30; // großzügige Labelbreite ("30°") für die Kollisionsprüfung
+const LABEL_GAP = 7; // Abstand Label ↔ Punkt
+const SIDE_GAP = 10; // seitlicher Abstand bei Randplatzierung
+// Schmalste angenommene Kartenbreite (iPhone) — die Kollisionsprüfung
+// rechnet Prozente in Pixel auf dieser engsten Breite um (worst case)
+const REF_WIDTH = 280;
+
+interface Mark {
+  pct: number; // horizontale Punktposition in %
+  dotY: number; // Punkt-Mitte in px
+  labelTop: number; // Label-Oberkante in px (fertig berechnet)
+  mode: "mid" | "side-r" | "side-l";
+  text: string;
+}
+
+function clampLabelTop(top: number): number {
+  return Math.min(H - LABEL_H, Math.max(0, top));
+}
+
+function placeMark(p: Pt, kind: "hi" | "lo"): Mark {
   const pct = (p.x / W) * 100;
-  const side = pct < 6 ? " tc-val--side-r" : pct > 94 ? " tc-val--side-l" : "";
-  return `<div class="tc-mark" style="left:${pct.toFixed(2)}%;top:${p.y.toFixed(1)}px">
-    <span class="tc-dot"></span>
-    <span class="tc-val tc-val--${kind}${side}">${formatTemp(p.v)}</span>
-  </div>`;
+  const text = formatTemp(p.v);
+  // Am Rand (links steht darunter auch "jetzt"): Wert seitlich neben den
+  // Punkt auf Punkthöhe — nie in die Ecke, nie über den Kartenrand hinaus
+  if (pct < 6) return { pct, dotY: p.y, labelTop: clampLabelTop(p.y - LABEL_H / 2), mode: "side-r", text };
+  if (pct > 94) return { pct, dotY: p.y, labelTop: clampLabelTop(p.y - LABEL_H / 2), mode: "side-l", text };
+  const labelTop = kind === "hi" ? p.y - LABEL_GAP - LABEL_H : p.y + LABEL_GAP;
+  return { pct, dotY: p.y, labelTop: clampLabelTop(labelTop), mode: "mid", text };
+}
+
+// Label-Rechteck in Pixeln auf der engsten Referenzbreite
+function labelRect(m: Mark): { x1: number; x2: number; y1: number; y2: number } {
+  const anchor = (m.pct / 100) * REF_WIDTH;
+  const x1 =
+    m.mode === "mid" ? anchor - LABEL_W / 2 : m.mode === "side-r" ? anchor + SIDE_GAP : anchor - SIDE_GAP - LABEL_W;
+  return { x1, x2: x1 + LABEL_W, y1: m.labelTop, y2: m.labelTop + LABEL_H };
+}
+
+function rectsOverlap(a: ReturnType<typeof labelRect>, b: ReturnType<typeof labelRect>): boolean {
+  return a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+}
+
+// Überschneiden sich Hoch- und Tief-Label (möglich bei nahezu flachem
+// Verlauf mit beiden Extremen nahe beieinander), wird das Hoch-Label nach
+// oben ausgewichen — deterministisch, kein Zufall, kein Browser-Ermessen.
+function resolveCollision(hi: Mark, lo: Mark): void {
+  if (!rectsOverlap(labelRect(hi), labelRect(lo))) return;
+  hi.labelTop = clampLabelTop(lo.labelTop - LABEL_H - 2);
+  if (rectsOverlap(labelRect(hi), labelRect(lo))) {
+    // Klemmung hat das Ausweichen begrenzt (beide am oberen Rand): dann
+    // das Tief-Label nach unten schieben — unten ist durch PAD_BOTTOM Platz
+    lo.labelTop = clampLabelTop(hi.labelTop + LABEL_H + 2);
+  }
+}
+
+function markHtml(m: Mark): string {
+  const cls = m.mode === "mid" ? "tc-val--mid" : m.mode === "side-r" ? "tc-val--side-r" : "tc-val--side-l";
+  return `<span class="tc-dot" style="left:${m.pct.toFixed(2)}%;top:${m.dotY.toFixed(1)}px"></span>
+    <span class="tc-val ${cls}" style="left:${m.pct.toFixed(2)}%;top:${m.labelTop.toFixed(1)}px">${m.text}</span>`;
 }
 
 export function renderTempCurve(el: HTMLElement, forecast: Forecast): void {
@@ -122,10 +176,15 @@ export function renderTempCurve(el: HTMLElement, forecast: Forecast): void {
   const loIdx = values.indexOf(vMin);
   // Komplett flacher Verlauf: Hoch und Tief sind derselbe Wert — eine
   // Markierung genügt, zwei identische Zahlen wären Lärm
-  const marks =
-    hiIdx === loIdx
-      ? markHtml(pts[hiIdx], "hi")
-      : markHtml(pts[hiIdx], "hi") + markHtml(pts[loIdx], "lo");
+  const hiMark = placeMark(pts[hiIdx], "hi");
+  let marks: string;
+  if (hiIdx === loIdx) {
+    marks = markHtml(hiMark);
+  } else {
+    const loMark = placeMark(pts[loIdx], "lo");
+    resolveCollision(hiMark, loMark);
+    marks = markHtml(hiMark) + markHtml(loMark);
+  }
 
   const locale = getLocale();
   el.hidden = false;

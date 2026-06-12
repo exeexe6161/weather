@@ -904,38 +904,37 @@ html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-/* Hoch/Tief: Punkt exakt auf der Linie (0×0 Anker), Wert darüber/darunter */
-.tc-mark{position:absolute;width:0;height:0;}
+/* Hoch/Tief: left/top kommen fertig berechnet aus TempCurve.ts (inkl.
+   Kollisionsauflösung); hier nur Aussehen und die minimale Zentrierung.
+   Der Punkt wird über Margins zentriert (kein transform, kein Anker). */
 .tc-dot{
   position:absolute;
   width:6px;height:6px;
+  margin:-3px 0 0 -3px;
   border-radius:50%;
   background:var(--l3);
-  transform:translate(-50%,-50%);
 }
 .tc-val{
   position:absolute;
   font-size:var(--fs-xs);
+  line-height:12px; /* = LABEL_H in TempCurve.ts, Basis der Kollisionsrechnung */
   font-weight:600;
   color:var(--l3);
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
-  transform:translateX(-50%);
 }
-.tc-val--hi{bottom:7px;}
-.tc-val--lo{top:7px;}
-/* Am Kartenrand den Wert seitlich neben den Punkt setzen (auf Punkthöhe,
-   rechts bzw. links davon) statt darüber/darunter — entzerrt die linke
-   untere Ecke, wo sonst Wert und "jetzt"-Anker zusammenfielen */
-.tc-val--side-r{left:8px;right:auto;top:0;bottom:auto;transform:translateY(-50%);}
-.tc-val--side-l{right:8px;left:auto;top:0;bottom:auto;transform:translateY(-50%);}
-/* Zeitanker als ruhige Fußzeile: "jetzt" links, Mitte und Ende als Maßstab —
-   eigene Zeile unterhalb des Diagramms, kollidiert nie mit den Werten */
+.tc-val--mid{transform:translateX(-50%);} /* mittig über/unter dem Punkt */
+.tc-val--side-r{margin-left:10px;} /* am linken Rand: rechts neben dem Punkt */
+.tc-val--side-l{margin-left:-10px;transform:translateX(-100%);} /* rechter Rand */
+/* Zeitanker als ruhige Fußzeile: "jetzt" links, Mitte und Ende als Maßstab.
+   Eigene Flusszeile UNTER dem SVG mit klarem Abstand — die Wertelabels sind
+   im Code auf das SVG geklemmt, Kollision ist konstruktiv ausgeschlossen */
 .tc-axis{
   display:flex;
   justify-content:space-between;
-  margin-top:4px;
+  margin-top:6px;
   font-size:var(--fs-xs);
+  line-height:12px;
   color:var(--l4);
   font-variant-numeric:tabular-nums;
 }

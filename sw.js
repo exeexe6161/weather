@@ -17,16 +17,16 @@
  * the next activate (skipWaiting + clients.claim übernehmen sofort).
  */
 
-const CACHE_VERSION  = 'v20260612-29';
+const CACHE_VERSION  = 'v20260612-30';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260612-29',
-  '/theme-init.js?v=20260612-29',
-  '/script.min.js?v=20260612-29',
+  '/styles-app.min.css?v=20260612-30',
+  '/theme-init.js?v=20260612-30',
+  '/script.min.js?v=20260612-30',
   '/fonts/InterVariable.woff2',
   '/fonts/InstrumentSerif-Italic-latin.woff2',
   '/fonts/InstrumentSerif-Italic-latin-ext.woff2',
