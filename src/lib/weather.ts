@@ -15,6 +15,7 @@ export interface HourlyEntry {
   apparentTemperature: number;
   precipitationProbability: number;
   weatherCode: number;
+  windSpeed?: number; // optional: Forecast-Caches vor dem Trockenfenster-Feature haben das Feld nicht
 }
 export interface DailyEntry {
   date: string;
@@ -38,7 +39,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     latitude: String(latitude),
     longitude: String(longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
-    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code",
+    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
     timezone: "auto",
     forecast_days: "7",
@@ -70,6 +71,7 @@ function normalize(data: any): Forecast {
       apparentTemperature: h.apparent_temperature[i],
       precipitationProbability: h.precipitation_probability?.[i] ?? 0,
       weatherCode: h.weather_code[i],
+      windSpeed: h.wind_speed_10m?.[i] ?? undefined,
     });
   }
 

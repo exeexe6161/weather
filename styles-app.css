@@ -243,7 +243,7 @@ body::before{
    stehen — beim Stadtwechsel und in den Listen springt nichts horizontal.
    Bewusst nicht global auf body (Fließtext behält proportionale Ziffern). */
 .cw-temp,.cw-meta-val,.cw-sun-val,.cw-local-time,
-.hour-time,.hour-temp,
+.hour-time,.hour-temp,.dress-dry,
 .day-max,.day-min,.day-rain{
   font-variant-numeric:tabular-nums;
 }
@@ -712,6 +712,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 .dress-rain-ico{width:16px;height:16px;color:var(--wp-zenit);flex:none;}
 .dress-rain-ico--calm{color:var(--wp-stahl);} /* ohne Regenfenster kein Akzent */
+/* Trockenes Fenster: seltene, ruhige Zusatzzeile unter der Regenzeile —
+   bewusst gedämpfter als diese (kein Zenit, normales Gewicht) */
+.dress-dry{
+  margin-top:var(--sp-2);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:var(--fs-sm);
+  color:var(--l3);
+}
+.dress-dry-ico{width:16px;height:16px;color:var(--l4);flex:none;}
 
 /* ══ Pollen ══
    Nur belastete Arten als ruhige Zeilen; Stufen dezent über Funktionsfarben

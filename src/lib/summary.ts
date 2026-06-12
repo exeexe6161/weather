@@ -34,7 +34,8 @@ export type Summary =
 
 // Lokale Stunde des Orts; dieselbe Intl-Mechanik wie Ortszeit und UV-Logik,
 // nie Stunden von Hand addieren. null ohne/bei ungültiger timezone.
-function localHour(timezone: unknown): number | null {
+// Exportiert, damit dryWindow.ts dieselbe Mechanik nutzt statt sie zu kopieren.
+export function localHour(timezone: unknown): number | null {
   if (typeof timezone !== "string" || timezone === "") return null;
   try {
     const hour = Number(

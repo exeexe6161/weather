@@ -14,16 +14,16 @@
  * the next activate.
  */
 
-const CACHE_VERSION  = 'v20260612-17';
+const CACHE_VERSION  = 'v20260612-18';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260612-17',
-  '/theme-init.js?v=20260612-17',
-  '/script.min.js?v=20260612-17',
+  '/styles-app.min.css?v=20260612-18',
+  '/theme-init.js?v=20260612-18',
+  '/script.min.js?v=20260612-18',
   '/fonts/InterVariable.woff2',
   '/fonts/InstrumentSerif-Italic-latin.woff2',
   '/fonts/InstrumentSerif-Italic-latin-ext.woff2',

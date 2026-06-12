@@ -15,6 +15,7 @@ export const LOCALES: Record<Lang, string> = {
 const LANG_KEY = "weather:lang";
 
 export const uiLabels: Record<string, Record<Lang, string>> = {
+  docTitle:        { de: "WeatherPure – Wetter auf das Wesentliche", en: "WeatherPure – Weather, simply essential", tr: "WeatherPure – Sadece önemli olan" },
   heroSubtitle:    { de: "Schlicht, schnell und ohne Tracking", en: "Simple, fast and without tracking", tr: "Sade, hızlı ve takipsiz" },
   settingsAria:    { de: "Einstellungen", en: "Settings", tr: "Ayarlar" },
   searchRegion:    { de: "Ortssuche", en: "Location search", tr: "Konum arama" },
@@ -113,6 +114,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   rain_window:     { de: "Regen {prob} zwischen {from} und {to} Uhr", en: "Rain {prob} between {from}:00 and {to}:00", tr: "Saat {from} ile {to} arası yağmur {prob}" },
   rain_none:       { de: "Kein Regen erwartet", en: "No rain expected", tr: "Yağmur beklenmiyor" },
   rain_none_more:  { de: "Kein Regen mehr erwartet", en: "No more rain expected", tr: "Bugün için yağmur beklentisi kalmadı" },
+  dry_window:      { de: "Trockenes Fenster {von} bis {bis} Uhr.", en: "Dry window {von} to {bis}.", tr: "{von} ile {bis} arası kuru." },
+  dry_from:        { de: "Ab {von} Uhr trocken.", en: "Dry from {von}.", tr: "{von} sonrası kuru." },
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   today:           { de: "Heute", en: "Today", tr: "Bugün" },
@@ -168,6 +171,7 @@ export function setLang(lang: Lang): void {
   current = lang;
   try { localStorage.setItem(LANG_KEY, lang); } catch {}
   document.documentElement.lang = lang;
+  document.title = t("docTitle"); // Tab-Titel wechselt mit der App-Sprache
   applyI18n();
   document.dispatchEvent(new CustomEvent("weather:langchange", { detail: { lang } }));
 }
@@ -175,5 +179,6 @@ export function setLang(lang: Lang): void {
 export function initLang(): void {
   current = detectLang();
   document.documentElement.lang = current;
+  document.title = t("docTitle");
   applyI18n();
 }

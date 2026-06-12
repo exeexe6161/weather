@@ -9,6 +9,7 @@ import {
   type StageKey,
   type StageSegment,
 } from "../lib/clothing";
+import { dryWindowFor } from "../lib/dryWindow";
 import { formatPercent } from "../lib/format";
 import { t } from "../i18n/ui";
 import { esc } from "../dom";
@@ -58,6 +59,16 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
       ? t("rain_none_more")
       : t("rain_none");
 
+  // Trockenes Fenster: seltener Hinweis, nur an gemischten Tagen mit
+  // eigenständiger Information (dryWindowFor prüft alle Bedingungen inkl.
+  // Überschneidungsschutz mit der Regenzeile oben)
+  const dry = usable ? dryWindowFor(forecast) : null;
+  const dryText = dry
+    ? dry.untilSunset
+      ? fill(t("dry_from"), { von: dry.fromHour })
+      : fill(t("dry_window"), { von: dry.fromHour, bis: dry.toHour })
+    : null;
+
   el.innerHTML = `
     <div class="dress-stage">${esc(headline)}</div>
     ${courseSegments.length > 1 ? `<div class="dress-course">${esc(courseText(courseSegments))}</div>` : ""}
@@ -65,5 +76,9 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
       <i data-lucide="umbrella" class="dress-rain-ico${rain ? "" : " dress-rain-ico--calm"}"></i>
       <span>${esc(rainText)}</span>
     </div>
+    ${dryText ? `<div class="dress-dry">
+      <i data-lucide="cloud-sun" class="dress-dry-ico"></i>
+      <span>${esc(dryText)}</span>
+    </div>` : ""}
   `;
 }
