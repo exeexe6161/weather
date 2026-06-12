@@ -109,6 +109,11 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   sum_c_umbrella:     { de: "nimm einen Schirm mit", en: "take an umbrella", tr: "yanına şemsiye al" },
   sum_c_sun:          { de: "denk an Sonnenschutz", en: "remember sun protection", tr: "güneşten korunmayı unutma" },
   sum_c_warm:         { de: "warm anziehen", en: "wrap up warm", tr: "sıcak giyin" },
+  // ── Vergleich zu gestern (Texte exakt, nicht umformulieren)
+  cmp_much_warmer: { de: "Deutlich wärmer als gestern", en: "Much warmer than yesterday", tr: "Dünden çok daha sıcak" },
+  cmp_bit_warmer:  { de: "Etwas wärmer als gestern", en: "A bit warmer than yesterday", tr: "Dünden biraz daha sıcak" },
+  cmp_bit_cooler:  { de: "Etwas kühler als gestern", en: "A bit cooler than yesterday", tr: "Dünden biraz daha serin" },
+  cmp_much_cooler: { de: "Deutlich kühler als gestern", en: "Much cooler than yesterday", tr: "Dünden çok daha serin" },
   dress_today:     { de: "Heute anziehen", en: "What to wear today", tr: "Bugün ne giymeli" },
   stage_shirt:     { de: "Shirt", en: "Shirt", tr: "Tişört" },
   stage_shirt_layer: { de: "Shirt und etwas Leichtes", en: "Shirt and something light", tr: "Tişört ve ince bir şey" },

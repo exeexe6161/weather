@@ -2,6 +2,7 @@ import { GEO_PLACE_ID, type Place } from "../lib/geocoding";
 import type { Forecast } from "../lib/weather";
 import { uvHintKey } from "../lib/uv";
 import { summaryFor } from "../lib/summary";
+import { tempCompareKey } from "../lib/tempCompare";
 import { pickIcon } from "../lib/wmo";
 import { getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
@@ -118,6 +119,9 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const localTime = formatTimeInZone(forecast.timezone, locale);
   // Tageszusammenfassung; null wenn kein sinnvoller Satz möglich → Zeile entfällt
   const summary = summaryText(forecast);
+  // Vergleich zu gestern; null bei fehlendem gestrigen Wert (API-Lücke, alte
+  // Caches) oder Differenz unter der Spürbarkeitsschwelle → Zeile entfällt
+  const compareKey = tempCompareKey(today?.tempMax, forecast.yesterdayTempMax);
   // Ehrlicher Zeitstempel der Sofort-Anzeige, in der Ortszeit des Ortes; alte
   // Caches ohne timezone fallen auf die Nutzerzeit zurück (besser als kein
   // Hinweis, der Stempel ist das Sicherheitsnetz gegen veraltete Daten)
@@ -144,6 +148,10 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     </div>
     <div class="cw-label">${esc(label)}</div>
     ${summary ? `<p class="cw-summary">${esc(summary)}</p>` : ""}
+    ${compareKey ? `<div class="cw-compare">
+      <i data-lucide="${compareKey.includes("warmer") ? "trending-up" : "trending-down"}" class="cw-compare-ico"></i>
+      <span>${t(compareKey)}</span>
+    </div>` : ""}
     <ul class="cw-meta" aria-label="${esc(label)}">
       <li class="cw-meta-item">
         <i data-lucide="thermometer" class="cw-meta-ico"></i>

@@ -32,6 +32,10 @@ export interface Forecast {
   hourly: HourlyEntry[];
   daily: DailyEntry[];
   timezone: string;
+  // Gestriger Tageshöchstwert für den Vergleich "wärmer/kühler als gestern".
+  // null wenn die API ihn nicht liefert; Forecast-Caches vor diesem Feature
+  // haben das Feld gar nicht (undefined) — Konsumenten prüfen per typeof.
+  yesterdayTempMax: number | null;
 }
 
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
@@ -43,6 +47,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
     timezone: "auto",
     forecast_days: "7",
+    past_days: "1", // gestriger Tag in derselben daily Antwort (Vergleichszeile)
   });
   const res = await fetch(`${FORECAST_URL}?${params}`);
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
@@ -76,16 +81,26 @@ function normalize(data: any): Forecast {
   }
 
   const d = data.daily;
-  const daily: DailyEntry[] = d.time.map((date: string, i: number) => ({
-    date,
-    weatherCode: d.weather_code[i],
-    tempMax: d.temperature_2m_max[i],
-    tempMin: d.temperature_2m_min[i],
-    precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
-    sunrise: d.sunrise?.[i] ?? null,
-    sunset: d.sunset?.[i] ?? null,
-    uvIndexMax: d.uv_index_max?.[i] ?? null,
-  }));
+  // past_days=1 stellt dem daily Array den gestrigen Tag voran. Gestrigen
+  // Höchstwert abzweigen und daily ab heute schneiden — die gesamte App
+  // verlässt sich darauf, dass daily[0] der heutige Tag ist.
+  const todayDate = c.time.slice(0, 10);
+  const todayIdx = Math.max(0, d.time.findIndex((t: string) => t >= todayDate));
+  const rawYesterdayMax = todayIdx > 0 ? d.temperature_2m_max?.[todayIdx - 1] : null;
+  const yesterdayTempMax = typeof rawYesterdayMax === "number" ? rawYesterdayMax : null;
+  const daily: DailyEntry[] = d.time.slice(todayIdx).map((date: string, j: number) => {
+    const i = todayIdx + j;
+    return {
+      date,
+      weatherCode: d.weather_code[i],
+      tempMax: d.temperature_2m_max[i],
+      tempMin: d.temperature_2m_min[i],
+      precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
+      sunrise: d.sunrise?.[i] ?? null,
+      sunset: d.sunset?.[i] ?? null,
+      uvIndexMax: d.uv_index_max?.[i] ?? null,
+    };
+  });
 
-  return { current, hourly, daily, timezone: data.timezone };
+  return { current, hourly, daily, timezone: data.timezone, yesterdayTempMax };
 }

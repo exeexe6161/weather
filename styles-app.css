@@ -671,6 +671,18 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   line-height:1.35;
   color:var(--l2);
 }
+/* Vergleich zu gestern: ruhige Zusatzzeile unter dem Klartext-Satz. Bewusst
+   normale Schrift (die Serif bleibt dem Satz vorbehalten), kein Zenit — der
+   Satz beschreibt den Tag absolut, diese Zeile relativ zu gestern */
+.cw-compare{
+  margin-top:var(--sp-2);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:var(--fs-sm);
+  color:var(--l3);
+}
+.cw-compare-ico{width:14px;height:14px;color:var(--l4);flex:none;}
 .cw-meta{
   list-style:none;
   display:grid;

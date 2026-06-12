@@ -29,6 +29,8 @@ import {
   Umbrella,
   Sunrise,
   Sunset,
+  TrendingUp,
+  TrendingDown,
 } from "lucide";
 
 const icons = {
@@ -58,6 +60,8 @@ const icons = {
   Umbrella,
   Sunrise,
   Sunset,
+  TrendingUp,
+  TrendingDown,
 };
 
 export function renderIcons(): void {
