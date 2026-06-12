@@ -885,6 +885,58 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .hour-ico{width:22px;height:22px;color:var(--l2);}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 
+/* ══ Temperaturverlauf ══
+   Eine ruhige Linie unter der Stundenleiste: kein Gitternetz, keine Tooltips,
+   keine Animation. Geometrie im gedehnten SVG, Beschriftung als HTML-Overlay
+   (bleibt auf jeder Breite in nativer Schriftgröße). */
+.tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4) var(--sp-2);}
+.tc-wrap{position:relative;}
+.tc-svg{display:block;width:100%;height:88px;}
+/* Nacht-Tönung: nur eine Andeutung hinter der Linie, kein harter Kontrast */
+.tc-night{fill:#11161C;opacity:.05;}
+html[data-theme="dark"] .tc-night{fill:#000;opacity:.22;}
+/* Gedämpfte Linie, nicht der grelle Zenit: Stahl mit leisem Zenit-Anklang;
+   Browser ohne color-mix bleiben beim reinen Stahl (Fallback davor) */
+.tc-line{
+  stroke:var(--wp-stahl);
+  stroke:color-mix(in srgb,var(--wp-zenit) 35%,var(--wp-stahl));
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+/* Hoch/Tief: Punkt exakt auf der Linie (0×0 Anker), Wert darüber/darunter */
+.tc-mark{position:absolute;width:0;height:0;}
+.tc-dot{
+  position:absolute;
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--l3);
+  transform:translate(-50%,-50%);
+}
+.tc-val{
+  position:absolute;
+  font-size:var(--fs-xs);
+  font-weight:600;
+  color:var(--l3);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  transform:translateX(-50%);
+}
+.tc-val--hi{bottom:7px;}
+.tc-val--lo{top:7px;}
+/* Am Kartenrand das Label vom Punkt weg einwärts lenken, der Punkt bleibt */
+.tc-val--left{transform:none;left:-3px;}
+.tc-val--right{transform:translateX(-100%);left:3px;}
+/* Zwei Zeitanker als ruhige Fußzeile: "jetzt" links, Endzeit rechts */
+.tc-axis{
+  display:flex;
+  justify-content:space-between;
+  margin-top:2px;
+  font-size:var(--fs-xs);
+  color:var(--l4);
+  font-variant-numeric:tabular-nums;
+}
+
 /* ══ 7 Tage ══ */
 .daily-list{padding:var(--sp-2) var(--sp-4);text-align:left;}
 .day-row{

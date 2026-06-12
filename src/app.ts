@@ -14,6 +14,7 @@ import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
+import { renderTempCurve } from "./components/TempCurve";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { renderIcons } from "./icons";
@@ -117,6 +118,7 @@ function renderContent(): void {
   });
   renderDressToday(byId("dressToday"), state.forecast);
   renderHourlyStrip(byId("hourlyStrip"), state.forecast.hourly);
+  renderTempCurve(byId("tempCurve"), state.forecast);
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.

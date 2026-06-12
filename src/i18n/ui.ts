@@ -130,6 +130,9 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   dry_window:      { de: "Trockenes Fenster {von} bis {bis} Uhr.", en: "Dry window {von} to {bis}.", tr: "{von} ile {bis} arası kuru." },
   dry_from:        { de: "Ab {von} Uhr trocken.", en: "Dry from {von}.", tr: "{von} sonrası kuru." },
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
+  // ── Temperaturverlauf (ruhige Linie unter der Stundenleiste)
+  tc_aria:         { de: "Verlauf der gefühlten Temperatur über die nächsten 24 Stunden", en: "Feels like temperature over the next 24 hours", tr: "Önümüzdeki 24 saatte hissedilen sıcaklığın seyri" },
+  tc_now:          { de: "jetzt", en: "now", tr: "şimdi" },
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   today:           { de: "Heute", en: "Today", tr: "Bugün" },
   footerImpressum: { de: "Impressum", en: "Imprint", tr: "Künye" },
