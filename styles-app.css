@@ -958,6 +958,11 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
 .day-temps{display:flex;gap:10px;align-items:baseline;}
 .day-max{font-size:var(--fs-md);font-weight:700;}
 .day-min{font-size:var(--fs-sm);color:var(--l4);}
+/* Hoch/Tief in feste, rechtsbündige Slots, damit die Zahlen nicht je nach
+   Stellenzahl des Tiefs horizontal springen (z. B. 8° vs 11°). tabular-nums
+   liegt bereits auf .day-max/.day-min (Sammelregel oben), daher hier nur die
+   Slot-Breite + Rechtsbündigkeit. */
+.day-max,.day-min{display:inline-block;min-width:4ch;text-align:right;}
 /* Temperaturbalken (Variante A): dezente zweite Zeile, eingerückt unter der
    Beschreibung (Grid-Spalte 3 bis zum rechten Rand), zeigt die Tagesspanne im
    Wochenbereich. Position der Füllung kommt per CSSOM aus DailyForecast.ts
