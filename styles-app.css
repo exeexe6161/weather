@@ -528,10 +528,12 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .geo-btn-ico{width:16px;height:16px;}
 .geo-hint{
   margin-top:var(--sp-2);
-  font-size:var(--fs-xs);
-  color:var(--l4);
+  font-size:var(--fs-xs); /* bereits 11px (≈0.69rem), kleiner als 0.8rem */
+  color:var(--wp-stahl);
   padding:0 4px;
-  max-width:52ch; /* ruhiger Umbruch */
+  /* auf etwa die Breite des Standort-Buttons begrenzt (linksbündig darunter),
+     damit der Hinweis untergeordnet wirkt und nicht über den Button hinausläuft */
+  max-width:240px;
 }
 
 /* ══ Favoriten ══ */
