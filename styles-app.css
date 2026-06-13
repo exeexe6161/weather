@@ -508,11 +508,19 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   display:flex;
   gap:8px;
   flex-wrap:wrap;
+  align-items:flex-start; /* Buttons auf einer Linie; Captions hängen darunter, dürfen unterschiedlich lang sein */
+}
+/* Eine Spalte je Button: Button oben, kleine Caption direkt darunter. Zwei
+   Spalten nebeneinander (je ~halbe Breite), brechen bei zu wenig Platz um. */
+.geo-col{
+  flex:1 1 130px;
+  display:flex;
+  flex-direction:column;
 }
 /* Standort-Button: getönte Zenit-Fläche mit zartem Zenit-Rand — der EINE Akzent.
    Der Aktualisieren-Button daneben bleibt neutral (.geo-btn--neutral). */
 .geo-btn{
-  flex:1 1 130px;
+  width:100%; /* füllt die Spalte */
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -544,14 +552,16 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 .geo-btn--neutral:hover{background:var(--s2);color:var(--l1);}
 .geo-btn--neutral:active{background:var(--s2);color:var(--l1);}
-.geo-hint{
+/* Kleine, ruhige Caption unter dem jeweiligen Button: links der Datenschutz-
+   hinweis, rechts der Zeitstempel ("Aktualisiert HH:MM"). Gleicher untergeord-
+   neter Stahl-Stil, linksbündig, von der Spaltenbreite begrenzt. tabular-nums
+   für die Uhrzeit. Kein Akzent, kein Grün. */
+.geo-caption{
   margin-top:var(--sp-2);
-  font-size:var(--fs-xs); /* bereits 11px (≈0.69rem), kleiner als 0.8rem */
-  color:var(--wp-stahl);
   padding:0 4px;
-  /* auf etwa die Breite des Standort-Buttons begrenzt (linksbündig darunter),
-     damit der Hinweis untergeordnet wirkt und nicht über den Button hinausläuft */
-  max-width:240px;
+  font-size:var(--fs-xs);
+  color:var(--wp-stahl);
+  font-variant-numeric:tabular-nums;
 }
 
 /* ══ Favoriten ══ */
@@ -748,15 +758,6 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   font-size:var(--fs-sm);
   color:var(--orange);
   font-weight:600;
-}
-/* Ehrlicher Zeitstempel der Anzeige ("Stand 14:30" beim letzten Stand,
-   "Aktualisiert 14:32" bei frischen Daten): leise Fußnote, unaufdringlich,
-   kein Zenit — die Frische ist durchgehend ablesbar */
-.cw-stale{
-  margin-top:var(--sp-3);
-  font-size:var(--fs-xs);
-  color:var(--l4);
-  font-variant-numeric:tabular-nums;
 }
 /* Spin für den Aktualisieren-Button oben (neben "Mein Standort"). Dreht nur
    während des Ladens; bei Erfolg/Fehler entfernt app.ts die Klasse (kein

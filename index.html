@@ -30,8 +30,8 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <title>WeatherPure – Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=20260612-43"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=20260612-43">
+<script src="./theme-init.js?v=20260612-44"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=20260612-44">
 </head>
 <body>
 <noscript><div class="noscript-overlay"><p data-i18n="noscriptText">Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p></div></noscript>
@@ -77,16 +77,21 @@
   <div id="searchStatus" class="search-status" role="status" aria-live="polite" hidden></div>
   <div class="geo-row">
     <div class="geo-actions">
-      <button id="geoBtn" class="geo-btn" type="button">
-        <i data-lucide="map-pin" class="geo-btn-ico"></i>
-        <span data-i18n="geoBtn">Mein Standort</span>
-      </button>
-      <button id="topRefresh" class="geo-btn geo-btn--neutral" type="button" disabled data-i18n-aria="refreshWeather" aria-label="Wetterdaten aktualisieren">
-        <i data-lucide="rotate-cw" class="geo-btn-ico"></i>
-        <span data-i18n="refreshShort">Aktualisieren</span>
-      </button>
+      <div class="geo-col">
+        <button id="geoBtn" class="geo-btn" type="button">
+          <i data-lucide="map-pin" class="geo-btn-ico"></i>
+          <span data-i18n="geoBtn">Mein Standort</span>
+        </button>
+        <p class="geo-caption" data-i18n="geoHint">Nur nach deiner Zustimmung, dein Standort wird nicht gespeichert.</p>
+      </div>
+      <div class="geo-col">
+        <button id="topRefresh" class="geo-btn geo-btn--neutral" type="button" disabled data-i18n-aria="refreshWeather" aria-label="Wetterdaten aktualisieren">
+          <i data-lucide="rotate-cw" class="geo-btn-ico"></i>
+          <span data-i18n="refreshShort">Aktualisieren</span>
+        </button>
+        <p class="geo-caption" id="topStamp" role="status" aria-live="polite" hidden></p>
+      </div>
     </div>
-    <p class="geo-hint" data-i18n="geoHint">Nur nach deiner Zustimmung, dein Standort wird nicht gespeichert.</p>
   </div>
 </section>
 
@@ -151,6 +156,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=20260612-43"></script>
+<script src="./script.min.js?v=20260612-44"></script>
 </body>
 </html>

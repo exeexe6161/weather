@@ -6,10 +6,10 @@ import { fetchWeather, type Forecast } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
-import { getLang, t } from "./i18n/ui";
+import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabelShort } from "./i18n/weather-labels";
-import { formatTemp } from "./lib/format";
+import { formatTemp, formatTimeInZone, formatHour } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -91,6 +91,34 @@ function setView(view: "empty" | "loading" | "error" | "content"): void {
   // liefe er ins Leere. (Während des Refresh selbst läuft setView nicht.)
   const refreshBtn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (refreshBtn) refreshBtn.disabled = view !== "content";
+  // Zeitstempel-Caption nur bei angezeigter Stadt; sonst kein veralteter Wert
+  // (im Content-View füllt renderContent → updateTopStamp sie passend).
+  if (view !== "content") {
+    const topStamp = document.getElementById("topStamp");
+    if (topStamp) topStamp.hidden = true;
+  }
+}
+
+// Setzt die obere Zeitstempel-Caption ("Aktualisiert HH:MM" / "Stand HH:MM")
+// unter dem Aktualisieren-Button. Der Span steht statisch im Markup (nicht in
+// der Karte), darum aus dem State gefüllt — bei jedem Render und nach jedem
+// Refresh, in der Ortszeit des angezeigten Orts. Offline: keine Zeit (die Karte
+// zeigt dort ihren eigenen Verbindungshinweis), Caption leer + versteckt.
+function updateTopStamp(): void {
+  const span = document.getElementById("topStamp");
+  if (!span) return;
+  const f = state.forecast;
+  const time =
+    f && state.freshness !== "offline" && state.updatedAt
+      ? formatTimeInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale())
+      : null;
+  if (time) {
+    span.hidden = false;
+    span.textContent = t(state.freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", time);
+  } else {
+    span.textContent = "";
+    span.hidden = true;
+  }
 }
 
 function renderFavorites(): void {
@@ -126,6 +154,7 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
 function renderContent(): void {
   if (!state.place || !state.forecast) return;
   updateDocTitle(); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
+  updateTopStamp(); // obere Zeitstempel-Caption (Ortswahl, Refresh, Sprachwechsel)
   renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
   renderCurrentWeather(byId("currentWeather"), {
     place: state.place,

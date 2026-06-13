@@ -123,17 +123,6 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   // Vergleich zu gestern; null bei fehlendem gestrigen Wert (API-Lücke, alte
   // Caches) oder Differenz unter der Spürbarkeitsschwelle → Zeile entfällt
   const compareKey = tempCompareKey(today?.tempMax, forecast.yesterdayTempMax);
-  // Ehrlicher Zeitstempel der Anzeige, in der Ortszeit des Ortes: "Stand
-  // HH:MM" beim zwischengespeicherten Stand, "Aktualisiert HH:MM" bei
-  // frischen Daten — die Frische ist durchgehend ablesbar, nur der Text
-  // wechselt lautlos beim stale→fresh Tausch. Offline behält seinen eigenen
-  // Hinweis. Alte Caches ohne timezone fallen auf die Nutzerzeit zurück
-  // (besser als kein Hinweis, der Stempel ist das Sicherheitsnetz gegen
-  // veraltete Daten). Einmal je Datenstand gesetzt, kein Ticker.
-  const stampTime =
-    freshness !== "offline" && updatedAt
-      ? formatTimeInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)
-      : null;
 
   el.innerHTML = `
     <div class="cw-head">
@@ -198,7 +187,6 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
       </div>` : ""}
     </div>` : ""}
-    ${stampTime ? `<div class="cw-stale" role="status">${esc(t(freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", stampTime))}</div>` : ""}
     ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
 
