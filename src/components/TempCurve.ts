@@ -1,39 +1,46 @@
-// TempCurve.ts — Temperaturverlauf des heutigen Tages als ruhige Linie.
+// TempCurve.ts — Gefuehlte Temperatur der naechsten 24 Stunden als ruhige Linie.
 //
-// Architekturprinzip: ALLES in EINEM SVG (Linie, Flaeche, Punkte, Werte, Zeitachse).
-// Ein Koordinatensystem, kein HTML-Overlay, keine Prozent-Positionen, kein separates
-// CSS-Layout fuer die Beschriftung. Was die Geometrie berechnet, rendert der Browser
-// pixelgenau identisch — das schliesst Label-Ueberlappungen konstruktiv aus.
+// Architekturprinzip: ALLES in EINEM SVG (Linie, Flaeche, Punkte, Werte, Zeitachse,
+// Bezugslinien, Ueberschrift). Ein Koordinatensystem, kein HTML-Overlay, keine
+// Prozent-Positionen, kein separates CSS-Layout fuer die Beschriftung. Was die
+// Geometrie berechnet, rendert der Browser pixelgenau identisch — das schliesst
+// Label-Ueberlappungen konstruktiv aus.
 //
-// Designentscheidung (mit dem Nutzer abgestimmt):
-//  - Fester Kalendertag 00:00..24:00 (nicht "naechste 24h ab jetzt"). Zeigt den
-//    ganzen Tagesbogen inkl. bereits vergangener Stunden.
-//  - Sechs Zeitmarken OPTISCH GLEICHMAESSIG verteilt (00,04,08,12,18,22): gleicher
-//    Pixelabstand, ruhige lineal-artige Achse. Marke = Orientierung, kein
-//    millimetergenauer Koordinatenpunkt.
-//  - Linie in EINER ruhigen Farbe (Zenit-Anklang), kein Vergangenheit/Zukunft-Split.
-//    Der wandernde jetzt-Punkt allein markiert die aktuelle Position im Tag.
-//  - Flaeche unter der Linie mit dezentem WAERME-HAUCH: horizontaler, sehr blasser
-//    Verlauf von kuehl (kalter Moment des Tages) zu warm (waermster Moment).
-//    RELATIV zur Tagesspanne, also an jedem Tag lebendig. Bewusste Dekoration:
-//    die exakte Temperatur steht ohnehin als Zahl/Hoehe, der Hauch deutet nur den
-//    Tagesrhythmus an. Laeuft nach unten sanft aus.
-//  - Hoch/Tief als feine Ringe, Werte kollisionsfrei in der oberen Etage.
+// Designentscheidung (mit dem Nutzer ueber viele Iterationen abgestimmt):
+//  - ROLLENDE 24-Stunden-Ansicht ab jetzt. Wer um 17 Uhr reinschaut, sieht
+//    17 Uhr heute -> 17 Uhr morgen. Reine Vorschau, kein vergangenes Wetter.
+//    Der jetzt-Punkt sitzt immer ganz LINKS (Index 0).
+//  - Fuenf Zeitmarken optisch GLEICHMAESSIG verteilt: "jetzt" plus vier echte
+//    Uhrzeiten (startHour + Offset). Bewusst gleicher Pixelabstand; die Uhrzeiten
+//    wechseln also je nach Tageszeit (Preis fuer den Blick nach vorn).
+//  - Temperaturwerte in einer ruhigen OBEREN ZEILE, gleiche Hoehe, jeder ueber
+//    seinem Punkt; eine sehr feine Bezugslinie fuehrt vom Wert zur Kurve. Werte und
+//    Uhrzeiten rahmen die Kurve als zwei saubere Zeilen — nichts in die Kurve
+//    gequetscht.
+//  - Linie EINFARBIG (Zenit). Mittlere Markierungspunkte als feine hohle Ringe;
+//    der jetzt-Punkt gefuellt mit hellem Hof.
+//  - Flaeche mit dezentem WAERME-HAUCH (relativ zur Spanne, sehr blass, laeuft nach
+//    unten aus). Dekoration: die exakte Temperatur steht als Zahl, der Hauch deutet
+//    nur den Rhythmus an.
+//  - Ruhige Tage (kleine Spanne) bleiben flach statt nervoes zu zacken (FLAT_RANGE).
 
 export interface TempCurveInput {
-  // Gefuehlte Temperatur Stunde 0..24 des HEUTIGEN Tages in Stationszeit.
-  // Idealerweise 25 Werte; Luecken werden linear ueberbrueckt. Min. 13 gueltige.
-  dayFeels: (number | null)[];
-  // Aktuelle Dezimalstunde in STATIONSZEIT (z.B. 14.5). Ausserhalb 0..24 -> kein Punkt.
-  nowHour: number;
+  // Gefuehlte Temperatur fuer jetzt..+24h (idealerweise 25 Werte). Luecken werden
+  // linear ueberbrueckt. Mindestens 13 gueltige Werte noetig, sonst versteckt.
+  feels: (number | null)[];
+  // Ganzzahlige aktuelle Stunde in STATIONSZEIT (0..23) fuer die Achsenbeschriftung.
+  // Ausserhalb 0..23 -> Marken zeigen nur Offsets ab "jetzt" ohne Uhrzeit.
+  startHour: number;
+  heading: string;    // i18n t("tc_heading"), z.B. "GEFÜHLTE TEMPERATUR · 24 STUNDEN"
   ariaLabel: string;  // i18n t("tc_aria")
 }
 
 const MIN_POINTS = 13;
-const TICK_LABELS = ['00:00', '04:00', '08:00', '12:00', '18:00', '22:00'];
+const MARKS = 5;            // jetzt + 4 weitere
+const FLAT_RANGE = 8;       // unter 8 Grad Spanne: ruhige, flache Kurve
 
 export function renderTempCurve(container: HTMLElement, input: TempCurveInput): void {
-  const raw = input.dayFeels;
+  const raw = input.feels;
   let lastValid = -1;
   for (let i = 0; i < raw.length; i++) if (Number.isFinite(raw[i] as number)) lastValid = i;
   if (lastValid < 0) { hide(container); return; }
@@ -48,88 +55,78 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
 
   container.hidden = false;
 
-  const W = 340, H = 118;
-  const padL = 14, padR = 14, padT = 22, padB = 20;
+  const W = 340, H = 146;
+  const padL = 16, padR = 16;
+  const headerY = 18;
+  const valRowY = 40;          // feste Wertezeile oben
+  const padT = 58;             // Kurve beginnt darunter
+  const padB = 22;             // Uhrzeit-Zeile unten
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const hoursSpan = temps.length - 1;
 
-  // Skala: an ruhigen Tagen flach bleiben statt winzige Schwankungen auf die volle
-  // Hoehe zu spreizen (sonst zackt eine 14..15-Grad-Kurve nervoes). Die Skalenspanne
-  // waechst erst ab einer echten Tagesspanne von FLAT_RANGE; darunter bleibt sie auf
-  // FLAT_RANGE fixiert, sodass kleine Schwankungen nur einen kleinen Teil der Hoehe
-  // nutzen und die Linie ruhig in der Mitte liegt.
   const min = Math.min(...temps);
   const max = Math.max(...temps);
   const realRange = max - min;
-  const FLAT_RANGE = 8;                            // unter 8 Grad Tagesspanne: ruhige, flache Kurve
   const span = Math.max(realRange, FLAT_RANGE);
   const center = (min + max) / 2;
   const lo = center - span / 2;
   const hi = center + span / 2;
 
-  const xAtHour = (h: number) => padL + (hoursSpan <= 0 ? 0 : (plotW * h) / hoursSpan);
+  const xAt = (i: number) => padL + (hoursSpan <= 0 ? 0 : (plotW * i) / hoursSpan);
   const yAt = (t: number) => padT + plotH * (1 - (t - lo) / (hi - lo));
-  const pts = temps.map((t, h) => ({ h, t, x: xAtHour(h), y: yAt(t) }));
+  const pts = temps.map((t, i) => ({ i, t, x: xAt(i), y: yAt(t) }));
   const n = pts.length;
 
-  let hiI = 0, loI = 0;
-  temps.forEach((t, i) => { if (t > temps[hiI]) hiI = i; if (t < temps[loI]) loI = i; });
-
   const lineD = buildSmoothPath(pts);
-  const areaD = `${lineD} L ${pts[n - 1].x.toFixed(1)} ${(padT + plotH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
+  const areaD = `${lineD} L ${pts[n - 1].x.toFixed(2)} ${(padT + plotH).toFixed(2)} L ${pts[0].x.toFixed(2)} ${(padT + plotH).toFixed(2)} Z`;
 
-  // Waerme-Hauch: horizontaler Verlauf, Farbe je Stunde nach RELATIVER Tagestemperatur.
-  // Sehr blass; das vertikale Auslaufen uebernimmt die Maske + Gruppen-Opazitaet.
-  const warmRange = Math.max(max - min, 1);
+  // Waerme-Hauch: horizontaler, sehr blasser Verlauf nach RELATIVER Tagestemperatur.
+  const warmRange = Math.max(realRange, 1);
   const areaStops = temps.map((t, i) => {
-    const tn = (t - min) / warmRange;             // 0 (kuehlster) .. 1 (waermster Moment)
-    const c = mixWarm(tn);
+    const c = mixWarm((t - min) / warmRange);
     return `<stop offset="${((i / (n - 1)) * 100).toFixed(1)}%" stop-color="rgb(${c[0]},${c[1]},${c[2]})"/>`;
   }).join('');
 
-  // jetzt-Punkt
-  const now = input.nowHour;
-  const showNow = Number.isFinite(now) && now >= 0 && now <= hoursSpan;
-  const nowX = showNow ? xAtHour(now) : 0;
-  const nowY = showNow ? yAtHourInterp(pts, now) : 0;
+  // Fuenf gleichmaessig verteilte Markierungen (x nach Index, nicht nach Uhrzeit).
+  const startOk = Number.isFinite(input.startHour) && input.startHour >= 0 && input.startHour <= 23;
+  const marks = [];
+  for (let k = 0; k < MARKS; k++) {
+    const idx = Math.round((k / (MARKS - 1)) * hoursSpan);
+    const label = k === 0
+      ? 'jetzt'
+      : startOk
+        ? `${String((input.startHour + idx) % 24).padStart(2, '0')}:00`
+        : `+${idx}h`;
+    const anchor = idx === 0 ? 'start' : idx === hoursSpan ? 'end' : 'middle';
+    marks.push({ idx, x: pts[idx].x, y: pts[idx].y, t: pts[idx].t, label, anchor });
+  }
 
-  // Sechs Marken optisch gleichmaessig (x nach Index, nicht nach Uhrzeit)
-  const m = TICK_LABELS.length;
-  const ticks = TICK_LABELS.map((label, k) => ({
-    x: padL + (plotW * k) / (m - 1),
-    label,
-    anchor: k === 0 ? 'start' : k === m - 1 ? 'end' : 'middle',
-  }));
-
-  const grid = ticks
-    .filter((t) => t.anchor === 'middle')
-    .map((t) => `<line x1="${t.x.toFixed(1)}" y1="${padT}" x2="${t.x.toFixed(1)}" y2="${(padT + plotH).toFixed(1)}" class="tc-grid"/>`)
+  // Feine Bezugslinien vom Wert (oben) zur Kurve, einheitlich 8px ueber dem Punkt endend.
+  const guides = marks
+    .map((mk) => `<line x1="${mk.x.toFixed(2)}" y1="${valRowY + 6}" x2="${mk.x.toFixed(2)}" y2="${(mk.y - 8).toFixed(2)}" class="tc-guide"/>`)
     .join('');
 
-  const ring = (p: { x: number; y: number }) =>
-    `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" class="tc-ring"/>`;
-  const rings = ring(pts[hiI]) + (loI !== hiI ? ring(pts[loI]) : '');
-
-  const baselineMax = H - padB - 3;
-  const baselineMin = 10;
-  const placeVal = (idx: number, prefer: 'above' | 'below') => {
-    const p = pts[idx];
-    let by = prefer === 'above' ? p.y - 7 : p.y + 14;
-    if (by < baselineMin) by = baselineMin;
-    if (by > baselineMax) { const up = p.y - 7; by = up >= baselineMin ? up : baselineMax; }
-    return by;
-  };
-  const valHi = `<text x="${pts[hiI].x.toFixed(1)}" y="${placeVal(hiI, 'above').toFixed(1)}" class="tc-val" text-anchor="middle">${Math.round(temps[hiI])}\u00B0</text>`;
-  const valLo = loI !== hiI
-    ? `<text x="${pts[loI].x.toFixed(1)}" y="${placeVal(loI, 'below').toFixed(1)}" class="tc-val" text-anchor="middle">${Math.round(temps[loI])}\u00B0</text>`
-    : '';
-
-  const nowDot = showNow ? `<circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="3" class="tc-now"/>` : '';
-
-  const axis = ticks
-    .map((t) => `<text x="${t.x.toFixed(1)}" y="${(H - 6).toFixed(1)}" class="tc-axis" text-anchor="${t.anchor}">${esc(t.label)}</text>`)
+  // Werte oben, ausgerichtet an Punkt-x.
+  const vals = marks
+    .map((mk) => `<text x="${mk.x.toFixed(2)}" y="${valRowY}" class="tc-val" text-anchor="${mk.anchor}">${Math.round(mk.t)}\u00B0</text>`)
     .join('');
+
+  // Punkte: jetzt gefuellt mit Hof, uebrige hohle Ringe.
+  const dots = marks.map((mk) => {
+    if (mk.idx === 0) {
+      return `<circle cx="${mk.x.toFixed(2)}" cy="${mk.y.toFixed(2)}" r="6.5" class="tc-now-halo"/>` +
+             `<circle cx="${mk.x.toFixed(2)}" cy="${mk.y.toFixed(2)}" r="3.6" class="tc-now"/>` +
+             `<circle cx="${mk.x.toFixed(2)}" cy="${mk.y.toFixed(2)}" r="1.5" class="tc-now-core"/>`;
+    }
+    return `<circle cx="${mk.x.toFixed(2)}" cy="${mk.y.toFixed(2)}" r="3" class="tc-ring"/>`;
+  }).join('');
+
+  const axis = marks
+    .map((mk) => `<text x="${mk.x.toFixed(2)}" y="${(H - 7).toFixed(2)}" class="tc-axis" text-anchor="${mk.anchor}">${esc(mk.label)}</text>`)
+    .join('');
+
+  const header = `<text x="${padL}" y="${headerY}" class="tc-head">${esc(input.heading)}</text>`;
 
   const defs =
     `<defs>` +
@@ -141,10 +138,10 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
 
   const svg =
     `<svg viewBox="0 0 ${W} ${H}" class="tc-svg" role="img" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
-    defs + grid +
+    defs + header + guides +
     `<g class="tc-area-group"><path d="${areaD}" fill="url(#tcArea)" mask="url(#tcMask)"/></g>` +
     `<path d="${lineD}" class="tc-line" fill="none" vector-effect="non-scaling-stroke"/>` +
-    rings + nowDot + valHi + valLo + axis +
+    dots + vals + axis +
     `</svg>`;
 
   container.replaceChildren();
@@ -156,11 +153,10 @@ function hide(container: HTMLElement): void {
   container.replaceChildren();
 }
 
-// Blasse Kuehl->Warm-Mischung fuer den Waerme-Hauch (relativ, sehr gedaempft).
 function mixWarm(tn: number): [number, number, number] {
   const t = Math.max(0, Math.min(1, tn));
-  const cold = [207, 224, 240];   // blasses Kuehlblau
-  const warm = [243, 217, 196];   // blasses Warmsand
+  const cold = [207, 224, 240];
+  const warm = [243, 217, 196];
   return [
     Math.round(cold[0] + (warm[0] - cold[0]) * t),
     Math.round(cold[1] + (warm[1] - cold[1]) * t),
@@ -179,17 +175,9 @@ function interp(raw: (number | null)[], i: number, last: number): number {
   return va + (vb - va) * ((i - a) / (b - a));
 }
 
-function yAtHourInterp(pts: { h: number; x: number; y: number }[], hour: number): number {
-  const i = Math.floor(hour);
-  const a = pts[Math.max(0, Math.min(i, pts.length - 1))];
-  const b = pts[Math.max(0, Math.min(i + 1, pts.length - 1))];
-  const f = hour - i;
-  return a.y * (1 - f) + b.y * f;
-}
-
 function buildSmoothPath(P: { x: number; y: number }[]): string {
   if (P.length < 2) return '';
-  let d = `M ${P[0].x.toFixed(1)} ${P[0].y.toFixed(1)}`;
+  let d = `M ${P[0].x.toFixed(2)} ${P[0].y.toFixed(2)}`;
   for (let i = 0; i < P.length - 1; i++) {
     const p0 = P[i - 1] || P[i];
     const p1 = P[i];
@@ -202,7 +190,7 @@ function buildSmoothPath(P: { x: number; y: number }[]): string {
     const yHi = Math.max(p1.y, p2.y), yLo = Math.min(p1.y, p2.y);
     c1y = Math.max(Math.min(c1y, yHi), yLo);
     c2y = Math.max(Math.min(c2y, yHi), yLo);
-    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   }
   return d;
 }
@@ -211,24 +199,19 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Hilfsfunktion fuer app.ts: baut dayFeels (Stunde 0..24, Stationszeit) und nowHour
-// aus dem vollen heutigen Tag. hourlyToday = die nach heutigem Stationsdatum
-// gefilterten Stundenwerte (aus weather.ts, siehe Verdrahtungshinweis).
-export function dayFeelsFromHourly(
-  hourlyToday: { time: string; apparentTemperature: number }[],
-  nextMidnight: { time: string; apparentTemperature: number } | null,
-  nowHourDecimal: number,
-): { dayFeels: (number | null)[]; nowHour: number } {
-  const byHour = new Map<number, number>();
-  for (const e of hourlyToday) {
-    if (typeof e.time !== 'string') continue;
-    const h = Number(e.time.slice(11, 13));
-    if (Number.isFinite(h)) byHour.set(h, e.apparentTemperature);
+// Hilfsfunktion fuer app.ts: aktuelle ganzzahlige Stunde in Stationszeit.
+// timezone = forecast.timezone (IANA). Ohne/ungueltig -> -1 (Marken zeigen +Nh).
+export function stationStartHour(timezone: string | undefined): number {
+  if (!timezone) return -1;
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone, hour: '2-digit', hour12: false,
+    }).formatToParts(new Date());
+    let h = Number(parts.find((p) => p.type === 'hour')?.value);
+    if (!Number.isFinite(h)) return -1;
+    if (h === 24) h = 0;
+    return h;
+  } catch {
+    return -1;
   }
-  const dayFeels: (number | null)[] = [];
-  for (let h = 0; h <= 24; h++) {
-    if (h < 24) dayFeels.push(byHour.has(h) ? byHour.get(h)! : null);
-    else dayFeels.push(nextMidnight ? nextMidnight.apparentTemperature : null);
-  }
-  return { dayFeels, nowHour: nowHourDecimal };
 }

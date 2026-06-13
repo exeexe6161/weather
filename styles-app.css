@@ -885,23 +885,27 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .hour-ico{width:22px;height:22px;color:var(--l2);}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 
-/* ══ Temperaturverlauf (heutiger Kalendertag 00:00–24:00) ══
-   Ruhige Linie unter der Stundenleiste, ALLES in EINEM SVG: Linie in EINER
-   Farbe (Zenit), wandernder jetzt-Punkt, dezentes Gitter, feste Uhrzeit-Achse,
-   Werte. Unter der Linie ein sehr blasser Wärme-Hauch (kühl→warm, RELATIV zur
-   Tagesspanne) — als Inline-Gradient im SVG mit vertikaler Ausblend-Maske,
-   nicht in CSS. Ring-Kern (--s1 = Kartenhintergrund) und Gitter (--l1) sind
-   theme-aware und kippen mit dem Dark Mode mit — daher kein eigener Dark-Block
-   nötig. Die zwei Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm)
-   stecken fest im SVG und sind für hellen Grund gedacht. */
+/* ══ Temperaturverlauf (rollende 24 Stunden ab jetzt) ══
+   Ruhige Linie unter der Stundenleiste, ALLES in EINEM SVG: Überschrift,
+   Wertezeile oben (mit feinen Bezugslinien zur Kurve), einfarbige Zenit-Linie,
+   jetzt-Punkt links mit Hof, hohle Markierungsringe, Uhrzeit-Achse unten.
+   Unter der Linie ein sehr blasser Wärme-Hauch (kühl→warm, RELATIV zur Spanne)
+   — als Inline-Gradient im SVG mit vertikaler Ausblend-Maske, nicht in CSS.
+   Ring-/Punkt-Kern nutzt --s1 (Kartenhintergrund, theme-aware). Die zwei
+   Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) und die zwei
+   Festtöne (#33506f Werte, #8a939d Uhrzeiten) sind für hellen Grund gedacht —
+   im Dark Mode separat zu prüfen. */
 .tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4);}
 .tc-svg{width:100%;height:auto;display:block;}
-.tc-line{stroke:var(--wp-zenit);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.tc-now{fill:var(--wp-zenit);} /* wandernder jetzt-Punkt */
-.tc-ring{fill:var(--s1);stroke:var(--wp-zenit);stroke-width:1.6;} /* Kern = Kartenhintergrund, theme-aware */
-.tc-grid{stroke:var(--l1);stroke-opacity:.045;stroke-width:.6;}
-.tc-val{font:500 11px Inter,sans-serif;fill:var(--wp-stahl);font-variant-numeric:tabular-nums;}
-.tc-axis{font:400 8.5px Inter,sans-serif;fill:var(--l4);}
+.tc-head{font:600 10px Inter,sans-serif;fill:var(--wp-stahl);letter-spacing:.6px;}
+.tc-line{stroke:var(--wp-zenit);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.tc-guide{stroke:var(--wp-zenit);stroke-opacity:.10;stroke-width:1;}
+.tc-val{font:600 12px Inter,sans-serif;fill:#33506f;font-variant-numeric:tabular-nums;}
+.tc-axis{font:400 9px Inter,sans-serif;fill:#8a939d;}
+.tc-ring{fill:var(--s1);stroke:var(--wp-zenit);stroke-width:1.7;} /* Kern = Kartenhintergrund, theme-aware */
+.tc-now{fill:var(--wp-zenit);}
+.tc-now-halo{fill:var(--wp-zenit);fill-opacity:.13;}
+.tc-now-core{fill:var(--s1);}
 
 /* ══ 7 Tage ══ */
 .daily-list{padding:var(--sp-2) var(--sp-4);text-align:left;}
