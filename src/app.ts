@@ -6,7 +6,7 @@ import { fetchWeather, type Forecast } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
-import { getLang, getLocale, t } from "./i18n/ui";
+import { getLang, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabelShort } from "./i18n/weather-labels";
 import { formatTemp } from "./lib/format";
@@ -14,9 +14,8 @@ import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
-import { renderTempCurve, nightFractionsFromStationTimes, type TempCurveInput } from "./components/TempCurve";
+import { renderTempCurve, nightFlagsFromStationTimes, type TempCurveInput } from "./components/TempCurve";
 import { nightSpans, isNightAtMinutes, toMinutes } from "./lib/daylight";
-import { formatHour } from "./lib/format";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { renderIcons } from "./icons";
@@ -107,11 +106,12 @@ function renderPollen(): void {
   renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
 }
 
-// Eingabe für den Temperaturverlauf: die Komponente rendert alles in einem
-// SVG und bekommt fertige Daten. feels und hourTimes entstehen paarweise aus
-// demselben Filter (gleiche Länge, gleiche Reihenfolge, Stationszeit-Strings
-// unverändert). Die Nacht-Spannen liefert der Adapter unten aus derselben
-// daylight-Quelle, mit der die Stundenleiste ihre Mond-Symbole wählt.
+// Eingabe für den Temperaturverlauf: die Komponente rendert alles in einem SVG
+// und baut die Zeitachse selbst aus hourTimes (echte Uhrzeiten). feels und
+// hourTimes entstehen paarweise aus demselben Filter (gleiche Länge, gleiche
+// Reihenfolge, Stationszeit-Strings unverändert — NICHT in lokale Zeit
+// umrechnen). nightFlags liefert der Adapter unten aus derselben daylight-
+// Quelle, mit der die Stundenleiste ihre Mond-Symbole wählt.
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   const usable = forecast.hourly.filter(
     (h) => Number.isFinite(h.apparentTemperature) && toMinutes(h.time) !== null,
@@ -119,31 +119,23 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   const feels = usable.map((h) => h.apparentTemperature);
   const hourTimes = usable.map((h) => h.time);
 
-  // Adapter daylight.ts → nightFractionsFromStationTimes: die Hilfsfunktion
-  // erwartet ein Minuten-Prädikat und einen iso→Minuten Konverter. Beides
-  // kommt direkt aus daylight.ts (isNightAtMinutes über die nightSpans-
-  // Intervalle, toMinutes mit NaN-Fallback — NaN matcht kein Intervall und
-  // gilt damit als Tag; usable enthält ohnehin nur parsebare Zeiten).
+  // Adapter daylight.ts → nightFlagsFromStationTimes: die Hilfsfunktion erwartet
+  // ein Minuten-Prädikat und einen iso→Minuten Konverter. isNightAtMinutes
+  // prüft gegen die nightSpans-Intervalle — wörtlich dieselbe Quelle wie die
+  // Mond-Symbole der Stundenleiste, damit der Farbverlauf der Linie und die
+  // Symbole zur selben Minute kippen. Fehlen die Sonnenzeiten (alte Caches),
+  // leeres Array → Linie einfarbig Tag, kein Fehler, kein Raten.
   const spans = nightSpans(forecast.daily);
-  const nightFractions =
+  const nightFlags =
     spans === null
-      ? [] // keine Sonnenzeiten (alte Caches) → keine Tönung, kein Raten
-      : nightFractionsFromStationTimes(
+      ? []
+      : nightFlagsFromStationTimes(
           hourTimes,
           (stationMinutes) => isNightAtMinutes(stationMinutes, spans),
           (iso) => toMinutes(iso) ?? Number.NaN,
         );
 
-  const locale = getLocale();
-  return {
-    feels,
-    hourTimes,
-    nightFractions,
-    midLabel: usable.length ? formatHour(usable[Math.floor(usable.length / 2)].time, locale) : "",
-    endLabel: usable.length ? formatHour(usable[usable.length - 1].time, locale) : "",
-    nowLabel: t("tc_now"),
-    ariaLabel: t("tc_aria"),
-  };
+  return { feels, hourTimes, nightFlags, ariaLabel: t("tc_aria") };
 }
 
 function renderContent(): void {

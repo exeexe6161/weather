@@ -132,7 +132,6 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
   // ── Temperaturverlauf (ruhige Linie unter der Stundenleiste)
   tc_aria:         { de: "Temperaturverlauf der nächsten 24 Stunden", en: "Temperature trend for the next 24 hours", tr: "Önümüzdeki 24 saatin sıcaklık seyri" },
-  tc_now:          { de: "jetzt", en: "now", tr: "şimdi" },
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   today:           { de: "Heute", en: "Today", tr: "Bugün" },
   footerImpressum: { de: "Impressum", en: "Imprint", tr: "Künye" },
