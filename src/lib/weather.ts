@@ -36,6 +36,15 @@ export interface Forecast {
   // null wenn die API ihn nicht liefert; Forecast-Caches vor diesem Feature
   // haben das Feld gar nicht (undefined) — Konsumenten prüfen per typeof.
   yesterdayTempMax: number | null;
+  // Gefühlte Temperatur des HEUTIGEN Kalendertags (00:00..23:00 Stationszeit)
+  // — für den Tagesverlauf (TempCurve), der auch die bereits vergangenen
+  // Morgenstunden zeigt. Bewusst getrennt von `hourly` (jetzt→+24h, das
+  // Stundenleiste/Trockenfenster brauchen). Alte Caches vor diesem Feld:
+  // Konsument fällt auf [] zurück (Diagramm entfällt).
+  hourlyToday: { time: string; apparentTemperature: number }[];
+  // Erster Eintrag des Folgetags (00:00) als sauberer Abschluss bei Stunde 24;
+  // null wenn die Antwort nicht so weit reicht.
+  nextMidnight: { time: string; apparentTemperature: number } | null;
 }
 
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
@@ -102,5 +111,24 @@ function normalize(data: any): Forecast {
     };
   });
 
-  return { current, hourly, daily, timezone: data.timezone, yesterdayTempMax };
+  // Heutiger Kalendertag für den Tagesverlauf: die Stundenwerte mit
+  // Stationszeit-Datum == todayDate (Stunde 00..23), und der erste Eintrag des
+  // Folgetags (00:00) separat als nextMidnight. data.hourly ist chronologisch,
+  // heute liegt dank past_days=1 vollständig vor (inkl. der Morgenstunden, die
+  // `hourly` wegschneidet). Bewusst getrennt: dayFeelsFromHourly mappt jeden
+  // hourlyToday-Eintrag nach Stunde, da darf kein Folgetag-00:00 die eigene
+  // 00:00 überschreiben. Fehlende Einzelstunden überbrückt die TempCurve.
+  const hourlyToday: { time: string; apparentTemperature: number }[] = [];
+  let nextMidnight: { time: string; apparentTemperature: number } | null = null;
+  for (let i = 0; i < h.time.length; i++) {
+    const day = h.time[i].slice(0, 10);
+    if (day === todayDate) {
+      hourlyToday.push({ time: h.time[i], apparentTemperature: h.apparent_temperature[i] });
+    } else if (day > todayDate) {
+      nextMidnight = { time: h.time[i], apparentTemperature: h.apparent_temperature[i] };
+      break; // erster Folgetag-Eintrag = 00:00
+    }
+  }
+
+  return { current, hourly, daily, timezone: data.timezone, yesterdayTempMax, hourlyToday, nextMidnight };
 }

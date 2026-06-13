@@ -14,8 +14,7 @@ import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
-import { renderTempCurve, nightFlagsFromStationTimes, type TempCurveInput } from "./components/TempCurve";
-import { nightSpans, isNightAtMinutes, toMinutes } from "./lib/daylight";
+import { renderTempCurve, dayFeelsFromHourly, type TempCurveInput } from "./components/TempCurve";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { renderIcons } from "./icons";
@@ -106,36 +105,41 @@ function renderPollen(): void {
   renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
 }
 
-// Eingabe für den Temperaturverlauf: die Komponente rendert alles in einem SVG
-// und baut die Zeitachse selbst aus hourTimes (echte Uhrzeiten). feels und
-// hourTimes entstehen paarweise aus demselben Filter (gleiche Länge, gleiche
-// Reihenfolge, Stationszeit-Strings unverändert — NICHT in lokale Zeit
-// umrechnen). nightFlags liefert der Adapter unten aus derselben daylight-
-// Quelle, mit der die Stundenleiste ihre Mond-Symbole wählt.
+// Aktuelle Dezimalstunde in der Zeitzone des ANGEZEIGTEN Orts (Stationszeit),
+// nie in der Nutzerzeit — sonst wanderte der jetzt-Punkt bei fernen Orten
+// falsch. Intl rechnet den aktuellen Moment in die Zielzone (hour12:false);
+// h + m/60 ergibt z.B. 14.5 für 14:30. Ohne/ungültige timezone (alte Caches)
+// → -1, also außerhalb 0..24 → die Komponente zeichnet keinen jetzt-Punkt.
+function stationNowHour(timezone: unknown): number {
+  if (typeof timezone !== "string" || timezone === "") return -1;
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date());
+    let h = Number(parts.find((p) => p.type === "hour")?.value);
+    const m = Number(parts.find((p) => p.type === "minute")?.value);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return -1;
+    if (h === 24) h = 0; // manche Umgebungen liefern 24 statt 0 für Mitternacht
+    return h + m / 60;
+  } catch {
+    return -1;
+  }
+}
+
+// Eingabe für den Tagesverlauf (fester Kalendertag 00:00..24:00). dayFeels und
+// nowHour kommen ausschließlich aus Stationszeit-Daten. hourlyToday/nextMidnight
+// fehlen in Forecast-Caches vor diesem Feature → []/null → die Komponente
+// versteckt sich, bis frische Daten da sind (kein Crash, kein NaN).
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
-  const usable = forecast.hourly.filter(
-    (h) => Number.isFinite(h.apparentTemperature) && toMinutes(h.time) !== null,
+  const { dayFeels, nowHour } = dayFeelsFromHourly(
+    forecast.hourlyToday ?? [],
+    forecast.nextMidnight ?? null,
+    stationNowHour(forecast.timezone),
   );
-  const feels = usable.map((h) => h.apparentTemperature);
-  const hourTimes = usable.map((h) => h.time);
-
-  // Adapter daylight.ts → nightFlagsFromStationTimes: die Hilfsfunktion erwartet
-  // ein Minuten-Prädikat und einen iso→Minuten Konverter. isNightAtMinutes
-  // prüft gegen die nightSpans-Intervalle — wörtlich dieselbe Quelle wie die
-  // Mond-Symbole der Stundenleiste, damit der Farbverlauf der Linie und die
-  // Symbole zur selben Minute kippen. Fehlen die Sonnenzeiten (alte Caches),
-  // leeres Array → Linie einfarbig Tag, kein Fehler, kein Raten.
-  const spans = nightSpans(forecast.daily);
-  const nightFlags =
-    spans === null
-      ? []
-      : nightFlagsFromStationTimes(
-          hourTimes,
-          (stationMinutes) => isNightAtMinutes(stationMinutes, spans),
-          (iso) => toMinutes(iso) ?? Number.NaN,
-        );
-
-  return { feels, hourTimes, nightFlags, ariaLabel: t("tc_aria") };
+  return { dayFeels, nowHour, ariaLabel: t("tc_aria") };
 }
 
 function renderContent(): void {
