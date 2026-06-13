@@ -886,7 +886,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 
 /* ══ Temperaturverlauf (rollende 24 Stunden ab jetzt) ══
-   Ruhige Linie unter der Stundenleiste, ALLES in EINEM SVG: Überschrift,
+   Der Kartentitel steht als äußere .sh-Eyebrow im HTML (gleiches Muster wie
+   die Nachbarkarten), NICHT mehr im SVG. Im SVG nur noch das Diagramm:
    Wertezeile oben (mit feinen Bezugslinien zur Kurve), einfarbige Zenit-Linie,
    jetzt-Punkt links mit Hof, hohle Markierungsringe, Uhrzeit-Achse unten.
    Unter der Linie ein sehr blasser Wärme-Hauch (kühl→warm, RELATIV zur Spanne)
@@ -897,7 +898,6 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    im Dark Mode separat zu prüfen. */
 .tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4);}
 .tc-svg{width:100%;height:auto;display:block;}
-.tc-head{font:600 10px Inter,sans-serif;fill:var(--wp-stahl);letter-spacing:.6px;}
 .tc-line{stroke:var(--wp-zenit);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .tc-guide{stroke:var(--wp-zenit);stroke-opacity:.10;stroke-width:1;}
 .tc-val{font:600 12px Inter,sans-serif;fill:#33506f;font-variant-numeric:tabular-nums;}

@@ -115,7 +115,6 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   return {
     feels,
     startHour: stationStartHour(forecast.timezone),
-    heading: t("tc_heading"),
     ariaLabel: t("tc_aria"),
   };
 }
@@ -133,7 +132,12 @@ function renderContent(): void {
   });
   renderDressToday(byId("dressToday"), state.forecast);
   renderHourlyStrip(byId("hourlyStrip"), state.forecast);
-  renderTempCurve(byId("tempCurve"), buildTempCurveInput(state.forecast));
+  // Diagramm rendern; der äußere Kartentitel (gleiches .sh-Muster wie die
+  // Nachbarkarten) folgt der Sichtbarkeit des Diagramms — versteckt es sich bei
+  // zu wenigen Daten, verschwindet auch der Titel (wie beim Pollen-Muster).
+  const tempCurveEl = byId("tempCurve");
+  renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
+  byId("tempCurveHeading").hidden = tempCurveEl.hidden;
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.

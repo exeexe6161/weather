@@ -31,7 +31,10 @@ export interface TempCurveInput {
   // Ganzzahlige aktuelle Stunde in STATIONSZEIT (0..23) fuer die Achsenbeschriftung.
   // Ausserhalb 0..23 -> Marken zeigen nur Offsets ab "jetzt" ohne Uhrzeit.
   startHour: number;
-  heading: string;    // i18n t("tc_heading"), z.B. "GEFÜHLTE TEMPERATUR · 24 STUNDEN"
+  // Hinweis: Die sichtbare Ueberschrift ("GEFÜHLTE TEMPERATUR · 24 STUNDEN") wird
+  // NICHT hier gezeichnet, sondern als normaler Kartentitel im HTML ueber der Karte
+  // gesetzt — gleiches Muster wie "HEUTE ANZIEHEN" / "NÄCHSTE 24 STUNDEN". So bleiben
+  // alle Karten konsistent. Diese Komponente rendert nur das Diagramm-SVG.
   ariaLabel: string;  // i18n t("tc_aria")
 }
 
@@ -55,11 +58,10 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
 
   container.hidden = false;
 
-  const W = 340, H = 146;
+  const W = 340, H = 116;
   const padL = 16, padR = 16;
-  const headerY = 18;
-  const valRowY = 40;          // feste Wertezeile oben
-  const padT = 58;             // Kurve beginnt darunter
+  const valRowY = 14;          // feste Wertezeile oben
+  const padT = 30;             // Kurve beginnt darunter
   const padB = 22;             // Uhrzeit-Zeile unten
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
@@ -126,7 +128,6 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
     .map((mk) => `<text x="${mk.x.toFixed(2)}" y="${(H - 7).toFixed(2)}" class="tc-axis" text-anchor="${mk.anchor}">${esc(mk.label)}</text>`)
     .join('');
 
-  const header = `<text x="${padL}" y="${headerY}" class="tc-head">${esc(input.heading)}</text>`;
 
   const defs =
     `<defs>` +
@@ -138,7 +139,7 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
 
   const svg =
     `<svg viewBox="0 0 ${W} ${H}" class="tc-svg" role="img" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
-    defs + header + guides +
+    defs + guides +
     `<g class="tc-area-group"><path d="${areaD}" fill="url(#tcArea)" mask="url(#tcMask)"/></g>` +
     `<path d="${lineD}" class="tc-line" fill="none" vector-effect="non-scaling-stroke"/>` +
     dots + vals + axis +
