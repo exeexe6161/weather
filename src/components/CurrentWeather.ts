@@ -198,7 +198,12 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
       </div>` : ""}
     </div>` : ""}
-    ${stampTime ? `<div class="cw-stale" role="status">${esc(t(freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", stampTime))}</div>` : ""}
+    ${stampTime ? `<div class="cw-stale-row">
+      <span class="cw-stale" role="status">${esc(t(freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", stampTime))}</span>
+      <button type="button" class="cw-refresh" id="cwRefresh" aria-label="${esc(t("refreshWeather"))}">
+        <i data-lucide="rotate-cw" class="cw-refresh-ico"></i>
+      </button>
+    </div>` : ""}
     ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
   `;
 

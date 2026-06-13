@@ -733,12 +733,47 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 /* Ehrlicher Zeitstempel der Anzeige ("Stand 14:30" beim letzten Stand,
    "Aktualisiert 14:32" bei frischen Daten): leise Fußnote, unaufdringlich,
-   kein Zenit — die Frische ist durchgehend ablesbar */
-.cw-stale{
+   kein Zenit — die Frische ist durchgehend ablesbar. Daneben der dezente
+   Aktualisieren-Button. */
+.cw-stale-row{
   margin-top:var(--sp-3);
+  display:flex;
+  align-items:center;
+  gap:2px;
+}
+.cw-stale{
   font-size:var(--fs-xs);
   color:var(--l4);
   font-variant-numeric:tabular-nums;
+}
+/* Monochrom Stahl, kein Akzent, kein Grün. Sichtbares Icon 16px, Trefferfläche
+   aber 40x40 (negativer Rand hält die leise Zeile flach). Hover/aktiv minimal
+   Richtung Primärtext (--l1: im Light Karbon, im Dark heller — theme-aware).
+   Fokusring kommt aus der globalen :focus-visible Regel (BFSG). */
+.cw-refresh{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  margin:-12px -10px;
+  padding:0;
+  background:none;
+  border:none;
+  border-radius:var(--r-pill);
+  color:var(--wp-stahl);
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.cw-refresh:hover,.cw-refresh:active{color:var(--l1);}
+.cw-refresh:disabled{cursor:default;opacity:.6;}
+.cw-refresh-ico{width:16px;height:16px;}
+/* Dreht nur während des Ladens; bei Erfolg/Fehler wird die Klasse entfernt
+   (kein Dauerdrehen). Reduced-Motion: kein Spin, der disabled-Zustand bleibt
+   als Rückmeldung (Muster wie beim Install-Hinweis). */
+@keyframes cw-refresh-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:no-preference){
+  .cw-refresh--spinning .cw-refresh-ico{animation:cw-refresh-spin .8s linear infinite;}
 }
 
 /* ══ Heute anziehen ══ */

@@ -149,6 +149,58 @@ function renderContent(): void {
     renderContent();
     renderIcons();
   });
+  document.getElementById("cwRefresh")?.addEventListener("click", refreshCurrentPlace);
+}
+
+// Manuelles Aktualisieren über den Button neben "Aktualisiert HH:MM": lädt die
+// Wetterdaten der aktuell angezeigten Stadt neu. Bewusst über fetchWeather +
+// renderContent (dieselben Bausteine, die selectPlace intern nutzt), NICHT über
+// selectPlace selbst — letzteres würde für den Geo-Ort die Loading-Ansicht zeigen
+// bzw. für eine gecachte Stadt kurz auf "Stand HH:MM" zurückspringen und dabei
+// den drehenden Button überschreiben. Die Karte bleibt sichtbar, nur das Icon
+// dreht sich. Pollen bleibt unberührt (separater Endpoint, unabhängig).
+let refreshing = false;
+function refreshCurrentPlace(): void {
+  const place = state.place;
+  if (!place || refreshing) return;
+  refreshing = true;
+  const btn = document.getElementById("cwRefresh") as HTMLButtonElement | null;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add("cw-refresh--spinning");
+  }
+
+  fetchWeather(place.latitude, place.longitude)
+    .then((forecast) => {
+      if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
+      state.forecast = forecast;
+      state.freshness = "fresh";
+      state.updatedAt = new Date().toISOString();
+      if (place.id !== GEO_PLACE_ID) writeJson(FORECAST_CACHE_KEY, {
+        placeId: place.id,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        savedAt: state.updatedAt,
+        forecast,
+      } satisfies ForecastCache);
+      // Frisch rendern: neuer "Aktualisiert HH:MM", der Button wird dabei neu
+      // gezeichnet (ohne Spin, wieder aktiv) — kein manuelles Zurücksetzen nötig.
+      renderContent();
+      renderFavorites();
+      renderIcons();
+    })
+    .catch(() => {
+      // Fehler: aktuellen Stand stehen lassen (kein Sprung in die Fehleransicht),
+      // nur den Button zurücksetzen — kein Dauerdrehen.
+      const b = document.getElementById("cwRefresh") as HTMLButtonElement | null;
+      if (b) {
+        b.disabled = false;
+        b.classList.remove("cw-refresh--spinning");
+      }
+    })
+    .finally(() => {
+      refreshing = false;
+    });
 }
 
 // Hält die URL synchron zur angezeigten Stadt (ohne Reload). Der Geolocation-

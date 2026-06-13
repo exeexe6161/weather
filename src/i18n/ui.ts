@@ -42,6 +42,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   offlineNote:     { de: "Keine Verbindung. Gespeicherte Daten werden angezeigt.", en: "No connection. Showing saved data.", tr: "Bağlantı yok. Kayıtlı veriler gösteriliyor." },
   staleNote:       { de: "Stand {time}", en: "As of {time}", tr: "{time} itibarıyla" },
   freshNote:       { de: "Aktualisiert {time}", en: "Updated {time}", tr: "{time} itibarıyla güncel" },
+  refreshWeather:  { de: "Wetterdaten aktualisieren", en: "Refresh weather data", tr: "Hava verilerini yenile" },
   install_title_prompt: { de: "WeatherPure installieren", en: "Install WeatherPure", tr: "WeatherPure'u yükle" },
   install_text_prompt:  { de: "Für schnellen Zugriff zum Home Bildschirm hinzufügen.", en: "Add it to your home screen for quick access.", tr: "Hızlı erişim için ana ekrana ekle." },
   install_button:       { de: "Installieren", en: "Install", tr: "Yükle" },
