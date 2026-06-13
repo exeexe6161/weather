@@ -30,8 +30,8 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <title>WeatherPure – Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=20260612-32"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=20260612-32">
+<script src="./theme-init.js?v=20260612-33"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=20260612-33">
 </head>
 <body>
 <noscript><div class="noscript-overlay"><p data-i18n="noscriptText">Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.</p></div></noscript>
@@ -68,7 +68,7 @@
 <section class="search-section" data-i18n-aria="searchRegion" aria-label="Ortssuche" id="searchBar">
   <div class="search-field">
     <i data-lucide="search" class="search-ico"></i>
-    <input id="citySearch" class="search-input" type="text" autocomplete="off" spellcheck="false"
+    <input id="citySearch" class="search-input" type="text" autocomplete="off" spellcheck="false" maxlength="100"
            role="combobox" aria-expanded="false" aria-controls="searchResults" aria-autocomplete="list"
            data-i18n-aria="searchLabel" aria-label="Stadt suchen"
            data-i18n-placeholder="searchPlaceholder" placeholder="Stadt suchen, z. B. Berlin">
@@ -144,6 +144,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=20260612-32"></script>
+<script src="./script.min.js?v=20260612-33"></script>
 </body>
 </html>

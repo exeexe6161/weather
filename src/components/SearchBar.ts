@@ -1,7 +1,7 @@
 // Suche + Geolocation opt-in. Suche ist Default; die Standortabfrage
 // startet ausschließlich nach Klick auf die klar beschriftete Schaltfläche
 // (Einwilligung), Koordinaten werden nicht persistiert.
-import { searchCity, type Place } from "../lib/geocoding";
+import { searchCity, GEO_PLACE_ID, type Place } from "../lib/geocoding";
 import { t, getLang } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
@@ -131,7 +131,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
         geoBtn.disabled = false;
         showStatus("");
         opts.onSelect({
-          id: -1,
+          id: GEO_PLACE_ID, // nie persistiert: dieselbe Identität, an der alle Geo-Guards hängen
           name: t("myLocation"),
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,

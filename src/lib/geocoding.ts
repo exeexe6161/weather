@@ -33,8 +33,14 @@ function isPlaceResult(r: any): boolean {
   );
 }
 
+// Obergrenze für die Anfrage: echte Ortsnamen sind kurz; ein überlanger
+// Wert (z. B. aus einem präparierten ?stadt=-Link) würde sonst ungekürzt in
+// die Geocoding-URL wandern. Auf den sinnvollen Präfix kappen statt zu
+// verwerfen — eine legitime, nur zu lange Eingabe sucht weiter.
+const MAX_QUERY_LEN = 100;
+
 export async function searchCity(query: string, language = "de"): Promise<Place[]> {
-  const q = query.trim();
+  const q = query.trim().slice(0, MAX_QUERY_LEN);
   if (q.length < 2) return [];
   // Mehr Treffer anfordern als angezeigt werden: der Ortsfilter unten wirft
   // Länder und Regionen raus, die Liste soll danach trotzdem voll sein

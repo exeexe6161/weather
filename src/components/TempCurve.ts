@@ -8,6 +8,8 @@
 // Nacht-Toenung kommt von AUSSEN (nightSpans aus daylight.ts), damit Toenung und die
 // Mondsymbole der Stundenleiste garantiert dieselbe Quelle nutzen.
 
+import { esc } from "../dom";
+
 export interface TempCurveInput {
   feels: number[];        // gefuehlte Temperatur je Stunde ab "jetzt" (apparentTemperature)
   hourTimes: string[];    // "YYYY-MM-DDTHH:mm" in STATIONSZEIT, gleiche Laenge wie feels
@@ -106,11 +108,11 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
     .map((L) => `<text x="${L.x.toFixed(1)}" y="${L.by.toFixed(1)}" class="tc-val" text-anchor="middle">${Math.round(L.t)}\u00B0</text>`)
     .join('');
   const anks = anchors
-    .map((A) => `<text x="${A.x.toFixed(1)}" y="${ankY}" class="tc-anchor" text-anchor="${A.anchor}">${escapeText(A.t)}</text>`)
+    .map((A) => `<text x="${A.x.toFixed(1)}" y="${ankY}" class="tc-anchor" text-anchor="${A.anchor}">${esc(A.t)}</text>`)
     .join('');
 
   const svg =
-    `<svg viewBox="0 0 ${W} ${H}" class="tc-svg" role="img" aria-label="${escapeText(input.ariaLabel)}" preserveAspectRatio="none">` +
+    `<svg viewBox="0 0 ${W} ${H}" class="tc-svg" role="img" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
     nightRects +
     `<path d="${pathD}" class="tc-line" fill="none" vector-effect="non-scaling-stroke"/>` +
     dots + vals + anks +
@@ -167,7 +169,3 @@ function buildSmoothPath(P: { x: number; y: number }[]): string {
 }
 
 function clamp01(v: number): number { return Math.max(0, Math.min(1, v)); }
-
-function escapeText(s: string): string {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
