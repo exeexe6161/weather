@@ -958,6 +958,31 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
 .day-temps{display:flex;gap:10px;align-items:baseline;}
 .day-max{font-size:var(--fs-md);font-weight:700;}
 .day-min{font-size:var(--fs-sm);color:var(--l4);}
+/* Temperaturbalken (Variante A): dezente zweite Zeile, eingerückt unter der
+   Beschreibung (Grid-Spalte 3 bis zum rechten Rand), zeigt die Tagesspanne im
+   Wochenbereich. Position der Füllung kommt per CSSOM aus DailyForecast.ts
+   (CSP-konform, kein inline style-Attribut). Rein dekorativ → aria-hidden. */
+.day-bar{
+  grid-column:3 / -1;
+  grid-row:2;
+  position:relative;
+  height:5px;
+  border-radius:var(--r-pill);
+  background:rgba(0,0,0,0.06);
+}
+html[data-theme="dark"] .day-bar{background:rgba(255,255,255,0.08);}
+.day-bar-fill{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  min-width:6px; /* Hi==Lo → sichtbarer Punkt statt 0 Breite */
+  border-radius:var(--r-pill);
+  /* dieselbe Kühl→Warm-Idee wie der Wärme-Hauch im Diagramm (Zusammenhang) */
+  background:linear-gradient(90deg,#7BA7D6,#E8B98A);
+  opacity:.75; /* im hellen Modus gedämpft; im Dark Mode volle Deckkraft (s.u.) */
+}
+html[data-theme="dark"] .day-bar-fill{opacity:1;}
 
 /* ══ Footer ══ */
 footer{margin-top:48px;padding:0 16px;}
