@@ -501,16 +501,24 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   padding:0 4px;
 }
 .geo-row{margin-top:var(--sp-4);}
-/* Getönte Zenit Fläche statt Vollblau: als Aktion erkennbar, drängt sich aber
-   nicht auf (passend zum "Optional" darunter). Zarter Zenit Rand als Kontur;
-   inline-flex hält ihn auf Textbreite (360 px: nicht volle Breite). */
+/* Standort- und Aktualisieren-Button nebeneinander, je ~halbe Breite. Bei zu
+   wenig Platz (schmales Handy) brechen sie sauber untereinander um statt zu
+   quetschen — flex-wrap + Inhaltsbreite als Mindestmaß. */
+.geo-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+/* Standort-Button: getönte Zenit-Fläche mit zartem Zenit-Rand — der EINE Akzent.
+   Der Aktualisieren-Button daneben bleibt neutral (.geo-btn--neutral). */
 .geo-btn{
+  flex:1 1 130px;
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:8px;
   height:var(--h-btn-md);
-  padding:0 18px;
-  max-width:100%;
+  padding:0 14px;
   background:var(--accent-soft);
   border:none;
   border-radius:var(--r-btn);
@@ -520,12 +528,22 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   font-weight:600;
   color:var(--accent-text);
   cursor:pointer;
-  transition:transform var(--t-base),background-color var(--t-base);
+  transition:transform var(--t-base),background-color var(--t-base),color var(--t-base);
 }
 .geo-btn:hover{background:var(--accent-soft-hover);}
 .geo-btn:active{transform:scale(var(--press-scale));background:var(--accent-soft-active);}
 .geo-btn:disabled{opacity:.6;cursor:default;}
 .geo-btn-ico{width:16px;height:16px;}
+/* Neutraler Aktualisieren-Button: ruhiger Stahl-Umriss + Stahl-Text, kein
+   Akzent, kein Grün (Ein-Akzent-Regel). Hover dezent Richtung Primärtext
+   (--l1: im Light Karbon, im Dark heller — theme-aware). */
+.geo-btn--neutral{
+  background:none;
+  box-shadow:0 0 0 1px var(--wp-stahl);
+  color:var(--wp-stahl);
+}
+.geo-btn--neutral:hover{background:var(--s2);color:var(--l1);}
+.geo-btn--neutral:active{background:var(--s2);color:var(--l1);}
 .geo-hint{
   margin-top:var(--sp-2);
   font-size:var(--fs-xs); /* bereits 11px (≈0.69rem), kleiner als 0.8rem */
@@ -733,47 +751,20 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 /* Ehrlicher Zeitstempel der Anzeige ("Stand 14:30" beim letzten Stand,
    "Aktualisiert 14:32" bei frischen Daten): leise Fußnote, unaufdringlich,
-   kein Zenit — die Frische ist durchgehend ablesbar. Daneben der dezente
-   Aktualisieren-Button. */
-.cw-stale-row{
-  margin-top:var(--sp-3);
-  display:flex;
-  align-items:center;
-  gap:2px;
-}
+   kein Zenit — die Frische ist durchgehend ablesbar */
 .cw-stale{
+  margin-top:var(--sp-3);
   font-size:var(--fs-xs);
   color:var(--l4);
   font-variant-numeric:tabular-nums;
 }
-/* Monochrom Stahl, kein Akzent, kein Grün. Sichtbares Icon 16px, Trefferfläche
-   aber 40x40 (negativer Rand hält die leise Zeile flach). Hover/aktiv minimal
-   Richtung Primärtext (--l1: im Light Karbon, im Dark heller — theme-aware).
-   Fokusring kommt aus der globalen :focus-visible Regel (BFSG). */
-.cw-refresh{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:40px;
-  height:40px;
-  margin:-12px -10px;
-  padding:0;
-  background:none;
-  border:none;
-  border-radius:var(--r-pill);
-  color:var(--wp-stahl);
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-.cw-refresh:hover,.cw-refresh:active{color:var(--l1);}
-.cw-refresh:disabled{cursor:default;opacity:.6;}
-.cw-refresh-ico{width:16px;height:16px;}
-/* Dreht nur während des Ladens; bei Erfolg/Fehler wird die Klasse entfernt
-   (kein Dauerdrehen). Reduced-Motion: kein Spin, der disabled-Zustand bleibt
-   als Rückmeldung (Muster wie beim Install-Hinweis). */
+/* Spin für den Aktualisieren-Button oben (neben "Mein Standort"). Dreht nur
+   während des Ladens; bei Erfolg/Fehler entfernt app.ts die Klasse (kein
+   Dauerdrehen). Reduced-Motion: kein Spin, der disabled-Zustand bleibt als
+   Rückmeldung (Muster wie beim Install-Hinweis). */
 @keyframes cw-refresh-spin{to{transform:rotate(360deg);}}
 @media (prefers-reduced-motion:no-preference){
-  .cw-refresh--spinning .cw-refresh-ico{animation:cw-refresh-spin .8s linear infinite;}
+  .cw-refresh--spinning .geo-btn-ico{animation:cw-refresh-spin .8s linear infinite;}
 }
 
 /* ══ Heute anziehen ══ */

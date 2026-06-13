@@ -87,6 +87,10 @@ function setView(view: "empty" | "loading" | "error" | "content"): void {
   // gilt wieder der sprachabhängige Basistitel; den Wettertitel setzt
   // renderContent nach setView("content") synchron neu
   if (view !== "content") document.title = t("docTitle");
+  // Aktualisieren-Button nur aktiv, wenn eine Stadt angezeigt wird — sonst
+  // liefe er ins Leere. (Während des Refresh selbst läuft setView nicht.)
+  const refreshBtn = document.getElementById("topRefresh") as HTMLButtonElement | null;
+  if (refreshBtn) refreshBtn.disabled = view !== "content";
 }
 
 function renderFavorites(): void {
@@ -149,22 +153,22 @@ function renderContent(): void {
     renderContent();
     renderIcons();
   });
-  document.getElementById("cwRefresh")?.addEventListener("click", refreshCurrentPlace);
 }
 
-// Manuelles Aktualisieren über den Button neben "Aktualisiert HH:MM": lädt die
+// Manuelles Aktualisieren über den Button oben (neben "Mein Standort"): lädt die
 // Wetterdaten der aktuell angezeigten Stadt neu. Bewusst über fetchWeather +
 // renderContent (dieselben Bausteine, die selectPlace intern nutzt), NICHT über
 // selectPlace selbst — letzteres würde für den Geo-Ort die Loading-Ansicht zeigen
-// bzw. für eine gecachte Stadt kurz auf "Stand HH:MM" zurückspringen und dabei
-// den drehenden Button überschreiben. Die Karte bleibt sichtbar, nur das Icon
-// dreht sich. Pollen bleibt unberührt (separater Endpoint, unabhängig).
+// bzw. für eine gecachte Stadt kurz auf "Stand HH:MM" zurückspringen. Die Karte
+// bleibt sichtbar, nur das Icon dreht sich. Der Button steht statisch im Markup
+// (nicht in der neu gerenderten Karte), daher wird sein Zustand in finally
+// manuell zurückgesetzt. Pollen bleibt unberührt (separater Endpoint).
 let refreshing = false;
 function refreshCurrentPlace(): void {
   const place = state.place;
   if (!place || refreshing) return;
   refreshing = true;
-  const btn = document.getElementById("cwRefresh") as HTMLButtonElement | null;
+  const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
     btn.disabled = true;
     btn.classList.add("cw-refresh--spinning");
@@ -183,23 +187,22 @@ function refreshCurrentPlace(): void {
         savedAt: state.updatedAt,
         forecast,
       } satisfies ForecastCache);
-      // Frisch rendern: neuer "Aktualisiert HH:MM", der Button wird dabei neu
-      // gezeichnet (ohne Spin, wieder aktiv) — kein manuelles Zurücksetzen nötig.
-      renderContent();
+      renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
       renderFavorites();
       renderIcons();
     })
     .catch(() => {
-      // Fehler: aktuellen Stand stehen lassen (kein Sprung in die Fehleransicht),
-      // nur den Button zurücksetzen — kein Dauerdrehen.
-      const b = document.getElementById("cwRefresh") as HTMLButtonElement | null;
+      // Fehler: aktuellen Stand stehen lassen, keine Fehleransicht erzwingen.
+    })
+    .finally(() => {
+      refreshing = false;
+      // Button zurücksetzen (kein Dauerdrehen). Er liegt im statischen Markup,
+      // wird also nicht durch renderContent neu gezeichnet — daher hier von Hand.
+      const b = document.getElementById("topRefresh") as HTMLButtonElement | null;
       if (b) {
         b.disabled = false;
         b.classList.remove("cw-refresh--spinning");
       }
-    })
-    .finally(() => {
-      refreshing = false;
     });
 }
 
@@ -303,6 +306,10 @@ export function initApp(): void {
   byId("retryBtn").addEventListener("click", () => {
     if (state.place) selectPlace(state.place);
   });
+
+  // Aktualisieren-Button steht statisch im Markup → Listener einmalig hier
+  // (nicht in renderContent, sonst würde er bei jedem Render erneut gebunden).
+  byId("topRefresh").addEventListener("click", refreshCurrentPlace);
 
   // Sprachwechsel: dynamische Bereiche mit neuen Labels/Locales neu rendern
   document.addEventListener("weather:langchange", () => {
