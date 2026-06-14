@@ -55,7 +55,20 @@ function registerServiceWorker(): void {
   });
 }
 
+// Splash ausblenden: Klasse togglen (CSP-konform, kein Inline-Style), nach der
+// Transition das Element entfernen, damit es die App darunter nicht blockiert.
+// Fallback-Timeout greift, falls transitionend ausbleibt.
+function hideSplash(): void {
+  const el = document.getElementById("splash");
+  if (!el) return;
+  el.classList.add("splash--hidden");
+  const remove = (): void => el.remove();
+  el.addEventListener("transitionend", remove, { once: true });
+  window.setTimeout(remove, 600);
+}
+
 function boot(): void {
+  const splashStart = Date.now();
   initLang();
   initLangMenu();
   initApp();
@@ -63,6 +76,15 @@ function boot(): void {
   if (installHint) initInstallHint(installHint);
   renderIcons();
   registerServiceWorker();
+
+  // Splash nur beim Seitenstart ausblenden — NICHT an refreshCurrentPlace
+  // gekoppelt (der lädt nur Daten, nicht die Seite). Sichtbar mindestens ~1,2 s,
+  // spätestens nach ~2 s weg (harte Obergrenze, damit langsames Laden nicht
+  // blockiert). Die App lädt im Hintergrund normal weiter, nichts wird künstlich
+  // verzögert. boot() läuft synchron → "App bereit" ≈ jetzt.
+  const elapsed = Date.now() - splashStart;
+  const delay = Math.max(0, Math.min(2000, Math.max(1200, elapsed)) - elapsed);
+  window.setTimeout(hideSplash, delay);
 }
 
 if (document.readyState !== "loading") boot();

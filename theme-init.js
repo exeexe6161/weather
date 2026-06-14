@@ -3,6 +3,11 @@
 (function () {
   var html = document.documentElement;
 
+  // Splash-Overlay nur mit JS zeigen (pre-paint gesetzt): ohne JS bliebe es
+  // liegen und verdeckte die noscript-Meldung. Universell harmlos — die
+  // Rechtsseiten haben kein #splash. Das Splash-CSS hängt an html.js.
+  html.classList.add("js");
+
   // Rechtsseiten tragen data-legal="impressum|datenschutz". Beim Öffnen wird
   // die in der App gespeicherte Sprache übernommen (gleicher localStorage Key
   // wie src/i18n/ui.ts) und pre-paint auf die passende Sprachfassung

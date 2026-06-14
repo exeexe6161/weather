@@ -233,6 +233,44 @@ body::before{
   color:var(--l2);
 }
 
+/* ══ Splash-Overlay (nur beim Seitenstart) ══
+   Erstes Kind von <body>, deckt die Seite ab und blendet aus, sobald die App
+   bereit ist (Logik in main.ts). Hintergrund über die Theme-Tokens — theme-init.js
+   setzt data-theme pre-paint, also stimmt Hell/Dunkel ab dem ersten Frame (kein
+   Weiß-Blitz im Dark Mode). Nur sichtbar mit JS (html.js), sonst gewinnt die
+   noscript-Meldung. Dekorativ (aria-hidden), kein Fokus-Fang. */
+#splash{display:none;}
+html.js #splash{
+  display:flex;
+  position:fixed;
+  inset:0;
+  z-index:1000; /* über allem (höchster sonstiger z-index ist 300) */
+  align-items:center;
+  justify-content:center;
+  background:var(--wp-pur); /* = Seiten-Hintergrund hell, nahtloses Ausblenden */
+  opacity:1;
+  transition:opacity .4s ease;
+}
+html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hintergrund dunkel */
+.splash-logo{
+  width:min(62vw,300px);
+  height:auto;
+  /* sanftes Reveal (Wipe + leiser Fade), ruhig und kurz */
+  animation:splashReveal 1.5s cubic-bezier(.45,.05,.2,1) both;
+}
+@keyframes splashReveal{
+  from{opacity:.5;clip-path:inset(0 100% 0 0);}
+  to{opacity:1;clip-path:inset(0 0 0 0);}
+}
+/* Ausblenden: nur Klassen-Toggle (CSP, kein Inline-Style); main.ts entfernt das
+   Element nach der Transition, damit nichts die App darunter blockiert. */
+#splash.splash--hidden{opacity:0;pointer-events:none;}
+/* Reduced Motion: kein Reveal (Wortmarke steht ruhig); das kurze Ausblend-Fade
+   über die opacity-Transition bleibt. */
+@media (prefers-reduced-motion:reduce){
+  .splash-logo{animation:none;}
+}
+
 :focus-visible{
   outline:2px solid var(--accent-text);
   outline-offset:2px;
