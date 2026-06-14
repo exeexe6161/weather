@@ -6,6 +6,7 @@
 import { t } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
+import { isNativeApp } from "../lib/platform";
 
 // Nach dem Wegklicken so viele Tage Ruhe, dann darf der Hinweis wiederkommen
 export const REMIND_AFTER_DAYS = 7;
@@ -58,6 +59,9 @@ function isIosSafari(): boolean {
 }
 
 export function initInstallHint(root: HTMLElement): void {
+  // In der nativen App (Capacitor) nie ein "Zum Home-Bildschirm"-Hinweis: die
+  // App ist schon installiert, und isStandalone() greift im WKWebView nicht.
+  if (isNativeApp()) return;
   if (isStandalone()) return;
 
   const state = readState();

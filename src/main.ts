@@ -4,6 +4,7 @@ import { initLang, setLang, getLang, LANGS, type Lang } from "./i18n/ui";
 import { initApp } from "./app";
 import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
+import { isNativeApp } from "./lib/platform";
 
 function initLangMenu(): void {
   const btn = document.getElementById("langSwitch") as HTMLButtonElement | null;
@@ -49,6 +50,9 @@ function initLangMenu(): void {
 }
 
 function registerServiceWorker(): void {
+  // Native App (Capacitor): kein Service Worker. Im WKWebView ist er ohnehin
+  // wirkungslos, das Web-Bundle wird lokal aus dem App-Container geladen.
+  if (isNativeApp()) return;
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
