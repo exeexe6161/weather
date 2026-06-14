@@ -4,6 +4,8 @@
 // Datenschutzerklärung ausgewiesen), und ihr Ausfall darf die Wetteranzeige
 // nicht blockieren. Alle Fehler werden still zu null — dann erscheint schlicht
 // keine Pollensektion.
+import { fetchWithTimeout } from "./http";
+
 const AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality";
 
 export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "olive", "ragweed"] as const;
@@ -96,7 +98,7 @@ export async function fetchPollen(latitude: number, longitude: number): Promise<
       hourly: POLLEN_KINDS.map((k) => `${k}_pollen`).join(","),
       timezone: "auto",
     });
-    const res = await fetch(`${AIR_QUALITY_URL}?${params}`);
+    const res = await fetchWithTimeout(`${AIR_QUALITY_URL}?${params}`);
     if (!res.ok) return null;
     const data = await res.json();
     const h = data?.hourly;

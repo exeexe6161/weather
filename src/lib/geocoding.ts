@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "./http";
+
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
 // Marker-Id des per Geolocation ermittelten Ortes ("Mein Standort").
@@ -45,7 +47,7 @@ export async function searchCity(query: string, language = "de"): Promise<Place[
   // Mehr Treffer anfordern als angezeigt werden: der Ortsfilter unten wirft
   // Länder und Regionen raus, die Liste soll danach trotzdem voll sein
   const params = new URLSearchParams({ name: q, count: String(RESULT_COUNT * 2), language, format: "json" });
-  const res = await fetch(`${GEOCODING_URL}?${params}`);
+  const res = await fetchWithTimeout(`${GEOCODING_URL}?${params}`);
   if (!res.ok) throw new Error(`Geocoding request failed: ${res.status}`);
   const data = await res.json();
   return (data.results ?? [])

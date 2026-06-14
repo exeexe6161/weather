@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "./http";
+
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 export interface CurrentWeather {
@@ -49,7 +51,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     forecast_days: "7",
     past_days: "1", // gestriger Tag in derselben daily Antwort (Vergleichszeile)
   });
-  const res = await fetch(`${FORECAST_URL}?${params}`);
+  const res = await fetchWithTimeout(`${FORECAST_URL}?${params}`);
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
   return normalize(await res.json());
 }
