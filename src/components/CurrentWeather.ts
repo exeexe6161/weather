@@ -127,7 +127,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   el.innerHTML = `
     <div class="cw-head">
       <div class="cw-place">
-        <div class="cw-place-name">${esc(place.name)}</div>
+        <div class="cw-place-name">${esc(place.id === GEO_PLACE_ID ? t("myLocation") : place.name)}</div>
         ${region || localTime ? `<div class="cw-place-region">${esc(region)}${region && localTime ? " · " : ""}${localTime ? `<span class="cw-local-time">${localTime}</span>` : ""}</div>` : ""}
       </div>
       ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"

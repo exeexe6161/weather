@@ -132,7 +132,11 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
         showStatus("");
         opts.onSelect({
           id: GEO_PLACE_ID, // nie persistiert: dieselbe Identität, an der alle Geo-Guards hängen
-          name: t("myLocation"),
+          // Kein eingefrorener String: die Anzeige löst den Namen zur Renderzeit
+          // über t("myLocation") auf (CurrentWeather, an GEO_PLACE_ID erkannt).
+          // Nur ein neutraler Marker hier, sonst bliebe der Name nach einem
+          // Sprachwechsel in der bei der Standortabfrage aktiven Sprache stehen.
+          name: "myLocation",
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           country: "",
