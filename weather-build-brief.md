@@ -337,7 +337,7 @@ export function weatherLabel(key: string, lang: Lang): string {
 
 ## DSGVO Abschluss (vor Launch)
 
-- [ ] **Datenschutzerklärung:** Open-Meteo als Datenquelle nennen, IP Übermittlung beim API Call, localStorage für Favoriten, Geolocation nur nach Einwilligung. Rechtsgrundlage Art. 6(1)(f) DSGVO + §25(2)(2) TTDSG.
+- [ ] **Datenschutzerklärung:** Open-Meteo als Datenquelle nennen, IP Übermittlung beim API Call, localStorage für Favoriten, Geolocation nur nach Einwilligung. Rechtsgrundlage Art. 6(1)(f) DSGVO + §25(2)(2) TDDDG.
 - [ ] **Impressum** übernehmen (bestehende Struktur, c/o Adresse).
 - [ ] **Attribution** für Daten (CC BY 4.0) und Lizenztexte für Icons (ISC) und Inter (OFL) im Repo.
 - [ ] **BFSG/Accessibility:** aria-labels auf alle Icon Buttons, Tastaturnavigation, focus-visible, aria-pressed wo Toggle.

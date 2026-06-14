@@ -9,7 +9,7 @@ Prüfe streng auf:
 - Favicons
 - SEO
 - Impressum
-- Datenschutz (DSGVO, TTDSG, Geolocation Einwilligung)
+- Datenschutz (DSGVO, TDDDG, Geolocation Einwilligung)
 - Open-Meteo Attribution (CC BY 4.0, Pflicht im Footer)
 - Lizenzkonformität (Inter OFL, Lucide ISC)
 - rechtliche Risiken
