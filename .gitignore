@@ -7,3 +7,15 @@ npm-debug.log*
 evspend/
 splash/
 
+# Capacitor / iOS – generierte Artefakte.
+# Doppel-Absicherung: ios/.gitignore deckt das bereits ab (SPM-Modus, kein Pods/).
+ios/App/build/
+ios/App/output/
+ios/App/App/public/
+ios/DerivedData/
+ios/capacitor-cordova-ios-plugins/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+*.xcuserstate
+xcuserdata/
+
