@@ -22,7 +22,13 @@ import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
 const FORECAST_CACHE_KEY = "weather:last-forecast";
+const DAYS_KEY = "weather:forecast-days"; // gemerkte Vorhersage-Länge (7/10/16)
 const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
+
+// Erlaubte Vorhersage-Längen und Default. Etappe 1 zeigt weiterhin 7 Tage:
+// die Daten enthalten 16, die Anzeige kürzt clientseitig auf forecastDays.
+const FORECAST_DAY_OPTIONS = [7, 10, 16] as const;
+const DEFAULT_FORECAST_DAYS = 7;
 
 interface ForecastCache {
   placeId: number;
@@ -45,9 +51,12 @@ interface State {
   pollen: PollenLevels | null;
   freshness: Freshness;
   updatedAt: string;
+  // Sichtbare Vorhersage-Länge (Tage). Die Forecast-Daten enthalten bis zu 16
+  // Tage; die Tagesliste rendert nur die ersten forecastDays davon.
+  forecastDays: number;
 }
 
-const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "" };
+const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "", forecastDays: DEFAULT_FORECAST_DAYS };
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
@@ -62,6 +71,30 @@ function readJson<T>(key: string): T | null {
 function writeJson(key: string, value: unknown): void {
   if (typeof localStorage === "undefined") return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+// Gemerkte Vorhersage-Länge lesen: nur 7/10/16 sind gültig, alles andere
+// (leer, defekt, Altwert) fällt auf den Default 7 zurück.
+function readForecastDays(): number {
+  if (typeof localStorage === "undefined") return DEFAULT_FORECAST_DAYS;
+  try {
+    const raw = Number(localStorage.getItem(DAYS_KEY));
+    return (FORECAST_DAY_OPTIONS as readonly number[]).includes(raw) ? raw : DEFAULT_FORECAST_DAYS;
+  } catch {
+    return DEFAULT_FORECAST_DAYS;
+  }
+}
+
+// Vorhersage-Länge setzen: State aktualisieren, merken, neu rendern. Wird in
+// Etappe 2 vom 7/10/16-Umschalter aufgerufen — JETZT nur angelegt, nicht
+// verdrahtet. Ungültige Werte werden ignoriert (keine Render-Schleife).
+export function setForecastDays(days: number): void {
+  if (!(FORECAST_DAY_OPTIONS as readonly number[]).includes(days)) return;
+  if (state.forecastDays === days) return;
+  state.forecastDays = days;
+  writeJson(DAYS_KEY, days);
+  renderContent();
+  renderIcons();
 }
 
 // Tab-Titel mit dem aktuellen Wetter, z. B. "14° Regen · WeatherPure" —
@@ -171,7 +204,7 @@ function renderContent(): void {
   const tempCurveEl = byId("tempCurve");
   renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
   byId("tempCurveHeading").hidden = tempCurveEl.hidden;
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily);
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -318,6 +351,9 @@ export function selectPlace(place: Place): void {
 }
 
 export function initApp(): void {
+  // Gemerkte Vorhersage-Länge übernehmen (Default 7, falls nichts/ungültig).
+  state.forecastDays = readForecastDays();
+
   // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
   // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
   pruneGeoFavorites();

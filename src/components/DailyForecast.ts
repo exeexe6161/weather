@@ -10,14 +10,19 @@ import { esc } from "../dom";
 // Wert da. Darunter bleibt der Slot leer (feste Spalte, Zeile verspringt nicht)
 export const RAIN_SHOW_THRESHOLD = 30;
 
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[]): void {
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
   const locale = getLocale();
 
-  // Wochenskala EINMAL über alle Tage: kleinstes Tief, größtes Hoch. Jeder
+  // Die Forecast-Daten enthalten bis zu 16 Tage; angezeigt werden nur die
+  // ersten `days` (7/10/16). ERST kürzen, dann Skala rechnen und Balken setzen,
+  // damit Wochenskala und CSSOM-Index-Zuordnung auf dieselbe Liste verweisen.
+  const visible = daily.slice(0, days);
+
+  // Wochenskala EINMAL über alle (sichtbaren) Tage: kleinstes Tief, größtes Hoch. Jeder
   // Tagesbalken sitzt dort, wo seine Spanne in diesem Wochenbereich liegt.
   // Number.isFinite-Filter fängt alte Forecast-Caches ohne die Felder ab.
-  const lows = daily.map((d) => d.tempMin).filter((v) => Number.isFinite(v));
-  const highs = daily.map((d) => d.tempMax).filter((v) => Number.isFinite(v));
+  const lows = visible.map((d) => d.tempMin).filter((v) => Number.isFinite(v));
+  const highs = visible.map((d) => d.tempMax).filter((v) => Number.isFinite(v));
   const weekMin = Math.min(...lows);
   const weekMax = Math.max(...highs);
   const range = weekMax - weekMin; // 0 oder ungültig → Balken volle Breite, kein NaN
@@ -34,7 +39,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[]): void 
     return { left, width };
   };
 
-  el.innerHTML = daily
+  el.innerHTML = visible
     .map((d, i) => {
       const icon = pickIcon(d.weatherCode, true);
       const label = weatherLabel(getWmo(d.weatherCode).labelKey, getLang());
@@ -64,7 +69,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[]): void 
   // inline style="" Attribute — einzelne style-Properties setzt CSP nicht.
   // Reihenfolge der Füllungen == daily-Reihenfolge (1 Balken je Zeile).
   const fills = el.querySelectorAll<HTMLElement>(".day-bar-fill");
-  daily.forEach((d, i) => {
+  visible.forEach((d, i) => {
     const fill = fills[i];
     if (!fill) return;
     const { left, width } = barPos(d);

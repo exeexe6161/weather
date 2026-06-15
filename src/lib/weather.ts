@@ -48,8 +48,12 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
     timezone: "auto",
-    forecast_days: "7",
+    forecast_days: "16", // bis zu 16 Tage in den Daten; die Anzeige kürzt clientseitig (Default 7)
     past_days: "1", // gestriger Tag in derselben daily Antwort (Vergleichszeile)
+    // hourly nicht auf 16 Tage mitwachsen lassen: normalize() liest nur 25
+    // Stunden ab jetzt vorwärts (nie vergangene Stundenwerte), 48 gibt sicheren
+    // Puffer für die "nächste 24 Stunden"-Anzeige. past_days bleibt für daily.
+    forecast_hours: "48",
   });
   const res = await fetchWithTimeout(`${FORECAST_URL}?${params}`);
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
