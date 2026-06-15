@@ -991,7 +991,72 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
 html[data-theme="dark"] .tc-area-group{opacity:.5;}
 
 /* ══ 7 Tage ══ */
+/* Kopfzeile der Tagesliste: Überschrift links, 7/10/16-Umschalter rechts. Die
+   .sh-Abstände wandern auf den Container, das h2 selbst wird margin-frei, damit
+   der Umschalter sauber auf einer Linie mit der Überschrift sitzt. */
+.daily-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:var(--sp-6) 2px var(--sp-3);
+}
+.daily-head .sh{margin:0;}
+.seg-wrap{display:inline-flex;align-items:center;gap:8px;}
+/* Segmented Control im Stahl-Stil der .top-pill (gleicher Schatten-Umriss). */
+.seg{
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  padding:3px;
+  background:var(--s1);
+  border-radius:var(--r-pill);
+  box-shadow:0 1px 2px rgba(17,24,39,.05),0 0 0 1px var(--sep);
+}
+.seg-btn{
+  min-width:32px;
+  height:28px;
+  padding:0 9px;
+  background:none;
+  border:none;
+  border-radius:var(--r-pill);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.3px;
+  color:var(--l3);
+  cursor:pointer;
+  transition:transform var(--t-base),background .2s,color .2s;
+}
+.seg-btn:active{transform:scale(var(--press-scale));}
+/* aktiver Zustand wie aria-current im Sprachmenü (--accent-soft/--accent-text) */
+.seg-btn[aria-checked="true"]{background:var(--accent-soft);color:var(--accent-text);}
+.seg-unit{font-size:var(--fs-xs);font-weight:600;color:var(--l4);}
 .daily-list{padding:var(--sp-2) var(--sp-4);text-align:left;}
+/* "Ausblick"-Trenner vor den unsicheren Tagen (ab Tag 8). Rein visuell, eine
+   zentrierte Beschriftung zwischen zwei feinen Linien. Trägt kein .day-bar-fill. */
+.daily-divider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 0 6px;
+}
+.daily-divider::before,.daily-divider::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--sep);
+}
+.daily-divider span{
+  font-size:var(--fs-xs);
+  font-weight:700;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  color:var(--l4);
+}
+/* gedämpfte Ausblick-Tage: reduzierter Kontrast, analog zur Balken-Dämpfung. */
+.day-row--outlook{opacity:.6;}
+html[data-theme="dark"] .day-row--outlook{opacity:.55;}
 .day-row{
   display:grid;
   /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen

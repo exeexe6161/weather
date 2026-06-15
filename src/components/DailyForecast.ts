@@ -10,6 +10,11 @@ import { esc } from "../dom";
 // Wert da. Darunter bleibt der Slot leer (feste Spalte, Zeile verspringt nicht)
 export const RAIN_SHOW_THRESHOLD = 30;
 
+// Ab diesem Index (Tag 8) gelten die Tage als unsicherer "Ausblick": gedämpft
+// dargestellt, mit einem einmaligen Trenner davor. Bei Auswahl 7 (visible.length
+// === 7) wird dieser Index nie erreicht → kein Trenner, keine Dämpfung.
+const OUTLOOK_FROM = 7;
+
 export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
   const locale = getLocale();
 
@@ -50,7 +55,15 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
         (isPrecipCode(d.weatherCode) || d.precipitationProbabilityMax >= RAIN_SHOW_THRESHOLD)
           ? d.precipitationProbabilityMax
           : null;
-      return `<div class="day-row" role="listitem">
+      const outlook = i >= OUTLOOK_FROM;
+      // Genau einmal vor dem ersten gedämpften Tag: der "Ausblick"-Trenner. Rein
+      // visuell (aria-hidden) und OHNE .day-bar-fill — so bleibt die Zählung der
+      // Fill-Elemente unten 1:1 zur Tagesreihenfolge (visible) erhalten.
+      const divider =
+        i === OUTLOOK_FROM
+          ? `<div class="daily-divider" aria-hidden="true"><span>${esc(t("outlookLabel"))}</span></div>`
+          : "";
+      return `${divider}<div class="day-row${outlook ? " day-row--outlook" : ""}" role="listitem">
         <div class="day-name">${esc(day)}</div>
         <i data-lucide="${icon}" class="day-ico" role="img" aria-label="${esc(label)}"></i>
         <div class="day-label">${esc(label)}</div>
@@ -67,7 +80,8 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
   // Balkenposition über CSSOM (style-Property-Setter, KEIN style-Attribut im
   // Markup): die strenge CSP (style-src 'self', kein unsafe-inline) blockt
   // inline style="" Attribute — einzelne style-Properties setzt CSP nicht.
-  // Reihenfolge der Füllungen == daily-Reihenfolge (1 Balken je Zeile).
+  // Reihenfolge der Füllungen == visible-Reihenfolge (1 Balken je Zeile). Der
+  // Ausblick-Trenner trägt KEIN .day-bar-fill, stört die Zählung also nicht.
   const fills = el.querySelectorAll<HTMLElement>(".day-bar-fill");
   visible.forEach((d, i) => {
     const fill = fills[i];

@@ -93,8 +93,57 @@ export function setForecastDays(days: number): void {
   if (state.forecastDays === days) return;
   state.forecastDays = days;
   writeJson(DAYS_KEY, days);
-  renderContent();
+  renderContent(); // ruft intern syncDaysSwitch() → aktiver Zustand folgt
   renderIcons();
+}
+
+// Spiegelt state.forecastDays in die Radiogruppe: aktiver Radio aria-checked,
+// rovendes tabindex (nur der aktive ist per Tab erreichbar, Pfeile wechseln),
+// und das aria-Label je Sprache ("7 Tage"). Der Umschalter steht statisch im
+// Markup (wird nicht neu gerendert), daher von Hand synchronisiert.
+function syncDaysSwitch(): void {
+  const group = document.getElementById("daysSwitch");
+  if (!group) return;
+  const unit = t("daysUnit");
+  group.querySelectorAll<HTMLButtonElement>("[data-days]").forEach((r) => {
+    const on = Number(r.dataset.days) === state.forecastDays;
+    r.setAttribute("aria-checked", String(on));
+    r.tabIndex = on ? 0 : -1;
+    r.setAttribute("aria-label", `${r.dataset.days} ${unit}`);
+  });
+}
+
+// Bindet die Radiogruppe einmalig (Muster wie topRefresh/langSwitch): Klick und
+// Tastatur (Pfeile wechseln + wählen, Enter/Space wählt). Wechsel ruft das in
+// Etappe 1 angelegte setForecastDays (State + localStorage + renderContent).
+function initDaysSwitch(): void {
+  const group = document.getElementById("daysSwitch");
+  if (!group) return;
+  const radios = Array.from(group.querySelectorAll<HTMLButtonElement>("[data-days]"));
+
+  const choose = (r: HTMLButtonElement): void => {
+    r.focus();
+    setForecastDays(Number(r.dataset.days));
+  };
+
+  radios.forEach((r) => {
+    r.addEventListener("click", () => choose(r));
+    r.addEventListener("keydown", (e) => {
+      const idx = radios.indexOf(r);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        choose(radios[(idx + 1) % radios.length]);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        choose(radios[(idx - 1 + radios.length) % radios.length]);
+      } else if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        choose(r);
+      }
+    });
+  });
+
+  syncDaysSwitch(); // Startzustand aus der (ggf. gespeicherten) state.forecastDays
 }
 
 // Tab-Titel mit dem aktuellen Wetter, z. B. "14° Regen · WeatherPure" —
@@ -204,7 +253,12 @@ function renderContent(): void {
   const tempCurveEl = byId("tempCurve");
   renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
   byId("tempCurveHeading").hidden = tempCurveEl.hidden;
+  // Dynamische Überschrift "{n} Tage Vorhersage" (deckt Sprachwechsel mit ab,
+  // da renderContent auch auf weather:langchange läuft). Das h2 trägt KEIN
+  // data-i18n mehr — die Zahl käme dort nicht hinein; gesetzt wird sie hier.
+  byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(state.forecastDays));
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays);
+  syncDaysSwitch(); // aktiver Umschalter-Zustand spiegelt state.forecastDays (auch nach Sprachwechsel/Reload)
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -375,6 +429,9 @@ export function initApp(): void {
   // Aktualisieren-Button steht statisch im Markup → Listener einmalig hier
   // (nicht in renderContent, sonst würde er bei jedem Render erneut gebunden).
   byId("topRefresh").addEventListener("click", refreshCurrentPlace);
+
+  // 7/10/16-Umschalter ebenfalls statisch → Listener einmalig hier binden.
+  initDaysSwitch();
 
   // Sprachwechsel: dynamische Bereiche mit neuen Labels/Locales neu rendern
   document.addEventListener("weather:langchange", () => {
