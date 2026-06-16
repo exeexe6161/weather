@@ -13,11 +13,14 @@
  * (weather:last-forecast, von app.ts verwaltet): sie ist nur die Brücke bis
  * das Netz antwortet, parallel wird immer frisch geholt.
  *
- * Cache invalidation: bumping CACHE_VERSION below drops both caches on
- * the next activate (skipWaiting + clients.claim übernehmen sofort).
+ * Cache invalidation: CACHE_VERSION below is injected at build time by
+ * build-sw.mjs (from VERCEL_GIT_COMMIT_SHA, else a Date.now() timestamp),
+ * so it changes on every build and drops both caches on the next activate
+ * (skipWaiting + clients.claim übernehmen sofort).
+ * Do not edit the value by hand — build-sw.mjs is the single source.
  */
 
-const CACHE_VERSION  = 'v20260612-53';
+const CACHE_VERSION  = 'v1781632837484';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
@@ -39,12 +42,20 @@ const PRECACHE_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Individual cache.add() under Promise.allSettled so a single missing
-  // entry can't abort the whole install (cache.addAll is all-or-nothing).
+  // Fetch each entry under Promise.allSettled so a single missing entry
+  // can't abort the whole install (cache.addAll is all-or-nothing).
+  // Use cache: 'reload' to bypass the browser HTTP cache: the fixed,
+  // immutable asset filenames would otherwise be re-seeded from a stale
+  // long-lived cache entry instead of the freshly deployed bytes.
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => Promise.allSettled(
-        PRECACHE_URLS.map((url) => cache.add(url))
+        PRECACHE_URLS.map((url) =>
+          fetch(new Request(url, { cache: 'reload' })).then((response) => {
+            if (response && response.ok) return cache.put(url, response);
+            return undefined;
+          })
+        )
       ))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
