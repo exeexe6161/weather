@@ -60,6 +60,19 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
   return normalize(await res.json());
 }
 
+// Ein Tag gilt als vollständig, wenn Hoch, Tief und Wettercode echte Zahlen
+// sind. Bewusst Number.isFinite und NICHT !d.tempMax: 0 °C ist ein gültiger
+// Wert (Number.isFinite(0) === true), ein echter Frost-/Nulltag bleibt also
+// erhalten. Nur null/undefined (fehlende API-Werte) werden als unvollständig
+// erkannt.
+export function isCompleteDay(d: DailyEntry): boolean {
+  return (
+    Number.isFinite(d.tempMax) &&
+    Number.isFinite(d.tempMin) &&
+    typeof d.weatherCode === "number"
+  );
+}
+
 function normalize(data: any): Forecast {
   const c = data.current;
   const current: CurrentWeather = {
@@ -99,19 +112,27 @@ function normalize(data: any): Forecast {
   const todayIdx = Math.max(0, d.time.findIndex((t: string) => t >= todayDate));
   const rawYesterdayMax = todayIdx > 0 ? d.temperature_2m_max?.[todayIdx - 1] : null;
   const yesterdayTempMax = typeof rawYesterdayMax === "number" ? rawYesterdayMax : null;
-  const daily: DailyEntry[] = d.time.slice(todayIdx).map((date: string, j: number) => {
-    const i = todayIdx + j;
-    return {
-      date,
-      weatherCode: d.weather_code[i],
-      tempMax: d.temperature_2m_max[i],
-      tempMin: d.temperature_2m_min[i],
-      precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
-      sunrise: d.sunrise?.[i] ?? null,
-      sunset: d.sunset?.[i] ?? null,
-      uvIndexMax: d.uv_index_max?.[i] ?? null,
-    };
-  });
+  const daily: DailyEntry[] = d.time
+    .slice(todayIdx)
+    .map((date: string, j: number) => {
+      const i = todayIdx + j;
+      return {
+        date,
+        weatherCode: d.weather_code[i],
+        tempMax: d.temperature_2m_max[i],
+        tempMin: d.temperature_2m_min[i],
+        precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
+        sunrise: d.sunrise?.[i] ?? null,
+        sunset: d.sunset?.[i] ?? null,
+        uvIndexMax: d.uv_index_max?.[i] ?? null,
+      };
+    })
+    // Unvollständige Tage entfernen: am äußersten Forecast-Rand (Tag 16) liefert
+    // Open-Meteo teils null für Hoch/Tief/Wettercode — solche Tage erschienen
+    // sonst als "Unbekannt" und 0°/0° (Math.round(null) === 0). Es treffen nur
+    // End-Tage; der heutige Tag (daily[0]) hat immer Werte, vordere Indizes der
+    // today-Konsumenten verschieben sich also nicht.
+    .filter(isCompleteDay);
 
   return { current, hourly, daily, timezone: data.timezone, yesterdayTempMax };
 }

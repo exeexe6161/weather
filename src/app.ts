@@ -256,7 +256,12 @@ function renderContent(): void {
   // Dynamische Überschrift "{n} Tage Vorhersage" (deckt Sprachwechsel mit ab,
   // da renderContent auch auf weather:langchange läuft). Das h2 trägt KEIN
   // data-i18n mehr — die Zahl käme dort nicht hinein; gesetzt wird sie hier.
-  byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(state.forecastDays));
+  // Überschrift zählt die TATSÄCHLICH gerenderten Tage, nicht die Wunschstufe:
+  // fehlt am Rand ein unvollständiger Tag (in normalize herausgefiltert), zeigt
+  // 16 → "15 Tage". Bei 7/10 ist daily i. d. R. länger → exakt 7/10. Deckt sich
+  // mit renderDailyForecast, das intern slice(0, days) macht (min(len, days)).
+  const shownDays = Math.min(state.forecast.daily.length, state.forecastDays);
+  byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays);
   syncDaysSwitch(); // aktiver Umschalter-Zustand spiegelt state.forecastDays (auch nach Sprachwechsel/Reload)
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
