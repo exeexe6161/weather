@@ -12,6 +12,7 @@
  * Runs against the root sw.js BEFORE build:dist copies it into dist/.
  */
 import { readFile, writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const sha = process.env.VERCEL_GIT_COMMIT_SHA;
 const token = sha ? sha.slice(0, 12) : String(Date.now());
@@ -30,3 +31,10 @@ if (!re.test(src)) {
 
 await writeFile(file, src.replace(re, `$1'${version}'`));
 console.log(`build-sw: CACHE_VERSION = ${version} (${sha ? 'commit sha' : 'timestamp fallback'})`);
+
+const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "").replace(/(\d{8})(\d{6})/, "$1-$2");
+const verRe = /\?v=(?:BUILD|\d{8}-\d+)/g;
+for (const f of ["index.html", "sw.js"]) {
+  const p = new URL(f, import.meta.url);
+  writeFileSync(p, readFileSync(p, "utf8").replace(verRe, `?v=${stamp}`));
+}
