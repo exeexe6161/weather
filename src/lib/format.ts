@@ -32,3 +32,10 @@ export function formatTimeInZone(timezone: unknown, locale = "de-DE", at: Date =
     return null;
   }
 }
+export function formatDayMonth(iso: string, locale = "de-DE"): string {
+  const d = new Date(iso);
+  if (locale.startsWith("en")) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  return d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+}

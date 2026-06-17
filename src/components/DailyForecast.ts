@@ -1,7 +1,7 @@
 import type { DailyEntry } from "../lib/weather";
 import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatWeekday, formatTemp, formatPercent } from "../lib/format";
+import { formatWeekday, formatDayMonth, formatTemp, formatPercent } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -48,7 +48,9 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
     .map((d, i) => {
       const icon = pickIcon(d.weatherCode, true);
       const label = weatherLabel(getWmo(d.weatherCode).labelKey, getLang());
-      const day = i === 0 ? t("today") : formatWeekday(d.date, locale);
+      const isToday = i === 0;
+      const day = isToday ? t("today") : formatWeekday(d.date, locale);
+      const dateLabel = isToday ? "&nbsp;" : formatDayMonth(d.date, locale);
       // typeof Check fängt alte Forecast Caches ohne das Feld ab
       const rain =
         typeof d.precipitationProbabilityMax === "number" &&
@@ -64,7 +66,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
           ? `<div class="daily-divider" aria-hidden="true"><span>${esc(t("outlookLabel"))}</span></div>`
           : "";
       return `${divider}<div class="day-row${outlook ? " day-row--outlook" : ""}" role="listitem">
-        <div class="day-name">${esc(day)}</div>
+        <div class="day-name"><span class="day-dow">${day}</span><span class="day-date">${dateLabel}</span></div>
         <i data-lucide="${icon}" class="day-ico" role="img" aria-label="${esc(label)}"></i>
         <div class="day-label">${esc(label)}</div>
         <div class="day-rain">${rain !== null ? `<i data-lucide="droplets" class="day-rain-ico"></i><span>${formatPercent(rain)}</span>` : ""}</div>

@@ -20,7 +20,7 @@
  * Do not edit the value by hand — build-sw.mjs is the single source.
  */
 
-const CACHE_VERSION  = 'v1781632837484';
+const CACHE_VERSION  = 'v1781709751418';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
