@@ -1055,8 +1055,19 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
   color:var(--l4);
 }
 /* gedämpfte Ausblick-Tage: reduzierter Kontrast, analog zur Balken-Dämpfung. */
-.day-row--outlook{opacity:.6;}
-html[data-theme="dark"] .day-row--outlook{opacity:.55;}
+/* Ausblick: Text bleibt lesbar (>=4.5:1), nur Dekoratives wird gedaempft */
+.day-row--outlook .day-ico,
+.day-row--outlook .day-bar,
+.day-row--outlook .day-rain-ico{opacity:.55;}
+html[data-theme="dark"] .day-row--outlook .day-ico,
+html[data-theme="dark"] .day-row--outlook .day-bar,
+html[data-theme="dark"] .day-row--outlook .day-rain-ico{opacity:.5;}
+/* Light: gedaempfte, aber kontraststarke Textfarben im Ausblick */
+html:not([data-theme="dark"]) .day-row--outlook .day-date,
+html:not([data-theme="dark"]) .day-row--outlook .day-min{color:#565F68;}
+html:not([data-theme="dark"]) .day-row--outlook .day-rain,
+html:not([data-theme="dark"]) .day-row--outlook .day-label{color:#4D565F;}
+/* Dark: volle Theme-Farben reichen fuer 4.5:1, kein Farb-Override */
 .day-row{
   display:grid;
   /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen
