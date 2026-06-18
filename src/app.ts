@@ -262,7 +262,7 @@ function renderContent(): void {
   // mit renderDailyForecast, das intern slice(0, days) macht (min(len, days)).
   const shownDays = Math.min(state.forecast.daily.length, state.forecastDays);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays);
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays, state.forecast.current.weatherCode);
   syncDaysSwitch(); // aktiver Umschalter-Zustand spiegelt state.forecastDays (auch nach Sprachwechsel/Reload)
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.

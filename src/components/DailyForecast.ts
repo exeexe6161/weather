@@ -15,7 +15,7 @@ export const RAIN_SHOW_THRESHOLD = 30;
 // === 7) wird dieser Index nie erreicht → kein Trenner, keine Dämpfung.
 const OUTLOOK_FROM = 7;
 
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, currentCode?: number): void {
   const locale = getLocale();
 
   // Die Forecast-Daten enthalten bis zu 16 Tage; angezeigt werden nur die
@@ -46,9 +46,10 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
 
   el.innerHTML = visible
     .map((d, i) => {
-      const icon = pickIcon(d.weatherCode, true);
-      const label = weatherLabel(getWmo(d.weatherCode).labelKey, getLang());
       const isToday = i === 0;
+      const code = isToday && typeof currentCode === "number" ? currentCode : d.weatherCode;
+      const icon = pickIcon(code, true);
+      const label = weatherLabel(getWmo(code).labelKey, getLang());
       const day = isToday ? t("today") : formatWeekday(d.date, locale);
       const dateLabel = isToday ? "&nbsp;" : formatDayMonth(d.date, locale);
       // typeof Check fängt alte Forecast Caches ohne das Feld ab
