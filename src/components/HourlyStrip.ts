@@ -25,7 +25,7 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
       const label = weatherLabel(getWmo(h.weatherCode).labelKey, getLang());
       return `<div class="hour-cell" role="listitem">
         <div class="hour-time">${formatHour(h.time, locale)}</div>
-        <i data-lucide="${icon}" class="hour-ico" role="img" aria-label="${esc(label)}"></i>
+        <i data-lucide="${icon}" class="hour-ico"></i><span class="sr-only">${esc(label)}</span>
         <div class="hour-temp">${formatTemp(h.temperature)}</div>
       </div>`;
     })

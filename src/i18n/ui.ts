@@ -15,7 +15,7 @@ export const LOCALES: Record<Lang, string> = {
 const LANG_KEY = "weather:lang";
 
 export const uiLabels: Record<string, Record<Lang, string>> = {
-  docTitle:        { de: "WeatherPure – Wetter auf das Wesentliche", en: "WeatherPure – Weather, simply essential", tr: "WeatherPure – Sadece önemli olan" },
+  docTitle:        { de: "WeatherPure: Wetter auf das Wesentliche", en: "WeatherPure – Weather, simply essential", tr: "WeatherPure – Sadece önemli olan" },
   heroSubtitle:    { de: "Schlicht, schnell und klar", en: "Simple, fast and clear", tr: "Sade, hızlı ve net" },
   settingsAria:    { de: "Einstellungen", en: "Settings", tr: "Ayarlar" },
   searchRegion:    { de: "Ortssuche", en: "Location search", tr: "Konum arama" },

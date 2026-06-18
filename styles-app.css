@@ -302,8 +302,8 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
   align-items:center;
   justify-content:center;
   gap:4px;
-  min-width:42px;
-  height:42px;
+  min-width:44px;
+  height:44px;
   padding:0 10px 0 12px;
   background:var(--s1);
   border:none;
@@ -334,9 +334,11 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
   z-index:210;
 }
 .top-menu-item{
-  display:block;
+  display:flex;
+  align-items:center;
   width:100%;
   padding:10px 12px;
+  min-height:44px;
   background:none;
   border:none;
   border-radius:8px;
@@ -350,8 +352,8 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
 .top-menu-item:hover{background:var(--s2);}
 .top-menu-item[aria-current="true"]{background:var(--accent-soft);color:var(--accent-text);}
 .theme-btn{
-  width:42px;
-  height:42px;
+  width:44px;
+  height:44px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -513,6 +515,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   gap:10px;
   width:100%;
   padding:11px 12px;
+  min-height:44px;
   background:none;
   border:none;
   border-radius:8px;
@@ -621,6 +624,9 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .fav-chip--active{box-shadow:0 0 0 2px var(--accent);}
 .fav-chip-btn{
   padding:9px 6px 9px 14px;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
   background:none;
   border:none;
   font-family:inherit;
@@ -633,8 +639,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:30px;
-  height:36px;
+  width:44px;
+  height:44px;
   padding-right:6px;
   background:none;
   border:none;
@@ -706,8 +712,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:40px;
-  height:40px;
+  width:var(--h-btn-md);
+  height:var(--h-btn-md);
   flex:0 0 auto;
   background:var(--s2);
   border:none;
@@ -895,7 +901,7 @@ html[data-theme="dark"] .install-hint{
 .install-hint-text{margin-top:2px;font-size:var(--fs-sm);color:var(--l3);}
 .install-hint-btn{
   flex:none;
-  height:36px;
+  height:var(--h-btn-md);
   padding:0 14px;
   background:var(--accent-soft);
   border:none;
@@ -911,6 +917,7 @@ html[data-theme="dark"] .install-hint{
 .install-hint-btn:hover{background:var(--accent-soft-hover);}
 .install-hint-btn:active{transform:scale(var(--press-scale));background:var(--accent-soft-active);}
 .install-hint-x{
+  position:relative;
   flex:none;
   display:inline-flex;
   align-items:center;
@@ -922,6 +929,15 @@ html[data-theme="dark"] .install-hint{
   border-radius:var(--r-pill);
   color:var(--l4);
   cursor:pointer;
+}
+.install-hint-x::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:44px;
+  height:44px;
+  transform:translate(-50%,-50%);
 }
 .install-hint-x:hover{color:var(--l1);background:var(--s2);}
 html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
@@ -1014,6 +1030,7 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
   box-shadow:0 1px 2px rgba(17,24,39,.05),0 0 0 1px var(--sep);
 }
 .seg-btn{
+  position:relative;
   min-width:32px;
   height:28px;
   padding:0 9px;
@@ -1027,6 +1044,15 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
   color:var(--l3);
   cursor:pointer;
   transition:transform var(--t-base),background .2s,color .2s;
+}
+.seg-btn::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:44px;
+  height:44px;
+  transform:translate(-50%,-50%);
 }
 .seg-btn:active{transform:scale(var(--press-scale));}
 /* aktiver Zustand wie aria-current im Sprachmenü (--accent-soft/--accent-text) */

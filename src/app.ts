@@ -313,7 +313,12 @@ function refreshCurrentPlace(): void {
       renderIcons();
     })
     .catch(() => {
-      // Fehler: aktuellen Stand stehen lassen, keine Fehleransicht erzwingen.
+      if (state.place?.id !== place.id) return;
+      if (state.forecast) {
+        state.freshness = "offline";
+        renderContent();
+        renderIcons();
+      }
     })
     .finally(() => {
       refreshing = false;
