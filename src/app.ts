@@ -268,11 +268,14 @@ function renderContent(): void {
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
     const place = state.place!;
-    if (isFavorite(place.id)) removeFavorite(place.id);
-    else addFavorite(place);
+    const wasAdded = !isFavorite(place.id);
+    if (wasAdded) addFavorite(place); else removeFavorite(place.id);
     renderFavorites();
     renderContent();
     renderIcons();
+    if (wasAdded) {
+      document.getElementById("favToggle")?.classList.add("fav-toggle--added");
+    }
   });
 }
 
