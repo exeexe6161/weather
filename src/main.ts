@@ -93,6 +93,40 @@ function hideSplash(): void {
   window.setTimeout(remove, 600);
 }
 
+// TEMPORÄR (Scroll-Messung zur Überlauf-Diagnose, nach Messung entfernen): zeigt
+// nur im Standalone unten eine einzeilige Live-Messung beim horizontalen Scrollen
+// (das nach rechts überstehende Element). Rein additiv, pointer-events:none.
+function scrollProbe(): void {
+  if (!isStandalone()) return;
+  const el = document.createElement("div");
+  el.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:4px 6px;text-align:center;pointer-events:none;";
+  document.body.appendChild(el);
+  const upd = () => {
+    const iw = window.innerWidth;
+    const hsw = document.documentElement.scrollWidth;
+    const hsl = window.scrollX;
+    const de = document.documentElement;
+    let widest = "", ww = 0;
+    de.querySelectorAll("body *").forEach((node) => {
+      const e = node as HTMLElement;
+      const r = e.getBoundingClientRect();
+      const right = r.right + window.scrollX;
+      if (right > iw + 1 && r.width > ww) {
+        let child = false;
+        for (const c of Array.from(e.children)) {
+          const cr = (c as HTMLElement).getBoundingClientRect();
+          if (cr.right + window.scrollX > iw + 1) { child = true; break; }
+        }
+        if (!child) { let n = e.tagName.toLowerCase(); if (e.id) n += "#" + e.id; else if (typeof e.className === "string" && e.className.trim()) n += "." + e.className.trim().split(/\s+/)[0]; widest = n + " r" + Math.round(right); ww = r.width; }
+      }
+    });
+    el.textContent = "iw" + iw + " hsw" + hsw + " scrollX" + Math.round(hsl) + " | past-right: " + (widest || "keins");
+  };
+  upd();
+  window.addEventListener("scroll", upd, { passive: true });
+  window.addEventListener("resize", upd);
+}
+
 function boot(): void {
   const splashStart = Date.now();
   initLang();
@@ -113,6 +147,7 @@ function boot(): void {
   const elapsed = Date.now() - splashStart;
   const delay = Math.max(0, Math.min(2000, Math.max(1200, elapsed)) - elapsed);
   window.setTimeout(hideSplash, delay);
+  scrollProbe();
 }
 
 if (document.readyState !== "loading") boot();
