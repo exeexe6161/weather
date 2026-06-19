@@ -1199,3 +1199,38 @@ footer{margin-top:48px;padding:0 16px;}
   .cw-ico{width:48px;height:48px;}
   .day-row{grid-template-columns:56px 24px 1fr 48px auto;gap:8px;}
 }
+
+/* ══ Standalone-Scroll-Umbau ══
+   Im Browser ist #appScroll transparent (display:contents) — Layout exakt wie
+   bisher, die bestehenden body-Regeln (max-width 740, margin:0 auto, safe-area
+   paddings) gelten unverändert. NUR in der installierten PWA werden html/body am
+   Viewport fixiert und #appScroll wird der eigentliche (vertikale) Scroller; das
+   beendet den horizontalen Wurzel-Scroll. body::before, .top-controls und #splash
+   bleiben position:fixed am Viewport und sind bewusst NICHT in #appScroll. */
+#appScroll{display:contents;}
+
+@media (display-mode: standalone){
+  html{height:100%;overflow:hidden;}
+  body{
+    height:100%;
+    overflow:hidden;
+    max-width:none;
+    margin:0;
+    padding-left:0;
+    padding-right:0;
+    padding-bottom:0;
+  }
+  #appScroll{
+    display:block;
+    height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    max-width:var(--wp-content-max);
+    margin:0 auto;
+    padding-left:var(--safe-l);
+    padding-right:var(--safe-r);
+    padding-bottom:calc(40px + var(--safe-bot));
+  }
+}
