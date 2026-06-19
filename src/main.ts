@@ -57,6 +57,34 @@ function preventPinchZoomInStandalone(): void {
   document.addEventListener("gesturestart", (e) => e.preventDefault());
 }
 
+// TEMPORÄR (Mess-Overlay zur Überlauf-Diagnose, nach Messung entfernen): zeigt
+// nur im Standalone-Modus oben links innerWidth, body/html scrollWidth und die
+// safe-area-Werte. Rein additiv, kein Layout-Eingriff (pointer-events:none).
+function debugViewportOverlay(): void {
+  if (!isStandalone()) return;
+  const update = () => {
+    let el = document.getElementById("vpDebug");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "vpDebug";
+      el.style.cssText = "position:fixed;top:60px;left:8px;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.4;";
+      document.body.appendChild(el);
+    }
+    const iw = window.innerWidth;
+    const bsw = document.body.scrollWidth;
+    const dew = document.documentElement.scrollWidth;
+    const sr = getComputedStyle(document.documentElement).getPropertyValue("--safe-r") || "?";
+    const sl = getComputedStyle(document.documentElement).getPropertyValue("--safe-l") || "?";
+    el.textContent =
+      "innerWidth: " + iw + "\n" +
+      "body.scrollW: " + bsw + (bsw > iw ? "  OVERFLOW +" + (bsw - iw) : "  ok") + "\n" +
+      "html.scrollW: " + dew + (dew > iw ? "  OVERFLOW +" + (dew - iw) : "  ok") + "\n" +
+      "safe-l/r: " + sl.trim() + " / " + sr.trim();
+  };
+  update();
+  window.addEventListener("resize", update);
+}
+
 function registerServiceWorker(): void {
   // Native App (Capacitor): kein Service Worker. Im WKWebView ist er ohnehin
   // wirkungslos, das Web-Bundle wird lokal aus dem App-Container geladen.
@@ -89,6 +117,7 @@ function boot(): void {
   if (installHint) initInstallHint(installHint);
   renderIcons();
   registerServiceWorker();
+  debugViewportOverlay();
 
   // Splash nur beim Seitenstart ausblenden — NICHT an refreshCurrentPlace
   // gekoppelt (der lädt nur Daten, nicht die Seite). Sichtbar mindestens ~1,2 s,
