@@ -79,6 +79,38 @@ function debugViewportOverlay(): void {
     const vv = window.visualViewport;
     const vvw = vv ? Math.round(vv.width) : 0;
     const vvs = vv ? vv.scale.toFixed(3) : "?";
+    const sw2 = window.screen ? window.screen.width : 0;
+    const over: string[] = [];
+    document.querySelectorAll("body *").forEach((node) => {
+      const e = node as HTMLElement;
+      if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0) {
+        let n = e.tagName.toLowerCase();
+        if (e.id) n += "#" + e.id;
+        else if (typeof e.className === "string" && e.className.trim())
+          n += "." + e.className.trim().split(/\s+/)[0];
+        over.push(n + " cw" + e.clientWidth + " sw" + e.scrollWidth);
+      }
+    });
+    let widest = "", widestW = 0;
+    document.querySelectorAll("body *").forEach((node) => {
+      const e = node as HTMLElement;
+      const w = Math.round(e.getBoundingClientRect().width);
+      if (w > sw2 + 1 && w > widestW) {
+        let childWide = false;
+        for (const c of Array.from(e.children)) {
+          if (Math.round((c as HTMLElement).getBoundingClientRect().width) > sw2 + 1) {
+            childWide = true; break;
+          }
+        }
+        if (!childWide) {
+          let n = e.tagName.toLowerCase();
+          if (e.id) n += "#" + e.id;
+          else if (typeof e.className === "string" && e.className.trim())
+            n += "." + e.className.trim().split(/\s+/)[0];
+          widest = n + " " + w; widestW = w;
+        }
+      }
+    });
     el.textContent =
       "innerWidth: " + iw + "\n" +
       "body.scrollW: " + bsw + (bsw > iw ? "  OVERFLOW +" + (bsw - iw) : "  ok") + "\n" +
@@ -86,7 +118,9 @@ function debugViewportOverlay(): void {
       "safe-l/r: " + sl.trim() + " / " + sr.trim() + "\n" +
       "screen.width: " + sw + "\n" +
       "visualVP.w: " + vvw + "\n" +
-      "visualVP.scale: " + vvs;
+      "visualVP.scale: " + vvs +
+      "\noverflow: " + (over.length ? over.slice(0,3).join(" | ") : "keine") +
+      "\nwidest>scr: " + (widest || "keine");
   };
   update();
   window.addEventListener("resize", update);
