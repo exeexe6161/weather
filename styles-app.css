@@ -953,6 +953,7 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
 .install-hint-x-ico{width:16px;height:16px;}
 
 /* ══ Stundenleiste ══ */
+.hourly-wrap{max-width:100%;overflow:hidden;}
 .hourly-strip{
   display:flex;
   gap:4px;

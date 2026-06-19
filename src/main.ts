@@ -57,78 +57,18 @@ function preventPinchZoomInStandalone(): void {
   document.addEventListener("gesturestart", (e) => e.preventDefault());
 }
 
-// TEMPORÄR (Mess-Overlay zur Überlauf-Diagnose, nach Messung entfernen): zeigt
-// nur im Standalone-Modus oben links innerWidth, body/html scrollWidth und die
-// safe-area-Werte. Rein additiv, kein Layout-Eingriff (pointer-events:none).
-function debugViewportOverlay(): void {
+// iOS ignoriert minimum-scale im Meta-Tag im Standalone. Daher den viewport zur
+// Laufzeit hart auf scale 1.0 festnageln (nur in der installierten PWA), damit
+// die App nicht herausgezoomt starten oder bleiben kann. Vergrößern bleibt durch
+// preventPinchZoomInStandalone separat geregelt.
+function lockStandaloneScale(): void {
   if (!isStandalone()) return;
-  const update = () => {
-    let el = document.getElementById("vpDebug");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "vpDebug";
-      el.style.cssText = "position:fixed;top:60px;left:8px;z-index:99999;background:#000;color:#0f0;font:12px monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre;line-height:1.4;";
-      document.body.appendChild(el);
-    }
-    const iw = window.innerWidth;
-    const bsw = document.body.scrollWidth;
-    const dew = document.documentElement.scrollWidth;
-    const sr = getComputedStyle(document.documentElement).getPropertyValue("--safe-r") || "?";
-    const sl = getComputedStyle(document.documentElement).getPropertyValue("--safe-l") || "?";
-    const sw = window.screen ? window.screen.width : 0;
-    const vv = window.visualViewport;
-    const vvw = vv ? Math.round(vv.width) : 0;
-    const vvs = vv ? vv.scale.toFixed(3) : "?";
-    const sw2 = window.screen ? window.screen.width : 0;
-    const over: string[] = [];
-    document.querySelectorAll("body *").forEach((node) => {
-      const e = node as HTMLElement;
-      if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth > 0) {
-        let n = e.tagName.toLowerCase();
-        if (e.id) n += "#" + e.id;
-        else if (typeof e.className === "string" && e.className.trim())
-          n += "." + e.className.trim().split(/\s+/)[0];
-        over.push(n + " cw" + e.clientWidth + " sw" + e.scrollWidth);
-      }
-    });
-    let widest = "", widestW = 0;
-    document.querySelectorAll("body *").forEach((node) => {
-      const e = node as HTMLElement;
-      const w = Math.round(e.getBoundingClientRect().width);
-      if (w > sw2 + 1 && w > widestW) {
-        let childWide = false;
-        for (const c of Array.from(e.children)) {
-          if (Math.round((c as HTMLElement).getBoundingClientRect().width) > sw2 + 1) {
-            childWide = true; break;
-          }
-        }
-        if (!childWide) {
-          let n = e.tagName.toLowerCase();
-          if (e.id) n += "#" + e.id;
-          else if (typeof e.className === "string" && e.className.trim())
-            n += "." + e.className.trim().split(/\s+/)[0];
-          widest = n + " " + w; widestW = w;
-        }
-      }
-    });
-    el.textContent =
-      "innerWidth: " + iw + "\n" +
-      "body.scrollW: " + bsw + (bsw > iw ? "  OVERFLOW +" + (bsw - iw) : "  ok") + "\n" +
-      "html.scrollW: " + dew + (dew > iw ? "  OVERFLOW +" + (dew - iw) : "  ok") + "\n" +
-      "safe-l/r: " + sl.trim() + " / " + sr.trim() + "\n" +
-      "screen.width: " + sw + "\n" +
-      "visualVP.w: " + vvw + "\n" +
-      "visualVP.scale: " + vvs +
-      "\noverflow: " + (over.length ? over.slice(0,3).join(" | ") : "keine") +
-      "\nwidest>scr: " + (widest || "keine");
-  };
-  update();
-  window.addEventListener("resize", update);
-  const vv = window.visualViewport;
-  if (vv) {
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-  }
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (!vp) return;
+  vp.setAttribute(
+    "content",
+    "width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
+  );
 }
 
 function registerServiceWorker(): void {
@@ -158,12 +98,12 @@ function boot(): void {
   initLang();
   initLangMenu();
   initApp();
+  lockStandaloneScale();
   preventPinchZoomInStandalone();
   const installHint = document.getElementById("installHint");
   if (installHint) initInstallHint(installHint);
   renderIcons();
   registerServiceWorker();
-  debugViewportOverlay();
 
   // Splash nur beim Seitenstart ausblenden — NICHT an refreshCurrentPlace
   // gekoppelt (der lädt nur Daten, nicht die Seite). Sichtbar mindestens ~1,2 s,
