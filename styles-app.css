@@ -43,7 +43,8 @@
 [hidden]{display:none !important;}
 html{color-scheme:light dark;}
 html,body{background:#FFFFFF;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}
-html,body{overflow-x:hidden;overflow-x:clip;}
+html{overflow-x:hidden;overflow-x:clip;width:100%;}
+body{overflow-x:hidden;overflow-x:clip;max-width:100%;}
 body{min-width:0;}
 html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
 
