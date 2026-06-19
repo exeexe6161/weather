@@ -955,18 +955,24 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
 /* ══ Stundenleiste ══ */
 .hourly-wrap{max-width:100%;overflow:hidden;}
 .hourly-strip{
-  display:flex;
-  width:100%;
-  gap:4px;
+  display:block;
+  max-width:100%;
   overflow-x:auto;
   scrollbar-width:thin;
   -webkit-overflow-scrolling:touch;
+  padding:0; /* geerbtes .list-card padding:var(--sp-4) neutralisieren; Innenabstand liegt im .hourly-track */
+}
+.hourly-track{
+  display:flex;
+  gap:4px;
+  width:-webkit-max-content;
+  width:max-content;
   padding:var(--sp-3);
 }
 /* Scrollhinweis: rechts in die Kartenfarbe auslaufen. Sticky Flex Kind statt
    Maske, damit Kartenhintergrund und Schatten am Rand nicht mit abblenden;
    rein dekorativ, kein Fokusziel. */
-.hourly-strip::after{
+.hourly-track::after{
   content:"";
   position:sticky;
   right:0;

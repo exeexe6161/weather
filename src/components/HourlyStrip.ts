@@ -18,7 +18,7 @@ function hourIsDayHeuristic(iso: string): boolean {
 export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
   const locale = getLocale();
   const spans = nightSpans(forecast.daily);
-  el.innerHTML = forecast.hourly
+  const cells = forecast.hourly
     .map((h) => {
       const isDay = spans !== null ? !isNightAt(h.time, spans) : hourIsDayHeuristic(h.time);
       const icon = pickIcon(h.weatherCode, isDay);
@@ -30,4 +30,5 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
       </div>`;
     })
     .join("");
+  el.innerHTML = `<div class="hourly-track" role="list">${cells}</div>`;
 }
