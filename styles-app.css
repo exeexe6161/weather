@@ -409,7 +409,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 
 /* ══ Layout ══ */
-.app-main{padding:0 16px;min-width:0;}
+.app-main{padding:0 16px;min-width:0;overflow-x:clip;}
 .sh{
   margin:var(--sp-6) 2px var(--sp-3);
   font-size:var(--fs-sm);
