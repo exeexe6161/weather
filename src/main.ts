@@ -93,6 +93,42 @@ function hideSplash(): void {
   window.setTimeout(remove, 600);
 }
 
+// TEMPORÄR (Überlauf-Sonde 3, nach Messung entfernen): läuft in JEDEM Modus,
+// listet unten die FÜNF breitesten nicht-fixed/sticky Elemente, deren rechte
+// Kante über die Dokumentbreite ragt. Kein scrollX (das war der alte Messfehler).
+function probe3(): void {
+  const box = document.createElement("div");
+  box.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#000;color:#0f0;font:10px monospace;padding:4px 6px;text-align:left;pointer-events:none;white-space:pre-wrap;line-height:1.4;";
+  document.body.appendChild(box);
+  const upd = () => {
+    const de = document.documentElement;
+    const docW = de.clientWidth;
+    const hsw = de.scrollWidth;
+    const list: Array<{ n: string; r: number }> = [];
+    de.querySelectorAll("body *").forEach((node) => {
+      const e = node as HTMLElement;
+      if (e === box) return;
+      const cs = getComputedStyle(e);
+      if (cs.position === "fixed" || cs.position === "sticky") return;
+      const r = Math.round(e.getBoundingClientRect().right);
+      if (r > docW + 1) {
+        let n = e.tagName.toLowerCase();
+        if (e.id) n += "#" + e.id;
+        else if (typeof e.className === "string" && e.className.trim()) n += "." + e.className.trim().split(/\s+/)[0];
+        list.push({ n, r });
+      }
+    });
+    list.sort((a, b) => b.r - a.r);
+    const top5 = list.slice(0, 5).map((x) => x.n + " " + x.r).join("\n");
+    box.textContent = "docW" + docW + " hsw" + hsw + (hsw > docW ? " OVER+" + (hsw - docW) : " ok") + "\n" + (top5 || "kein nicht-fixed Ueberlaeufer");
+  };
+  upd();
+  window.addEventListener("scroll", upd, { passive: true });
+  window.addEventListener("resize", upd);
+  window.setTimeout(upd, 500);
+  window.setTimeout(upd, 1500);
+}
+
 function boot(): void {
   const splashStart = Date.now();
   initLang();
@@ -113,6 +149,7 @@ function boot(): void {
   const elapsed = Date.now() - splashStart;
   const delay = Math.max(0, Math.min(2000, Math.max(1200, elapsed)) - elapsed);
   window.setTimeout(hideSplash, delay);
+  probe3();
 }
 
 if (document.readyState !== "loading") boot();
