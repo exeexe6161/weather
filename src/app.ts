@@ -226,6 +226,7 @@ function renderPollen(): void {
 // stationStartHour liefert -1 ohne/ungültige timezone → Marken zeigen "+Nh".
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   const feels = forecast.hourly.slice(0, 25).map((h) => h.apparentTemperature);
+  if (feels.length > 0) feels[0] = forecast.current.apparentTemperature;
   return {
     feels,
     startHour: stationStartHour(forecast.timezone),
