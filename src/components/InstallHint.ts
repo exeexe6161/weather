@@ -6,7 +6,7 @@
 import { t } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
-import { isNativeApp } from "../lib/platform";
+import { isNativeApp, isStandalone } from "../lib/platform";
 
 // Nach dem Wegklicken so viele Tage Ruhe, dann darf der Hinweis wiederkommen
 export const REMIND_AFTER_DAYS = 7;
@@ -37,14 +37,6 @@ function readState(): HintState {
 
 function writeState(state: HintState): void {
   try { localStorage.setItem(HINT_KEY, JSON.stringify(state)); } catch {}
-}
-
-// Läuft die App bereits installiert? Dann nie ein Hinweis.
-function isStandalone(): boolean {
-  return (
-    (window.matchMedia?.("(display-mode: standalone)").matches ?? false) ||
-    (navigator as unknown as { standalone?: boolean }).standalone === true
-  );
 }
 
 // iOS Safari: kein beforeinstallprompt, Installation nur über Teilen-Menü.

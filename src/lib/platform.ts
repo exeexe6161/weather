@@ -15,3 +15,10 @@ export function isNativeApp(): boolean {
   if (!cap) return false;
   return typeof cap.isNativePlatform === "function" ? cap.isNativePlatform() : cap.isNative === true;
 }
+
+export function isStandalone(): boolean {
+  return (
+    (window.matchMedia?.("(display-mode: standalone)").matches ?? false) ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}

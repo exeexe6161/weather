@@ -4,7 +4,7 @@ import { initLang, setLang, getLang, LANGS, type Lang } from "./i18n/ui";
 import { initApp } from "./app";
 import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
-import { isNativeApp } from "./lib/platform";
+import { isNativeApp, isStandalone } from "./lib/platform";
 
 function initLangMenu(): void {
   const btn = document.getElementById("langSwitch") as HTMLButtonElement | null;
@@ -49,6 +49,14 @@ function initLangMenu(): void {
   sync();
 }
 
+// Pinch-Zoom nur in der vom Home-Bildschirm gestarteten PWA unterbinden. Im
+// normalen Browser bleibt Zoom erlaubt (Barrierefreiheit). Nur gesturestart,
+// kein Doppeltipp und kein touchmove, damit Scrollen unberührt bleibt.
+function preventPinchZoomInStandalone(): void {
+  if (!isStandalone()) return;
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+}
+
 function registerServiceWorker(): void {
   // Native App (Capacitor): kein Service Worker. Im WKWebView ist er ohnehin
   // wirkungslos, das Web-Bundle wird lokal aus dem App-Container geladen.
@@ -76,6 +84,7 @@ function boot(): void {
   initLang();
   initLangMenu();
   initApp();
+  preventPinchZoomInStandalone();
   const installHint = document.getElementById("installHint");
   if (installHint) initInstallHint(installHint);
   renderIcons();
