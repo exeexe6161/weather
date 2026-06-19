@@ -75,14 +75,26 @@ function debugViewportOverlay(): void {
     const dew = document.documentElement.scrollWidth;
     const sr = getComputedStyle(document.documentElement).getPropertyValue("--safe-r") || "?";
     const sl = getComputedStyle(document.documentElement).getPropertyValue("--safe-l") || "?";
+    const sw = window.screen ? window.screen.width : 0;
+    const vv = window.visualViewport;
+    const vvw = vv ? Math.round(vv.width) : 0;
+    const vvs = vv ? vv.scale.toFixed(3) : "?";
     el.textContent =
       "innerWidth: " + iw + "\n" +
       "body.scrollW: " + bsw + (bsw > iw ? "  OVERFLOW +" + (bsw - iw) : "  ok") + "\n" +
       "html.scrollW: " + dew + (dew > iw ? "  OVERFLOW +" + (dew - iw) : "  ok") + "\n" +
-      "safe-l/r: " + sl.trim() + " / " + sr.trim();
+      "safe-l/r: " + sl.trim() + " / " + sr.trim() + "\n" +
+      "screen.width: " + sw + "\n" +
+      "visualVP.w: " + vvw + "\n" +
+      "visualVP.scale: " + vvs;
   };
   update();
   window.addEventListener("resize", update);
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+  }
 }
 
 function registerServiceWorker(): void {
