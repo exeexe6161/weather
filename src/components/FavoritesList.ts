@@ -18,7 +18,7 @@ export function renderFavoritesList(
   el.innerHTML = favorites
     .map(
       (p, i) => `<li class="fav-chip${p.id === activeId ? " fav-chip--active" : ""}">
-        <button type="button" class="fav-chip-btn" data-idx="${i}" aria-current="${p.id === activeId}">${esc(p.name)}</button>
+        <button type="button" class="fav-chip-btn" data-idx="${i}" aria-current="${p.id === activeId}"><i data-lucide="map-pin" class="fav-chip-ico"></i>${esc(p.name)}</button>
         <button type="button" class="fav-chip-x" data-idx="${i}" aria-label="${t("favRemove")}: ${esc(p.name)}">
           <i data-lucide="x" class="fav-chip-x-ico"></i>
         </button>
