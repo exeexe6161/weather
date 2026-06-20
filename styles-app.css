@@ -426,6 +426,30 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   padding:var(--sp-4);
 }
 
+/* Dezentes, gestaffeltes Einblenden der Inhaltskarten bei frischen Daten.
+   Opt-in nach Hausmuster: NUR bei no-preference. Grundzustand ist immer
+   opacity:1 (keine opacity-Regel auf .list-card), damit ohne Animation oder
+   bei reduce nie Inhalt unsichtbar bleibt (kein FOUC). Getriggert per Klasse
+   .cards-revealing auf #weatherContent in app.ts (Reflow-Neustart bei jedem
+   Erscheinen). translateY statt margin/top → kein Layout-Shift, kein Scrollsprung.
+   Staffelung per ID statt nth-of-type: Karten liegen auf gemischten Ebenen
+   (#hourlyStrip steckt in .hourly-wrap) und Pollen/Kurve können hidden sein —
+   feste ID-Delays bleiben top→unten stabil, eine fehlende Karte lässt nur ihren
+   Schritt aus, ohne die Reihenfolge zu brechen. */
+@media (prefers-reduced-motion:no-preference){
+  #weatherContent.cards-revealing .list-card{animation:card-rise .4s ease-out both;}
+  #weatherContent.cards-revealing #currentWeather{animation-delay:0ms;}
+  #weatherContent.cards-revealing #dressToday{animation-delay:50ms;}
+  #weatherContent.cards-revealing #pollenList{animation-delay:100ms;}
+  #weatherContent.cards-revealing #hourlyStrip{animation-delay:150ms;}
+  #weatherContent.cards-revealing #tempCurve{animation-delay:200ms;}
+  #weatherContent.cards-revealing #dailyForecast{animation-delay:250ms;}
+}
+@keyframes card-rise{
+  from{opacity:0;transform:translateY(8px);}
+  to{opacity:1;transform:none;}
+}
+
 /* ══ Suche ══ */
 .search-section{margin-top:var(--sp-5);position:relative;text-align:left;}
 .search-field{

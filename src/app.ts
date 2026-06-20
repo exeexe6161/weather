@@ -234,6 +234,20 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   };
 }
 
+// Dezentes gestaffeltes Einblenden der Inhaltskarten. Reflow-Neustart (remove →
+// offsetWidth lesen → add), damit die CSS-Animation bei JEDEM Aufruf neu läuft.
+// Bewusst NICHT in renderContent(), sondern nur an den Stellen aufgerufen, an
+// denen Inhalt frisch erscheint (Stadtwahl, Refresh) — nicht im Cache-Vorlauf-
+// Doppelrender, beim Sprachwechsel oder Tageswechsel. Die Animation selbst hängt
+// an @media (prefers-reduced-motion:no-preference); bei reduce ist die Klasse
+// wirkungslos und der Inhalt sofort voll sichtbar.
+function revealCards(): void {
+  const el = byId("weatherContent");
+  el.classList.remove("cards-revealing");
+  void el.offsetWidth; // erzwingt Reflow → Animation startet bei erneutem Add neu
+  el.classList.add("cards-revealing");
+}
+
 function renderContent(): void {
   if (!state.place || !state.forecast) return;
   updateDocTitle(); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
@@ -315,6 +329,7 @@ function refreshCurrentPlace(): void {
       renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
       renderFavorites();
       renderIcons();
+      revealCards();
     })
     .catch(() => {
       if (state.place?.id !== place.id) return;
@@ -361,6 +376,7 @@ export function selectPlace(place: Place): void {
   // nie persistiert (Datenschutzzusage), die Sofort-Anzeige darf das nicht
   // aufweichen.
   const cached = !isGeoPlace ? readJson<ForecastCache>(FORECAST_CACHE_KEY) : null;
+  const showedFromCache = cached !== null && cached.placeId === place.id;
   if (cached !== null && cached.placeId === place.id) {
     state.forecast = cached.forecast;
     state.freshness = "stale";
@@ -369,6 +385,7 @@ export function selectPlace(place: Place): void {
     renderContent();
     renderFavorites();
     renderIcons();
+    revealCards();
   } else {
     setView("loading");
   }
@@ -402,6 +419,7 @@ export function selectPlace(place: Place): void {
       renderContent();
       renderFavorites();
       renderIcons();
+      if (!showedFromCache) revealCards(); // sonst lautloser Tausch (Cache hat schon eingeblendet)
     })
     .catch(() => {
       if (state.place?.id !== place.id) return;
