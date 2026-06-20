@@ -3,8 +3,8 @@ import type { Forecast } from "../lib/weather";
 import { uvHintKey } from "../lib/uv";
 import { summaryFor } from "../lib/summary";
 import { tempCompareKey } from "../lib/tempCompare";
-import { pickIcon } from "../lib/wmo";
-import { getWmo } from "../lib/wmo";
+import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
+import { rainWindowFor, todayHours } from "../lib/clothing";
 import { weatherLabel } from "../i18n/weather-labels";
 import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
@@ -123,6 +123,16 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   // Vergleich zu gestern; null bei fehlendem gestrigen Wert (API-Lücke, alte
   // Caches) oder Differenz unter der Spürbarkeitsschwelle → Zeile entfällt
   const compareKey = tempCompareKey(today?.tempMax, forecast.yesterdayTempMax);
+  // Gradzahl zum Vergleich; compareKey != null garantiert finite Werte, der
+  // typeof-Guard hält den Typprüfer ruhig. Gerundete absolute Differenz.
+  const compareDiff =
+    compareKey && typeof today?.tempMax === "number" && typeof forecast.yesterdayTempMax === "number"
+      ? Math.round(Math.abs(today.tempMax - forecast.yesterdayTempMax))
+      : null;
+  // Regenwarnung aus der vorhandenen rainWindowFor-Logik (erstes Fenster heute).
+  // NICHT zeigen, wenn es jetzt schon regnet (analog summary.ts) — "ab" wäre falsch.
+  const rainNow = isPrecipCode(c.weatherCode);
+  const rainStart = rainNow ? null : (rainWindowFor(todayHours(forecast.hourly, c.time))?.fromHour ?? null);
 
   el.innerHTML = `
     <div class="cw-head">
@@ -144,7 +154,11 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     ${summary ? `<p class="cw-summary">${esc(summary)}</p>` : ""}
     ${compareKey ? `<div class="cw-compare">
       <i data-lucide="${compareKey.includes("warmer") ? "trending-up" : "trending-down"}" class="cw-compare-ico"></i>
-      <span>${t(compareKey)}</span>
+      <span>${t(compareKey).replace("{diff}", String(compareDiff))}</span>
+    </div>` : ""}
+    ${rainStart !== null ? `<div class="cw-compare">
+      <i data-lucide="cloud-rain" class="cw-compare-ico"></i>
+      <span>${t("rain_from").replace("{hour}", String(rainStart))}</span>
     </div>` : ""}
     <ul class="cw-meta" aria-label="${esc(label)}">
       <li class="cw-meta-item">
