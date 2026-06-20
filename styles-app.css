@@ -75,6 +75,7 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --accent-soft:rgba(46,127,224,.12);
   --accent-text:#1D62B4;    /* dunklere Zenit Stufe, AA tauglich auf Pur */
   --star:var(--wp-zenit);
+  --star-rgb:46,127,224; /* RGB-Kanal von --star (hell) für rgba()-Glow */
   --btn-bg:var(--wp-zenit); /* Primärbutton nach Design System: Zenit Fläche, Pur Text */
   --btn-fg:var(--wp-pur);
   --accent-soft-hover:rgba(46,127,224,.18);  /* getönte Zenit Flächen (Geo Button) */
@@ -100,6 +101,7 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --shadow-2:0 0 0 1px var(--sep),0 1px 3px rgba(0,0,0,.04);
   --shadow-3:0 0 0 1px var(--sep),0 4px 12px rgba(0,0,0,.06);
   --card-shadow:var(--shadow-2);
+  --shadow-float:0 8px 24px rgba(20,30,45,0.14),0 2px 6px rgba(20,30,45,0.08); /* schwebende Karte (install-hint) */
 
   /* ── Radius / Spacing / Type ── */
   --r-sm:10px;
@@ -144,6 +146,7 @@ html[data-theme="dark"]{
   --accent-soft:rgba(46,127,224,.20);
   --accent-text:#7FB1F0;    /* hellere Zenit Stufe auf Karbon */
   --star:#7FB1F0;
+  --star-rgb:127,177,240; /* RGB-Kanal von --star (dunkel) */
   --accent-soft-hover:rgba(46,127,224,.30);
   --accent-soft-active:rgba(46,127,224,.38);
   --accent-border:rgba(127,177,240,.40);
@@ -158,6 +161,7 @@ html[data-theme="dark"]{
   --shadow-2:0 0 0 1px var(--sep),0 1px 3px rgba(0,0,0,.40);
   --shadow-3:0 0 0 1px var(--sep),0 4px 12px rgba(0,0,0,.50);
   --card-shadow:var(--shadow-2);
+  --shadow-float:0 8px 24px rgba(20,30,45,0.5),0 2px 6px rgba(20,30,45,0.4);
 }
 
 /* Signatur Elemente aus brand/06-web/tokens.css: der Riss, 24 Grad,
@@ -315,7 +319,7 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
   letter-spacing:.3px;
   color:var(--l1);
   cursor:pointer;
-  box-shadow:0 1px 2px rgba(17,24,39,.05),0 0 0 1px var(--sep);
+  box-shadow:var(--shadow-2);
   transition:transform var(--t-base),background .2s;
 }
 .top-pill:active{transform:scale(var(--press-scale));}
@@ -342,7 +346,7 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
   min-height:44px;
   background:none;
   border:none;
-  border-radius:8px;
+  border-radius:var(--r-sm);
   font-family:inherit;
   font-size:var(--fs-base);
   font-weight:600;
@@ -363,7 +367,7 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
   border-radius:var(--r-pill);
   color:var(--l1);
   cursor:pointer;
-  box-shadow:0 1px 2px rgba(17,24,39,.05),0 0 0 1px var(--sep);
+  box-shadow:var(--shadow-2);
   transition:transform var(--t-base);
 }
 .theme-btn:active{transform:scale(var(--press-scale));}
@@ -543,7 +547,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   min-height:44px;
   background:none;
   border:none;
-  border-radius:8px;
+  border-radius:var(--r-sm);
   font-family:inherit;
   font-size:var(--fs-md);
   color:var(--l1);
@@ -759,9 +763,9 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .fav-toggle[aria-pressed="true"] .fav-toggle-ico{fill:currentColor;}
 @media (prefers-reduced-motion:no-preference){
   @keyframes fav-glow{
-    0%{box-shadow:0 0 0 0 rgba(95,148,247,0);}
-    35%{box-shadow:0 0 0 6px rgba(95,148,247,.28);}
-    100%{box-shadow:0 0 0 12px rgba(95,148,247,0);}
+    0%{box-shadow:0 0 0 0 rgba(var(--star-rgb),0);}
+    35%{box-shadow:0 0 0 6px rgba(var(--star-rgb),.28);}
+    100%{box-shadow:0 0 0 12px rgba(var(--star-rgb),0);}
   }
   .fav-toggle--added{animation:fav-glow .7s ease-out;}
 }
@@ -916,17 +920,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   gap:12px;
   padding:var(--sp-3) var(--sp-4);
   background:var(--s1);
-  border:1px solid rgba(46,127,224,0.28);
+  border:1px solid var(--accent-border);
   border-left:3px solid var(--wp-zenit);
-  border-radius:14px;
-  box-shadow:0 8px 24px rgba(20,30,45,0.14),0 2px 6px rgba(20,30,45,0.08);
+  border-radius:var(--r-card);
+  box-shadow:var(--shadow-float);
   text-align:left;
   z-index:300;
 }
 html[data-theme="dark"] .install-hint{
-  border-color:rgba(122,150,180,0.35);
+  border-color:var(--accent-border);
   border-left-color:var(--wp-zenit);
-  box-shadow:0 8px 24px rgba(20,30,45,0.5),0 2px 6px rgba(20,30,45,0.4);
+  box-shadow:var(--shadow-float);
 }
 @media (prefers-reduced-motion:no-preference){
   .install-hint{animation:hint-rise .35s ease-out;}
@@ -1037,7 +1041,7 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
    Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) und die zwei
    Festtöne (#33506f Werte, #8a939d Uhrzeiten) sind für hellen Grund gedacht —
    im Dark Mode separat zu prüfen. */
-.tc-card{margin-top:8px;padding:var(--sp-3) var(--sp-4);}
+.tc-card{padding:var(--sp-3) var(--sp-4);}
 .tc-svg{width:100%;height:auto;display:block;}
 .tc-line{stroke:var(--wp-zenit);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .tc-guide{stroke:var(--wp-zenit);stroke-opacity:.10;stroke-width:1;}
@@ -1074,7 +1078,7 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
   padding:3px;
   background:var(--s1);
   border-radius:var(--r-pill);
-  box-shadow:0 1px 2px rgba(17,24,39,.05),0 0 0 1px var(--sep);
+  box-shadow:var(--shadow-2);
 }
 .seg-btn{
   position:relative;
@@ -1137,9 +1141,9 @@ html[data-theme="dark"] .day-row--outlook .day-bar,
 html[data-theme="dark"] .day-row--outlook .day-rain-ico{opacity:.5;}
 /* Light: gedaempfte, aber kontraststarke Textfarben im Ausblick */
 html:not([data-theme="dark"]) .day-row--outlook .day-date,
-html:not([data-theme="dark"]) .day-row--outlook .day-min{color:#565F68;}
+html:not([data-theme="dark"]) .day-row--outlook .day-min{color:var(--l4);}
 html:not([data-theme="dark"]) .day-row--outlook .day-rain,
-html:not([data-theme="dark"]) .day-row--outlook .day-label{color:#4D565F;}
+html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
 /* Dark: volle Theme-Farben reichen fuer 4.5:1, kein Farb-Override */
 .day-row{
   display:grid;
