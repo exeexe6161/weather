@@ -4,7 +4,7 @@
 // Bausteine); die sichtbare Copy entsteht in der Komponente über die uiLabels.
 import type { Forecast } from "./weather";
 import { isPrecipCode } from "./wmo";
-import { todayHours, rainWindowFor, RAIN_PROB_THRESHOLD } from "./clothing";
+import { todayHours, rainWindowFor, hourOf, RAIN_PROB_THRESHOLD } from "./clothing";
 import { UV_SHOW_THRESHOLD } from "./uv";
 
 // ── Temperaturbänder (gefühlte Temperatur, Obergrenzen exklusiv), kalibrierbar
@@ -17,6 +17,11 @@ export const WARM_MAX = 28; // darüber: heiß
 // ── Weitere Schwellen, kalibrierbar
 export const WINDY_MIN = 25; // km/h, ab hier "windig"
 export const HUMID_MIN = 65; // Prozent Luftfeuchte, ab hier "schwül"
+
+// Schirm-/„später Regen"-Schluss nur, wenn der Regen bald beginnt (Stunden ab
+// jetzt). Weiter entfernter Regen trägt allein die separate "Regen ab HH Uhr"
+// Zeile in CurrentWeather; der Summary-Satz bleibt dann schirmlos.
+export const RAIN_SOON_HOURS = 6;
 
 // ── Tageszeitgrenzen (lokale Stunde des Orts), kalibrierbar
 export const EVENING_FROM = 17;
@@ -98,11 +103,20 @@ export function summaryFor(forecast: Forecast): Summary | null {
   const windy = typeof c.windSpeed === "number" && c.windSpeed >= WINDY_MIN;
   const humid = typeof c.humidity === "number" && c.humidity >= HUMID_MIN;
 
-  // Regenlage aus den Reststunden des Tages (hourly beginnt bei jetzt)
+  // Regenlage aus den Reststunden des Tages (hourly beginnt bei jetzt).
+  // "Bald" heißt: Beginn höchstens RAIN_SOON_HOURS Stunden ab jetzt. nowHour ist
+  // hier nicht null (tod !== null garantiert eine gültige timezone), der Guard
+  // hält nur den Typprüfer ruhig. rest filtert auf denselben Kalendertag, der
+  // Beginn liegt also am selben Tag (fromHour >= nowHour); fromHour == nowHour
+  // ist "jetzt/bald", ein theoretisch negativer Abstand wird als bald gewertet.
   const rest = todayHours(forecast.hourly ?? [], c.time);
+  const nowHour = localHour(forecast.timezone);
+  const soon = (startHour: number): boolean => nowHour !== null && startHour - nowHour <= RAIN_SOON_HOURS;
   const rainNow = isPrecipCode(c.weatherCode) && sky !== "thunder";
-  const rainLater = !rainNow && rainWindowFor(rest) !== null;
-  const thunderLater = rest.some((h) => typeof h.weatherCode === "number" && h.weatherCode >= 95);
+  const rw = rainWindowFor(rest);
+  const rainLater = !rainNow && rw !== null && soon(rw.fromHour);
+  const thunderStart = rest.find((h) => typeof h.weatherCode === "number" && h.weatherCode >= 95);
+  const thunderLater = thunderStart !== undefined && soon(hourOf(thunderStart.time));
   const todayMax = forecast.daily?.[0]?.precipitationProbabilityMax;
   // Regen war heute, Rest trocken (gleiche Logik wie die Anziehempfehlung)
   const rainWasOver =
