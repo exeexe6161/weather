@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://weatherpure.com/sitemap.xml
