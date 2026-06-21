@@ -67,14 +67,14 @@
   <div class="card">
     <p>Hava durumu ve konum araması, <strong>Open-Meteo</strong> (open-meteo.com) programlama arayüzü üzerinden alınır. Alım sırasında cihazın IP adresi, sorgulanan konumun koordinatları veya arama terimiyle birlikte teknik nedenlerle Open-Meteo'ya iletilir.</p>
     <p>Yasal dayanak Art. 6 Abs. 1 lit. f DSGVO'dur (GDPR; talep edilen hava durumu bilgilerinin sağlanmasındaki meşru menfaat). Hava verileri CC BY 4.0 lisansı altındadır.</p>
-    <p>Polen yoğunluğunun gösterilmesi için uygulama ek olarak Open-Meteo'nun air-quality-api.open-meteo.com adresindeki Air Quality API'sini çağırır. Bu sırada, seçilen konuma ait verilerin iletilebilmesi için cihazın IP adresi teknik nedenlerle bu hizmete aktarılır. Open-Meteo, kendi beyanına göre kişisel veri toplamaz, takip ve çerez kullanmaz. Burada da yasal dayanak, talep edilen hava durumu ve çevre verilerinin sağlanmasındaki meşru menfaat olan Art. 6 Abs. 1 lit. f DSGVO'dur (GDPR).</p>
+    <p>Polen yoğunluğunun gösterilmesi için uygulama ek olarak Open-Meteo'nun air-quality-api.open-meteo.com adresindeki Air Quality API'sini çağırır. Cihazın IP adresi ve seçilen konumun koordinatları, verilerin teknik olarak iletilebilmesi için bu hizmete aktarılır. Open-Meteo; IP adresini, çağrılan URL'yi ve URL'de yer alan koordinatları içerebilen teknik sunucu kayıtlarını bakım, hata analizi ve kötüye kullanımın önlenmesi amacıyla 90 güne kadar saklayabilir. Open-Meteo'nun beyanına göre bu kayıtlar kullanıcı kimlikleriyle ilişkilendirilmez, üçüncü taraflarla paylaşılmaz ve reklam ya da takip amacıyla kullanılmaz. Yasal dayanak Art. 6 Abs. 1 lit. f DSGVO'dur (GDPR).</p>
     <p>Daha fazla bilgi: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
   </div>
 
   <h2 class="sh">Konum sorgusu (yalnızca onayla)</h2>
   <div class="card">
     <p>"Konumumu kullan" özelliği isteğe bağlıdır. Tarayıcı üzerinden konum sorgusu, ancak düğmeye aktif tıklama ve tarayıcı iletişim kutusundaki ek izinden sonra başlar (Art. 6 Abs. 1 lit. a DSGVO/GDPR ve § 25 Abs. 1 TDDDG uyarınca onay).</p>
-    <p>Koordinatlar yalnızca anlık hava durumu ve polen sorgusu için Open-Meteo'ya iletilir ve kalıcı olarak saklanmaz. Onay, tarayıcı ayarlarından her zaman geri çekilebilir; uygulama, konum izni olmadan da şehir aramasıyla tam olarak çalışır.</p>
+    <p>Uygulama ve işletmeci kesin konum koordinatlarını kalıcı olarak saklamaz. Koordinatlar yalnızca anlık hava durumu ve polen sorgusu için Open-Meteo'ya iletilir; Open-Meteo'nun teknik kayıt işlemi yukarıda açıklanmıştır. Onay, tarayıcı ayarlarından her zaman geri çekilebilir; uygulama, konum izni olmadan da şehir aramasıyla tam olarak çalışır.</p>
   </div>
 
   <h2 class="sh">Service Worker / çevrimdışı önbellek</h2>
