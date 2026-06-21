@@ -43,9 +43,8 @@
 [hidden]{display:none !important;}
 html{color-scheme:light dark;}
 html,body{background:#FFFFFF;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}
-html{overflow-x:hidden;overflow-x:clip;width:100%;}
-body{overflow-x:hidden;overflow-x:clip;max-width:100%;}
-body{min-width:0;}
+html{overflow-x:hidden;overflow-x:clip;width:100%;max-width:100%;}
+body{overflow-x:hidden;overflow-x:clip;width:100%;max-width:100%;min-width:0;}
 html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
 
 /* ── WeatherPure Brand Tokens (Quelle: brand/06-web/tokens.css) ──
@@ -413,7 +412,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 
 /* ══ Layout ══ */
-.app-main{padding:0 16px;min-width:0;overflow-x:clip;}
+.app-main{padding:0 16px;min-width:0;max-width:100%;overflow-x:clip;}
 .sh{
   margin:var(--sp-6) 2px var(--sp-3);
   font-size:var(--fs-sm);
@@ -543,6 +542,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   align-items:center;
   gap:10px;
   width:100%;
+  min-width:0;
+  overflow:hidden;
   padding:11px 12px;
   min-height:44px;
   background:none;
@@ -556,8 +557,18 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 .search-result:hover,.search-result:focus-visible{background:var(--s2);}
 .search-result-ico{width:16px;height:16px;flex:0 0 auto;color:var(--l4);}
-.search-result-name{font-weight:600;}
+.search-result-name{
+  flex:0 1 auto;
+  min-width:0;
+  max-width:50%;
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 .search-result-region{
+  flex:1 1 auto;
+  min-width:0;
   font-size:var(--fs-sm);
   color:var(--l4);
   overflow:hidden;
@@ -576,6 +587,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    quetschen — flex-wrap + Inhaltsbreite als Mindestmaß. */
 .geo-actions{
   display:flex;
+  min-width:0;
   gap:8px;
   flex-wrap:wrap;
   align-items:flex-start; /* Buttons auf einer Linie; Captions hängen darunter, dürfen unterschiedlich lang sein */
@@ -584,6 +596,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    Spalten nebeneinander (je ~halbe Breite), brechen bei zu wenig Platz um. */
 .geo-col{
   flex:1 1 130px;
+  min-width:0;
   display:flex;
   flex-direction:column;
 }
@@ -686,7 +699,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .fav-chip-x-ico{width:14px;height:14px;}
 
 /* ══ Zustände ══ */
-.weather-section{margin-top:var(--sp-5);min-width:0;}
+.weather-section{margin-top:var(--sp-5);min-width:0;max-width:100%;}
+#weatherContent{min-width:0;max-width:100%;}
 .state-card{
   background:var(--s1);
   border-radius:var(--r-card);
@@ -734,14 +748,16 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .retry-btn-ico{width:16px;height:16px;}
 
 /* ══ Aktuelles Wetter ══ */
-.cw-card{text-align:left;}
+.cw-card{text-align:left;min-width:0;max-width:100%;}
 .cw-head{
   display:flex;
+  min-width:0;
   align-items:flex-start;
   justify-content:space-between;
   gap:10px;
 }
-.cw-place-name{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.2px;}
+.cw-place{min-width:0;}
+.cw-place-name{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.2px;overflow-wrap:anywhere;}
 .cw-place-region{font-size:var(--fs-sm);color:var(--l4);margin-top:2px;}
 .fav-toggle{
   display:inline-flex;
@@ -987,11 +1003,13 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
 .install-hint-x-ico{width:16px;height:16px;}
 
 /* ══ Stundenleiste ══ */
-.hourly-wrap{max-width:100%;overflow:hidden;}
+.hourly-wrap{max-width:100%;overflow:hidden;contain:inline-size;}
 .hourly-strip{
   display:block;
   max-width:100%;
   overflow-x:auto;
+  overscroll-behavior-x:contain;
+  overscroll-behavior-inline:contain;
   scrollbar-width:thin;
   -webkit-overflow-scrolling:touch;
   padding:0; /* geerbtes .list-card padding:var(--sp-4) neutralisieren; Innenabstand liegt im .hourly-track */
@@ -1149,7 +1167,7 @@ html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
   display:grid;
   /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen
      über alle Zeilen bündig bleiben (jede Zeile ist ein eigenes Grid) */
-  grid-template-columns:64px 26px 1fr 56px auto;
+  grid-template-columns:64px 26px minmax(0,1fr) 56px auto;
   align-items:center;
   gap:var(--sp-3);
   padding:var(--sp-4) 0; /* großzügigerer, token-reiner Zeilen-Rhythmus (war 11px) */
@@ -1240,7 +1258,7 @@ footer{margin-top:48px;padding:0 16px;}
 @media (max-width:380px){
   .cw-temp{font-size:44px;}
   .cw-ico{width:48px;height:48px;}
-  .day-row{grid-template-columns:56px 24px 1fr 48px auto;gap:var(--sp-2);}
+  .day-row{grid-template-columns:56px 24px minmax(0,1fr) 48px auto;gap:var(--sp-2);}
 }
 
 /* ══ Standalone-Scroll-Umbau ══
@@ -1250,7 +1268,7 @@ footer{margin-top:48px;padding:0 16px;}
    Viewport fixiert und #appScroll wird der eigentliche (vertikale) Scroller; das
    beendet den horizontalen Wurzel-Scroll. body::before, .top-controls und #splash
    bleiben position:fixed am Viewport und sind bewusst NICHT in #appScroll. */
-#appScroll{display:contents;}
+#appScroll{display:contents;min-width:0;max-width:100%;overflow-x:clip;}
 
 @media (display-mode: standalone){
   html{height:100%;overflow:hidden;}

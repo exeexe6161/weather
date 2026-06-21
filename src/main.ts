@@ -71,6 +71,31 @@ function lockStandaloneScale(): void {
   );
 }
 
+// iOS Safari kann den visuellen Viewport nach Tastatur/Fokus oder nach einem
+// horizontalen Wisch bei normalem Zoom seitlich versetzt stehen lassen. Echte
+// Vergrößerung bleibt erlaubt; nur bei Scale 1 wird die Seite zurückgesetzt.
+function stabilizeHorizontalViewport(): void {
+  const reset = (): void => {
+    if (window.visualViewport && window.visualViewport.scale > 1.01) return;
+    if (window.scrollX === 0 && document.documentElement.scrollLeft === 0 && document.body.scrollLeft === 0) return;
+    window.scrollTo({ left: 0, top: window.scrollY, behavior: "auto" });
+  };
+
+  let pending = 0;
+  const scheduleReset = (): void => {
+    if (pending) cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(reset);
+  };
+
+  window.addEventListener("scroll", scheduleReset, { passive: true });
+  window.visualViewport?.addEventListener("scroll", scheduleReset, { passive: true });
+  window.visualViewport?.addEventListener("resize", scheduleReset, { passive: true });
+  document.addEventListener("focusout", () => {
+    scheduleReset();
+    window.setTimeout(scheduleReset, 300);
+  }, true);
+}
+
 function registerServiceWorker(): void {
   // Native App (Capacitor): kein Service Worker. Im WKWebView ist er ohnehin
   // wirkungslos, das Web-Bundle wird lokal aus dem App-Container geladen.
@@ -100,6 +125,7 @@ function boot(): void {
   initApp();
   lockStandaloneScale();
   preventPinchZoomInStandalone();
+  stabilizeHorizontalViewport();
   const installHint = document.getElementById("installHint");
   if (installHint) initInstallHint(installHint);
   renderIcons();

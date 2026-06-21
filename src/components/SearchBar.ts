@@ -58,6 +58,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       btn.addEventListener("click", () => {
         const place = places[Number(btn.dataset.idx)];
         input.value = "";
+        input.blur();
         closeList();
         opts.onSelect(place);
       });
