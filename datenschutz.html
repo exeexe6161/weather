@@ -67,14 +67,14 @@
   <div class="card">
     <p>Wetter und Ortssuche werden über die Programmierschnittstelle von <strong>Open-Meteo</strong> (open-meteo.com) abgerufen. Beim Abruf wird technisch bedingt die IP-Adresse des Geräts an Open-Meteo übertragen, zusammen mit den Koordinaten beziehungsweise dem Suchbegriff des angefragten Ortes.</p>
     <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Bereitstellung der angefragten Wetterinformationen). Die Wetterdaten stehen unter der Lizenz CC BY 4.0.</p>
-    <p>Für die Anzeige der Pollenbelastung ruft die App zusätzlich die Air Quality API von Open-Meteo unter air-quality-api.open-meteo.com auf. Dabei wird die IP-Adresse des Geräts technisch bedingt an diesen Dienst übermittelt, um die Daten für den gewählten Ort auszuliefern. Open-Meteo erhebt nach eigenen Angaben keine personenbezogenen Daten, setzt kein Tracking und keine Cookies ein. Rechtsgrundlage ist auch hier Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der Bereitstellung der angefragten Wetter- und Umweltdaten.</p>
+    <p>Für die Anzeige der Pollenbelastung ruft die App zusätzlich die Air Quality API von Open-Meteo unter air-quality-api.open-meteo.com auf. Dabei werden die IP-Adresse und die Koordinaten des gewählten Ortes technisch bedingt an diesen Dienst übermittelt. Open-Meteo kann technische Serverprotokolle mit IP-Adresse, aufgerufener URL und darin enthaltenen Koordinaten zur Wartung, Fehleranalyse und Missbrauchsabwehr bis zu 90 Tage speichern. Laut Open-Meteo werden diese Protokolle nicht mit Nutzeridentitäten verknüpft, nicht an Dritte weitergegeben und nicht für Werbung oder Tracking verwendet. Rechtsgrundlage ist auch hier Art. 6 Abs. 1 lit. f DSGVO.</p>
     <p>Weitere Informationen: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
   </div>
 
   <h2 class="sh">Standortabfrage (nur nach Einwilligung)</h2>
   <div class="card">
     <p>Die Funktion „Meinen Standort verwenden" ist optional. Die Standortabfrage über den Browser startet erst nach aktivem Klick auf die Schaltfläche und zusätzlicher Freigabe im Browserdialog (Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG).</p>
-    <p>Die Koordinaten werden ausschließlich für den unmittelbaren Wetter- und Pollenabruf an Open-Meteo übertragen und nicht dauerhaft gespeichert. Die Einwilligung kann jederzeit über die Browsereinstellungen widerrufen werden; die App funktioniert vollständig auch ohne Standortfreigabe über die Ortssuche.</p>
+    <p>Die App und der Betreiber speichern die präzisen Koordinaten nicht dauerhaft. Sie werden ausschließlich für den unmittelbaren Wetter- und Pollenabruf an Open-Meteo übertragen; dessen technische Protokollierung ist oben beschrieben. Die Einwilligung kann jederzeit über die Browsereinstellungen widerrufen werden; die App funktioniert vollständig auch ohne Standortfreigabe über die Ortssuche.</p>
   </div>
 
   <h2 class="sh">Service Worker / Offline Cache</h2>
