@@ -130,6 +130,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   rain_window:     { de: "Regen {prob} zwischen {from} und {to} Uhr", en: "Rain {prob} between {from}:00 and {to}:00", tr: "Saat {from} ile {to} arası yağmur {prob}" },
   rain_none:       { de: "Kein Regen erwartet", en: "No rain expected", tr: "Yağmur beklenmiyor" },
   rain_none_more:  { de: "Kein Regen mehr erwartet", en: "No more rain expected", tr: "Bugün için yağmur beklentisi kalmadı" },
+  rain_thunder:    { de: "Gewitter möglich, Schirm einpacken", en: "Storms possible, pack an umbrella", tr: "Fırtına olabilir, şemsiye al" },
   dry_window:      { de: "Trockenes Fenster {von} bis {bis} Uhr.", en: "Dry window {von} to {bis}.", tr: "{von} ile {bis} arası kuru." },
   dry_from:        { de: "Ab {von} Uhr trocken.", en: "Dry from {von}.", tr: "{von} sonrası kuru." },
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
