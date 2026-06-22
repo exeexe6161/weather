@@ -17,6 +17,7 @@ import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderTempCurve, stationStartHour, type TempCurveInput } from "./components/TempCurve";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
+import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather } from "./lib/favoritesWeather";
 import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
@@ -204,6 +205,10 @@ function updateTopStamp(): void {
 }
 
 function renderFavorites(): void {
+  // Wetter NUR aus dem Cache (Etappe 2: keine Netzaufrufe hier — der Auto-Load,
+  // der den Cache füllt, kommt in Etappe 3). Leerer Cache → leere Map → Chips
+  // zeigen wie bisher nur den Namen.
+  const weather = readFavWeatherCache();
   renderFavoritesList(byId("favoritesList"), getFavorites(), state.place?.id ?? null, {
     onSelect: (place) => selectPlace(place),
     onRemove: (place) => {
@@ -212,7 +217,24 @@ function renderFavorites(): void {
       renderContent();
       renderIcons();
     },
-  });
+  }, weather);
+}
+
+// Favoriten-Wetter im Hintergrund laden: refreshFavoritesWeather macht EINEN
+// batched Call nur für stale/missing Orte (Etappe 1) und füllt den Cache; danach
+// rendern die Chips mit Temp+Icon. NICHT-BLOCKIEREND — der App-Start wartet nie
+// darauf. getFavorites() liefert nur echte Favoriten (Geo-Ort ist nie dabei).
+// Fehler sind in refreshFavoritesWeather bereits geschluckt; der catch ist die
+// letzte Sicherung. War schon Cache da, bleibt er bis zum Re-Render sichtbar.
+function loadFavoritesWeather(): void {
+  const favs = getFavorites();
+  if (favs.length === 0) return; // kein Call ohne Favoriten
+  refreshFavoritesWeather(favs)
+    .then(() => {
+      renderFavorites(); // liest den jetzt gefüllten Cache
+      renderIcons();     // neue data-lucide Wetter-Icons hydrieren
+    })
+    .catch(() => { /* leise: Chips bleiben bei alten/keinen Werten */ });
 }
 
 function renderPollen(): void {
@@ -326,10 +348,17 @@ function refreshCurrentPlace(): void {
         savedAt: state.updatedAt,
         forecast,
       } satisfies ForecastCache);
+      // Gratis-Update: aktueller Ort, wenn Favorit, ohne extra Call spiegeln.
+      if (isFavorite(place.id)) {
+        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode });
+      }
       renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
       renderFavorites();
       renderIcons();
       revealCards();
+      // C) Der Aktualisieren-Button frischt auch die übrigen Favoriten auf
+      // (batched, nur stale/missing). Der gerade gespiegelte Ort fällt dabei raus.
+      loadFavoritesWeather();
     })
     .catch(() => {
       if (state.place?.id !== place.id) return;
@@ -413,6 +442,11 @@ export function selectPlace(place: Place): void {
         savedAt: state.updatedAt,
         forecast,
       } satisfies ForecastCache);
+      // Gratis-Update: ist der geladene Ort ein Favorit, dessen current direkt in
+      // den Favoriten-Cache spiegeln (kein extra Call; Geo-Ort ist nie Favorit).
+      if (isFavorite(place.id)) {
+        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode });
+      }
       // Lautloser Tausch: die Sektionen werden synchron in place neu gefüllt,
       // ohne Loading-Zwischenzustand — kein Flackern, kein Scroll-Sprung
       setView("content");
@@ -493,4 +527,9 @@ export function initApp(): void {
   } else {
     restoreLastPlace();
   }
+
+  // Favoriten-Wetter im Hintergrund nachladen (batched, nur stale/missing).
+  // Bewusst nach dem Start-Render und losgelöst vom Haupt-Wetter-Flow: blockiert
+  // weder Splash noch die Hauptkarte.
+  loadFavoritesWeather();
 }

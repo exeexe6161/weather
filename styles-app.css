@@ -680,6 +680,11 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   transition:transform var(--t-base);
 }
 .fav-chip-ico{width:14px;height:14px;color:var(--l4);margin-right:6px;flex:0 0 auto;}
+.fav-chip-name{white-space:nowrap;}
+/* Gecachtes Favoriten-Wetter: dezent, der Name führt. Icon wie der Pin (--l4),
+   Temp eine Stufe kräftiger (--l3) und mit tabular-nums gegen Breiten-Jitter. */
+.fav-chip-wx-ico{width:15px;height:15px;color:var(--l4);margin-left:8px;flex:0 0 auto;}
+.fav-chip-temp{margin-left:4px;color:var(--l3);font-weight:600;font-variant-numeric:tabular-nums;}
 @media (prefers-reduced-motion:no-preference){
   .fav-chip-btn:active{transform:scale(var(--press-scale));}
 }
