@@ -4,7 +4,6 @@
 // Liefert nur i18n-Key + Tagesindex; Wochentagsname und Text entstehen in der
 // Render-Schicht (wie summaryFor/summaryText getrennt sind).
 import type { DailyEntry } from "./weather";
-import { isPrecipCode } from "./wmo";
 
 // ── Schwellen, kalibrierbar ──
 export const WARM_MIN = 18; // Grad: darunter ist kein Tag "schön"
@@ -16,12 +15,25 @@ export interface BestDay {
   dayIndex: number; // Index in daily (0 = heute) für den Wochentagsnamen
 }
 
+// Klarheits-Stufe aus dem WMO-Code: je höher, desto klarer/schöner. Bewusst lokal
+// und schlank gehalten (entkoppelt von der internen skyFor in summary.ts).
+//   0 → 3 (klar), 1 → 2 (überwiegend klar), 2 → 1 (teils bewölkt, niedrigste
+//   "schön"-Stufe), alles andere → 0 (bedeckt 3, Nebel 45/48, jeder Niederschlag).
+// "Schön" heißt clearnessRank >= 1; rank 0 deckt auch alle Niederschlagscodes ab,
+// ein zusätzlicher isPrecipCode-Check ist damit überflüssig.
+function clearnessRank(code: number): number {
+  if (code === 0) return 3;
+  if (code === 1) return 2;
+  if (code === 2) return 1;
+  return 0;
+}
+
 export function bestWeatherDayKey(days: DailyEntry[]): BestDay | null {
   const week = days.slice(0, WEEK_DAYS);
 
-  // Bester Kandidat: primär höchste tempMax, sekundär niedrigste Regenwahrschein-
-  // lichkeit. Bei vollem Gleichstand bleibt der frühere Tag (erst gefundene).
-  let best: { idx: number; temp: number; prob: number } | null = null;
+  // Bester Kandidat: primär klarster Himmel, sekundär höchste tempMax, tertiär
+  // niedrigste Regenwahrscheinlichkeit. Bei vollem Gleichstand bleibt der frühere Tag.
+  let best: { idx: number; clear: number; temp: number; prob: number } | null = null;
   for (let i = 0; i < week.length; i++) {
     const d = week[i];
     // Alte Forecast-Caches ohne die Felder defensiv überspringen.
@@ -32,19 +44,23 @@ export function bestWeatherDayKey(days: DailyEntry[]): BestDay | null {
     ) {
       continue;
     }
-    // Mindestniveau (alle drei Bedingungen): warm, trocken genug, kein Niederschlagscode.
+    const clear = clearnessRank(d.weatherCode);
+    // Mindestniveau (alle drei Bedingungen): warm, trocken genug, und ein schöner
+    // Himmel (clear >= 1) — das schließt bedeckt, Nebel UND jeden Niederschlag aus.
     const qualifies =
       d.tempMax >= WARM_MIN &&
       d.precipitationProbabilityMax < DRY_MAX &&
-      !isPrecipCode(d.weatherCode);
+      clear >= 1;
     if (!qualifies) continue;
 
+    // Rangfolge: Himmel führt, dann Wärme, dann Trockenheit.
     if (
       best === null ||
-      d.tempMax > best.temp ||
-      (d.tempMax === best.temp && d.precipitationProbabilityMax < best.prob)
+      clear > best.clear ||
+      (clear === best.clear && d.tempMax > best.temp) ||
+      (clear === best.clear && d.tempMax === best.temp && d.precipitationProbabilityMax < best.prob)
     ) {
-      best = { idx: i, temp: d.tempMax, prob: d.precipitationProbabilityMax };
+      best = { idx: i, clear, temp: d.tempMax, prob: d.precipitationProbabilityMax };
     }
   }
 
