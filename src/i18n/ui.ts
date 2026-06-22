@@ -142,6 +142,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   daysAria:        { de: "Länge der Vorhersage wählen", en: "Choose forecast length", tr: "Tahmin uzunluğunu seç" },
   daysUnit:        { de: "Tage", en: "days", tr: "gün" },
   outlookLabel:    { de: "Ausblick", en: "Outlook", tr: "Genel bakış" },
+  week_best_day:   { de: "Der schönste Tag wird {day}.", en: "{day} looks like the nicest day.", tr: "En güzel gün {day} olacak." },
+  week_best_today: { de: "Heute wird der schönste Tag.", en: "Today looks like the nicest day.", tr: "En güzel gün bugün olacak." },
   today:           { de: "Heute", en: "Today", tr: "Bugün" },
   footerImpressum: { de: "Impressum", en: "Imprint", tr: "Künye" },
   footerDatenschutz: { de: "Datenschutz", en: "Privacy", tr: "Gizlilik" },

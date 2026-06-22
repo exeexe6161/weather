@@ -809,6 +809,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   line-height:1.35;
   color:var(--l2);
 }
+/* Wochenüberblick: kleine, ruhige Aussage über der Tagesliste. Gleiche Serif wie
+   der Klartext-Satz, aber kleiner und sekundär getönt — sie führt nicht, sie
+   ordnet ein. Bei keiner Aussage trägt das hidden-Attribut die Ausblendung. */
+.week-summary{
+  margin:var(--sp-2) 0 var(--sp-3);
+  font-family:"Instrument Serif",Georgia,serif;
+  font-style:italic;
+  font-size:17px;
+  line-height:1.35;
+  color:var(--l3);
+}
 /* Vergleich zu gestern: ruhige Zusatzzeile unter dem Klartext-Satz. Bewusst
    normale Schrift (die Serif bleibt dem Satz vorbehalten), kein Zenit — der
    Satz beschreibt den Tag absolut, diese Zeile relativ zu gestern */

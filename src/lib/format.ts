@@ -4,6 +4,11 @@ export function formatHour(iso: string, locale = "de-DE"): string {
 export function formatWeekday(iso: string, locale = "de-DE"): string {
   return new Date(iso).toLocaleDateString(locale, { weekday: "short" });
 }
+// Voller Wochentagsname für Prosa ("Mittwoch" statt "Mi."); dieselbe Intl-Quelle
+// wie formatWeekday, daher konsistent mit den Kürzeln der Tagesliste.
+export function formatWeekdayLong(iso: string, locale = "de-DE"): string {
+  return new Date(iso).toLocaleDateString(locale, { weekday: "long" });
+}
 export function formatTemp(value: number): string {
   return `${Math.round(value)}°`;
 }

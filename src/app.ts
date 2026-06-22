@@ -2,14 +2,14 @@
 // Local first: letzter Ort + letzter Forecast liegen in localStorage, damit
 // die App offline mit den zuletzt geladenen Daten startet.
 import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
-import { fetchWeather, type Forecast } from "./lib/weather";
+import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabelShort } from "./i18n/weather-labels";
-import { formatTemp, formatTimeInZone, formatHour } from "./lib/format";
+import { formatTemp, formatTimeInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -18,6 +18,7 @@ import { renderTempCurve, stationStartHour, type TempCurveInput } from "./compon
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
+import { bestWeatherDayKey } from "./lib/weekSummary";
 import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
@@ -243,6 +244,26 @@ function renderPollen(): void {
   renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
 }
 
+// Wochenüberblick-Aussage über der Tagesliste. Immer die nächsten ~7 Tage,
+// UNABHÄNGIG vom 7/10/16-Umschalter (Wochenüberblick, nicht der Ausblick).
+// bestWeatherDayKey liefert null, wenn kein Tag das Mindestniveau erreicht →
+// Block per hidden ausblenden, kein Layout-Loch. textContent statt innerHTML:
+// der Wochentagsname ist reiner Text, keine Hydrierung nötig.
+function renderWeekSummary(daily: DailyEntry[]): void {
+  const el = byId("weekSummary");
+  const best = bestWeatherDayKey(daily);
+  if (!best) {
+    el.textContent = "";
+    el.hidden = true;
+    return;
+  }
+  el.textContent =
+    best.key === "week_best_today"
+      ? t("week_best_today")
+      : t("week_best_day").replace("{day}", formatWeekdayLong(daily[best.dayIndex].date, getLocale()));
+  el.hidden = false;
+}
+
 // Eingabe für den rollenden 24-Stunden-Verlauf (jetzt→+24h). forecast.hourly ist
 // in normalize() bereits ab der aktuellen Stunde geschnitten — also direkt die
 // gefühlten Werte der nächsten Stunden. startHour ist die ganzzahlige aktuelle
@@ -301,6 +322,7 @@ function renderContent(): void {
   // mit renderDailyForecast, das intern slice(0, days) macht (min(len, days)).
   const shownDays = Math.min(state.forecast.daily.length, state.forecastDays);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
+  renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
   renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays, state.forecast.current.weatherCode);
   syncDaysSwitch(); // aktiver Umschalter-Zustand spiegelt state.forecastDays (auch nach Sprachwechsel/Reload)
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
