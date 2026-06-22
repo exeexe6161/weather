@@ -18,8 +18,8 @@ export function renderFavoritesList(
   // Gecachtes Favoriten-Wetter, placeId → {temp, code}. Optional und nur lesend:
   // fehlt die Map oder ein Eintrag, rendert der Chip wie bisher nur den Namen
   // (kein Platzhalter, kein leeres Grad-Zeichen). Wettercode → Icon über dieselbe
-  // pickIcon-Zuordnung wie überall sonst; Tag-Variante, da das schlanke
-  // Favoriten-Wetter kein is_day mitführt.
+  // pickIcon-Zuordnung wie überall sonst, mit der echten Tag-/Nacht-Variante aus
+  // wx.isDay (alte Cache-Einträge ohne Feld fallen auf Tag zurück).
   weather: ReadonlyMap<number, FavWeather> = new Map()
 ): void {
   const section = el.closest("section");
@@ -28,7 +28,7 @@ export function renderFavoritesList(
     .map((p, i) => {
       const wx = weather.get(p.id);
       const wxHtml = wx
-        ? `<i data-lucide="${pickIcon(wx.code, true)}" class="fav-chip-wx-ico"></i><span class="fav-chip-temp">${esc(formatTemp(wx.temp))}</span>`
+        ? `<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-chip-wx-ico"></i><span class="fav-chip-temp">${esc(formatTemp(wx.temp))}</span>`
         : "";
       return `<li class="fav-chip${p.id === activeId ? " fav-chip--active" : ""}">
         <button type="button" class="fav-chip-btn" data-idx="${i}" aria-current="${p.id === activeId}"><i data-lucide="map-pin" class="fav-chip-ico"></i><span class="fav-chip-name">${esc(p.name)}</span>${wxHtml}</button>

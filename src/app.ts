@@ -17,7 +17,7 @@ import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderTempCurve, stationStartHour, type TempCurveInput } from "./components/TempCurve";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
-import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather } from "./lib/favoritesWeather";
+import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
 import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
@@ -213,6 +213,8 @@ function renderFavorites(): void {
     onSelect: (place) => selectPlace(place),
     onRemove: (place) => {
       removeFavorite(place.id);
+      // P1: Wetter-Eintrag des entfernten Favoriten sofort mit aufräumen.
+      pruneFavWeatherCache(getFavorites().map((p) => p.id));
       renderFavorites();
       renderContent();
       renderIcons();
@@ -350,7 +352,7 @@ function refreshCurrentPlace(): void {
       } satisfies ForecastCache);
       // Gratis-Update: aktueller Ort, wenn Favorit, ohne extra Call spiegeln.
       if (isFavorite(place.id)) {
-        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode });
+        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode, isDay: forecast.current.isDay });
       }
       renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
       renderFavorites();
@@ -445,7 +447,7 @@ export function selectPlace(place: Place): void {
       // Gratis-Update: ist der geladene Ort ein Favorit, dessen current direkt in
       // den Favoriten-Cache spiegeln (kein extra Call; Geo-Ort ist nie Favorit).
       if (isFavorite(place.id)) {
-        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode });
+        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode, isDay: forecast.current.isDay });
       }
       // Lautloser Tausch: die Sektionen werden synchron in place neu gefüllt,
       // ohne Loading-Zwischenzustand — kein Flackern, kein Scroll-Sprung

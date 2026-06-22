@@ -20,6 +20,7 @@ export const FAV_WEATHER_TTL_MIN = 15;
 export interface FavWeather {
   temp: number;
   code: number;
+  isDay: boolean; // für die Tag-/Nacht-Variante des Icons (pickIcon)
 }
 
 // Cache-Eintrag = FavWeather plus Zeitstempel für die TTL-Prüfung.
@@ -38,7 +39,7 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
   const params = new URLSearchParams({
     latitude: places.map((p) => String(p.latitude)).join(","),
     longitude: places.map((p) => String(p.longitude)).join(","),
-    current: "temperature_2m,weather_code",
+    current: "temperature_2m,weather_code,is_day",
     timezone: "auto",
   });
   const res = await fetchWithTimeout(`${FORECAST_URL}?${params}`);
@@ -54,14 +55,15 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
   // über die zurückgelieferten lat/lon matchen — die API snappt auf den nächsten
   // Gitterpunkt, die Rückgabewerte weichen also leicht von den gesendeten ab.
   for (let i = 0; i < places.length && i < list.length; i++) {
-    const cur = (list[i] as { current?: { temperature_2m?: unknown; weather_code?: unknown } })?.current;
+    const cur = (list[i] as { current?: { temperature_2m?: unknown; weather_code?: unknown; is_day?: unknown } })?.current;
     const temp = cur?.temperature_2m;
     const code = cur?.weather_code;
     if (
       typeof temp === "number" && Number.isFinite(temp) &&
       typeof code === "number" && Number.isFinite(code)
     ) {
-      out.set(places[i].id, { temp, code });
+      // is_day kommt als 0/1; alles außer der echten Null (auch fehlend) gilt als Tag.
+      out.set(places[i].id, { temp, code, isDay: cur?.is_day !== 0 });
     }
     // Fehlende/NaN-Werte einfach überspringen (Chip zeigt dann nichts), kein Crash.
   }
@@ -82,13 +84,17 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
     for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
       const id = Number(key);
       if (!Number.isInteger(id)) continue;
-      const e = val as { temp?: unknown; code?: unknown; savedAt?: unknown };
+      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; savedAt?: unknown };
       if (
         e && typeof e.temp === "number" && Number.isFinite(e.temp) &&
         typeof e.code === "number" && Number.isFinite(e.code) &&
         typeof e.savedAt === "string"
       ) {
-        map.set(id, { temp: e.temp, code: e.code, savedAt: e.savedAt });
+        // Schema-Migration: Einträge aus der Zeit vor isDay haben das Feld nicht
+        // → Tag-Fallback. Beim nächsten TTL-Ablauf wird der Eintrag mit echtem
+        // isDay frisch überschrieben. Kein harter Bruch, keine Migration nötig.
+        const isDay = typeof e.isDay === "boolean" ? e.isDay : true;
+        map.set(id, { temp: e.temp, code: e.code, isDay, savedAt: e.savedAt });
       }
     }
   } catch {
@@ -135,8 +141,25 @@ export function getStaleOrMissingFavorites(
 // Reihenfolge der Favoriten.
 export function cacheFavoriteWeather(id: number, weather: FavWeather): void {
   const cache = readFavWeatherCache();
-  cache.set(id, { temp: weather.temp, code: weather.code, savedAt: new Date().toISOString() });
+  cache.set(id, { temp: weather.temp, code: weather.code, isDay: weather.isDay, savedAt: new Date().toISOString() });
   writeFavWeatherCache(cache);
+}
+
+// Verwaiste Einträge entfernen: behält nur die Orte, deren placeId in validIds
+// steht, und schreibt den bereinigten Cache zurück. Leere validIds → leerer
+// Cache. Gibt die bereinigte Map zurück, damit Aufrufer den Stand direkt nutzen.
+export function pruneFavWeatherCache(validIds: number[]): Map<number, FavWeatherEntry> {
+  const cache = readFavWeatherCache();
+  const valid = new Set(validIds);
+  let changed = false;
+  for (const id of [...cache.keys()]) {
+    if (!valid.has(id)) {
+      cache.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) writeFavWeatherCache(cache);
+  return cache;
 }
 
 // ── C) Orchestrierung (reine Funktion, in dieser Etappe noch nicht verdrahtet) ─
@@ -145,19 +168,26 @@ export function cacheFavoriteWeather(id: number, weather: FavWeather): void {
 // Ist nichts veraltet → kein Call. Bei Netz-/API-Fehler bleiben die bisherigen
 // Cache-Werte erhalten (leises Scheitern), kein Crash.
 export async function refreshFavoritesWeather(places: Place[]): Promise<Map<number, FavWeatherEntry>> {
+  const validIds = places.map((p) => p.id);
   const cache = readFavWeatherCache();
-  if (places.length === 0) return cache;
 
-  const stale = getStaleOrMissingFavorites(places, cache);
-  if (stale.length === 0) return cache; // alles frisch → kein Call
-
-  try {
-    const fresh = await fetchFavoritesWeather(stale);
-    const savedAt = new Date().toISOString();
-    for (const [id, w] of fresh) cache.set(id, { temp: w.temp, code: w.code, savedAt });
-    writeFavWeatherCache(cache);
-  } catch {
-    // Netz/API-Fehler: bestehende Cache-Werte behalten, nicht löschen.
+  // Nur laden, wenn es Favoriten gibt und etwas veraltet/fehlt — sonst kein Call.
+  if (places.length > 0) {
+    const stale = getStaleOrMissingFavorites(places, cache);
+    if (stale.length > 0) {
+      try {
+        const fresh = await fetchFavoritesWeather(stale);
+        const savedAt = new Date().toISOString();
+        for (const [id, w] of fresh) cache.set(id, { temp: w.temp, code: w.code, isDay: w.isDay, savedAt });
+        writeFavWeatherCache(cache);
+      } catch {
+        // Netz/API-Fehler: bestehende Cache-Werte behalten, nicht löschen.
+      }
+    }
   }
-  return cache;
+
+  // Immer aufräumen: Cache auf die aktuellen Favoriten beschränken. Fängt auch die
+  // Race-Altlast ab (Etappe 3), falls der Batch einen inzwischen entfernten Ort
+  // zurückgab, und leert bei leeren Favoriten den Cache vollständig.
+  return pruneFavWeatherCache(validIds);
 }
