@@ -361,10 +361,18 @@ function renderContent(): void {
 // (nicht in der neu gerenderten Karte), daher wird sein Zustand in finally
 // manuell zurückgesetzt. Pollen bleibt unberührt (separater Endpoint).
 let refreshing = false;
+// Monoton steigendes Lade-Token gegen Race beim Ortswechsel: jede neue Wetter-
+// Anforderung (selectPlace UND refreshCurrentPlace, inkl. Geo-Ort) erhöht es;
+// nach dem await darf nur die ZULETZT gestartete Antwort die Anzeige setzen. Der
+// id-Guard allein reicht nicht, weil der Geolocation-Ort immer dieselbe id
+// (GEO_PLACE_ID = -1) trägt; zwei schnelle "Mein Standort"-Klicks wären sonst
+// nicht unterscheidbar. Der bestehende id-Guard bleibt zusätzlich erhalten.
+let loadSeq = 0;
 function refreshCurrentPlace(): void {
   const place = state.place;
   if (!place || refreshing) return;
   refreshing = true;
+  const mySeq = ++loadSeq;
   const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
     btn.disabled = true;
@@ -373,7 +381,7 @@ function refreshCurrentPlace(): void {
 
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
-      if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
+      if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
       state.forecast = forecast;
       state.freshness = "fresh";
       state.updatedAt = new Date().toISOString();
@@ -397,7 +405,7 @@ function refreshCurrentPlace(): void {
       loadFavoritesWeather();
     })
     .catch(() => {
-      if (state.place?.id !== place.id) return;
+      if (mySeq !== loadSeq || state.place?.id !== place.id) return;
       if (state.forecast) {
         state.freshness = "offline";
         renderContent();
@@ -433,6 +441,9 @@ export function selectPlace(place: Place): void {
   state.place = place;
   syncCityParam(place);
   if (!isGeoPlace) writeJson(LAST_PLACE_KEY, place);
+  // Diese Lade-Anforderung eindeutig markieren (s. loadSeq): nur ihre Antwort
+  // darf später die Anzeige setzen, falls inzwischen neu geladen wurde.
+  const mySeq = ++loadSeq;
 
   // Sofort-Anzeige: liegt für genau diesen Ort ein letzter Stand vor, wird er
   // ohne Spinner gerendert ("Stand HH:MM"), während parallel IMMER frisch
@@ -466,14 +477,18 @@ export function selectPlace(place: Place): void {
   // nie (Fehler intern → null = Sektion bleibt aus).
   state.pollen = null;
   fetchPollen(place.latitude, place.longitude).then((levels) => {
-    if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
+    // Referenzgleichheit statt nur id: der Geo-Ort trägt immer id -1, aber jeder
+    // "Mein Standort"-Klick erzeugt ein neues Place-Objekt. So wird eine überholte
+    // Pollen-Antwort verworfen, ohne dass ein bloßer Refresh (gleiches Objekt,
+    // kein erneuter Pollen-Abruf) die laufende Antwort fälschlich killt.
+    if (state.place !== place || state.place?.id !== place.id) return;
     state.pollen = levels;
     renderPollen();
   });
 
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
-      if (state.place?.id !== place.id) return; // inzwischen anderer Ort gewählt
+      if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
       state.forecast = forecast;
       state.freshness = "fresh";
       state.updatedAt = new Date().toISOString();
@@ -498,7 +513,7 @@ export function selectPlace(place: Place): void {
       if (!showedFromCache) revealCards(); // sonst lautloser Tausch (Cache hat schon eingeblendet)
     })
     .catch(() => {
-      if (state.place?.id !== place.id) return;
+      if (mySeq !== loadSeq || state.place?.id !== place.id) return;
       if (state.forecast && state.freshness === "stale") {
         // Sofort-Anzeige steht bereits: nur den Hinweis von "Stand HH:MM" auf
         // den Offline-Hinweis umstellen, die Anzeige selbst bleibt stehen
