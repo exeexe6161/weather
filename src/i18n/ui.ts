@@ -82,7 +82,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   sum1_hot_humid:         { de: "Schwül und drückend.", en: "Humid and heavy.", tr: "Hava nemli ve bunaltıcı." },
   sum1_cool_friendly:     { de: "Kühl, aber freundlich.", en: "Cool but pleasant.", tr: "Hava serin ama hoş." },
   sum1_cool_cloudy:       { de: "Kühl und wolkig.", en: "Cool and cloudy.", tr: "Hava serin ve bulutlu." },
-  sum1_cool_rain_later:   { de: "Kühl und wolkig, später Regen, nimm einen Schirm mit.", en: "Cool and cloudy, rain later, take an umbrella.", tr: "Hava serin ve bulutlu, sonra yağmur var, yanına şemsiye al." },
+  sum1_cool_rain_later:   { de: "Kühl, später Regen, Schirm einpacken.", en: "Cool, rain later, take an umbrella.", tr: "Hava serin, sonra yağmur var, yanına şemsiye al." },
   sum1_cold_dry:          { de: "Kalt, aber trocken.", en: "Cold but dry.", tr: "Hava soğuk ama kuru." },
   sum1_cold_overcast:     { de: "Kalt und bedeckt, warm anziehen.", en: "Cold and overcast, wrap up warm.", tr: "Hava soğuk ve kapalı, sıcak giyin." },
   sum1_frosty_clear:      { de: "Frostig und klar, warm anziehen.", en: "Frosty and clear, wrap up warm.", tr: "Hava ayazlı ve açık, sıcak giyin." },
