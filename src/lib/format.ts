@@ -19,14 +19,22 @@ export function formatWeekday(iso: string, locale = "de-DE"): string {
 export function formatWeekdayLong(iso: string, locale = "de-DE"): string {
   return utcCalendarDate(iso).toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });
 }
-export function formatTemp(value: number): string {
-  return `${Math.round(value)}°`;
+// Platzhalter für einen fehlenden Messwert (null/undefined/NaN aus teil-
+// degradierter API-Antwort oder altem Forecast-Cache). Ohne diesen Guard würde
+// Math.round(undefined) als "NaN°" sichtbar oder Math.round(null) fälschlich als
+// "0°". Bewusst Number.isFinite (wie isCompleteDay in weather.ts): 0 °C / 0 km/h
+// / 0 % sind gültige Werte (Number.isFinite(0) === true) und bleiben erhalten —
+// nur echte Fehlwerte zeigen den Platzhalter. Eine Quelle für alle Aufrufer
+// (current, Tages- und Stundenwerte, Favoriten-Chip, Tab-Titel).
+const MISSING = "–";
+export function formatTemp(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}°` : MISSING;
 }
-export function formatWind(value: number): string {
-  return `${Math.round(value)} km/h`;
+export function formatWind(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)} km/h` : MISSING;
 }
-export function formatPercent(value: number): string {
-  return `${Math.round(value)}\u202F%`; // schmales geschütztes Leerzeichen
+export function formatPercent(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}\u202F%` : MISSING; // schmales geschütztes Leerzeichen
 }
 // Uhrzeit in einer IANA-Zeitzone (24h, lokalisiert), standardmäßig "jetzt",
 // optional ein konkreter Zeitpunkt (z. B. der savedAt des letzten Stands).
