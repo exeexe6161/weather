@@ -6,7 +6,7 @@ import { tempCompareKey } from "../lib/tempCompare";
 import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
 import { rainWindowFor, todayHours } from "../lib/clothing";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone } from "../lib/format";
+import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -201,7 +201,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
       </div>` : ""}
     </div>` : ""}
-    ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatHour(updatedAt, locale)}</div>` : ""}
+    ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}
   `;
 
   const timeSpan = el.querySelector<HTMLElement>(".cw-local-time");

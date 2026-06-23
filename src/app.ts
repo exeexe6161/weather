@@ -9,7 +9,7 @@ import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorite
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabelShort } from "./i18n/weather-labels";
-import { formatTemp, formatTimeInZone, formatHour, formatWeekdayLong } from "./lib/format";
+import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
@@ -38,6 +38,18 @@ interface ForecastCache {
   longitude: number;
   savedAt: string;
   forecast: Forecast;
+}
+
+// Forecast-Cache, der älter als dies ist, wird beim Start NICHT mehr als
+// Sofort-Anzeige gezeigt (eine Woche alte Vorhersage ist nutzlos): dann lieber
+// Lade-/Fehlerzustand. NICHT gelöscht — ein frischer Abruf ersetzt ihn ohnehin,
+// und bis dahin schadet er im Storage nicht. Gleicher TTL-Stil wie
+// isFavWeatherStale (Date.parse + Number.isFinite-Guard).
+const MAX_FORECAST_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+function isForecastCacheTooOld(savedAt: string, nowMs = Date.now()): boolean {
+  const savedMs = Date.parse(savedAt);
+  if (!Number.isFinite(savedMs)) return true;
+  return nowMs - savedMs > MAX_FORECAST_CACHE_AGE_MS;
 }
 
 // Frische der Anzeige: "fresh" = aktuelle Netzdaten, "stale" = Sofort-Anzeige
@@ -194,7 +206,7 @@ function updateTopStamp(): void {
   const f = state.forecast;
   const time =
     f && state.freshness !== "offline" && state.updatedAt
-      ? formatTimeInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale())
+      ? formatStampInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale())
       : null;
   if (time) {
     span.hidden = false;
@@ -429,11 +441,17 @@ export function selectPlace(place: Place): void {
   // nie persistiert (Datenschutzzusage), die Sofort-Anzeige darf das nicht
   // aufweichen.
   const cached = !isGeoPlace ? readJson<ForecastCache>(FORECAST_CACHE_KEY) : null;
-  const showedFromCache = cached !== null && cached.placeId === place.id;
-  if (cached !== null && cached.placeId === place.id) {
-    state.forecast = cached.forecast;
+  // Sehr alten Cache (älter als MAX_FORECAST_CACHE_AGE_MS) NICHT als Sofort-
+  // Anzeige zeigen: eine tagealte Vorhersage als "Stand" wäre irreführend. Bis
+  // zur Grenze wird er gezeigt (mit Datums-Label, s. formatStampInZone); darüber
+  // greift online der frische Abruf, offline der ehrliche Fehlerzustand.
+  const usableCache =
+    cached !== null && cached.placeId === place.id && !isForecastCacheTooOld(cached.savedAt) ? cached : null;
+  const showedFromCache = usableCache !== null;
+  if (usableCache !== null) {
+    state.forecast = usableCache.forecast;
     state.freshness = "stale";
-    state.updatedAt = cached.savedAt;
+    state.updatedAt = usableCache.savedAt;
     setView("content");
     renderContent();
     renderFavorites();

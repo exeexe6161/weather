@@ -55,6 +55,34 @@ export function formatTimeInZone(timezone: unknown, locale = "de-DE", at: Date =
     return null;
   }
 }
+// Wie formatTimeInZone, aber datumsbewusst: liegt der Zeitpunkt NICHT am selben
+// Kalendertag (in der Ortszeit) wie jetzt, wird das Datum vorangestellt
+// ("22.06. 14:30" bzw. englisch "Jun 22 14:30"), damit ein alter Stand als alt
+// erkennbar ist. Am selben Ortstag nur die Uhrzeit (wie bisher). "heute" wird
+// also in der Zeitzone des angezeigten Orts bestimmt, nicht in Gerätezeit.
+// null ohne gültige timezone (alte Caches) — Aufrufer fällt dann auf formatHour.
+export function formatStampInZone(
+  timezone: unknown,
+  locale = "de-DE",
+  at: Date = new Date(),
+  now: Date = new Date(),
+): string | null {
+  if (typeof timezone !== "string" || timezone === "") return null;
+  try {
+    const dayKey = (d: Date): string =>
+      new Intl.DateTimeFormat("sv-SE", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+    const time = new Intl.DateTimeFormat(locale, { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).format(at);
+    if (dayKey(at) === dayKey(now)) return time;
+    const date = new Intl.DateTimeFormat(locale.startsWith("en") ? "en-US" : locale, {
+      timeZone: timezone,
+      day: locale.startsWith("en") ? "numeric" : "2-digit",
+      month: locale.startsWith("en") ? "short" : "2-digit",
+    }).format(at);
+    return `${date} ${time}`;
+  } catch {
+    return null;
+  }
+}
 export function formatDayMonth(iso: string, locale = "de-DE"): string {
   const d = utcCalendarDate(iso);
   if (locale.startsWith("en")) {
