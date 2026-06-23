@@ -123,6 +123,20 @@ export function summaryFor(forecast: Forecast): Summary | null {
     !rainNow && !rainLater && typeof todayMax === "number" && todayMax >= RAIN_PROB_THRESHOLD;
   const dry = !rainNow && !rainLater;
 
+  // Abendstunden (EVENING_FROM bis NIGHT_FROM, Ortszeit) aus dem heutigen Rest.
+  // Das Minimum der gefühlten Temperatur entscheidet, ob der "abends kühler"
+  // Zusatz überhaupt stimmt. Leeres Fenster (Blick spät am Tag, keine
+  // Abendstunden mehr heute) → null → kein Abend-Zusatz, kein leerer Bezug.
+  const eveningHours = rest.filter((h) => {
+    const hr = hourOf(h.time);
+    return hr >= EVENING_FROM && hr < NIGHT_FROM && typeof h.apparentTemperature === "number";
+  });
+  const eveningApparentMin =
+    eveningHours.length > 0 ? Math.min(...eveningHours.map((h) => h.apparentTemperature)) : null;
+  // Abend gilt als "kühl genug für eine Jacke", wenn das Abend-Minimum bis in
+  // die Kühl-Spanne fällt (konsistent zu bandFor: <= COOL_MAX ist kühl/kalt).
+  const eveningTurnsCool = eveningApparentMin !== null && eveningApparentMin <= COOL_MAX;
+
   const uvMax = forecast.daily?.[0]?.uvIndexMax;
   const uvHigh = typeof uvMax === "number" && uvMax >= UV_SHOW_THRESHOLD;
 
@@ -148,7 +162,10 @@ export function summaryFor(forecast: Forecast): Summary | null {
   }
   if (band === "warm" && clearish && uvHigh && tod === "day") return { kind: "fixed", key: "sum1_warm_sunny_uv" };
   if (band === "warm" && clearish && dry) return { kind: "fixed", key: "sum1_warm_sunny" };
-  if (band === "mild" && clearish && dry && tod === "day") return { kind: "fixed", key: "sum1_mild_sunny_day" };
+  if (band === "mild" && clearish && dry && tod === "day") {
+    // Abend-Zusatz nur, wenn die Abendstunden laut hourly wirklich kühl werden.
+    return { kind: "fixed", key: eveningTurnsCool ? "sum1_mild_sunny_day" : "sum1_mild_sunny" };
+  }
   if (band === "mild" && rainLater) return { kind: "fixed", key: "sum1_mild_changeable" };
   if (band === "mild" && (sky === "overcast" || sky === "grey") && dry) return { kind: "fixed", key: "sum1_mild_grey" };
   if (band === "mild" && windy && dry) return { kind: "fixed", key: "sum1_mild_windy" };

@@ -73,6 +73,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   pollen_high:     { de: "Hoch", en: "High", tr: "Yüksek" },
   // ── Tageszusammenfassung, Ebene 1: fertige Sätze (exakt, nicht umformulieren)
   sum1_mild_sunny_day:    { de: "Mild und sonnig, zieh am Abend was über.", en: "Mild and sunny, take a layer for the evening.", tr: "Hava ılık ve güneşli, akşama bir şeyler al yanına." },
+  sum1_mild_sunny:        { de: "Mild und sonnig.", en: "Mild and sunny.", tr: "Hava ılık ve güneşli." },
   sum1_mild_changeable:   { de: "Mild und wechselhaft.", en: "Mild and changeable.", tr: "Hava ılık ve değişken." },
   sum1_mild_grey:         { de: "Mild, aber grau.", en: "Mild but grey.", tr: "Hava ılık ama kapalı." },
   sum1_warm_sunny:        { de: "Warm und sonnig.", en: "Warm and sunny.", tr: "Hava sıcak ve güneşli." },
