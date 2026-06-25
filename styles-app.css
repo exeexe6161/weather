@@ -1069,6 +1069,12 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
    semantik (list > listitem > button) erhalten bleibt. */
 .hour-cell-li{display:flex;}
 button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;}
+/* Tap auf ein Kind (Icon-SVG samt Pfaden, Uhrzeit, Gradzahl, sr-only) zählt als
+   Tap auf den Button: ohne dies wird beim Tippen auf das Lucide-<svg> das Event-
+   Ziel ein SVG-Knoten, von dem aus die Zuordnung zur Zelle nicht zuverlässig
+   greift (vor allem im iOS-WKWebView) und das Panel öffnet nicht. pointer-events
+   gilt nur für Maus/Touch, Tastatur/Fokus bleiben; eng auf .hour-cell begrenzt. */
+.hour-cell > *{pointer-events:none;}
 .hour-time{font-size:var(--fs-xs);color:var(--l4);white-space:nowrap;}
 .hour-ico{width:22px;height:22px;color:var(--l2);}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
