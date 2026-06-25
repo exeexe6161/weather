@@ -1062,6 +1062,13 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
   border-radius:var(--r-sm);
 }
 .hour-cell:hover{background:var(--s2);}
+/* Die Stundenzelle ist jetzt ein echtes <button> (klick-/tastaturbedienbar,
+   nativ fokussierbar → globaler :focus-visible-Ring). Die .hour-cell-Box oben
+   gilt unverändert auf dem Button (gleiche Optik); hier nur der Button-Reset.
+   .hour-cell-li ist die schlanke role="listitem"-Hülle, damit die Listen-
+   semantik (list > listitem > button) erhalten bleibt. */
+.hour-cell-li{display:flex;}
+button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;}
 .hour-time{font-size:var(--fs-xs);color:var(--l4);white-space:nowrap;}
 .hour-ico{width:22px;height:22px;color:var(--l2);}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
