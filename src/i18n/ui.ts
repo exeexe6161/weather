@@ -136,6 +136,19 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   dry_from:        { de: "Ab {von} Uhr trocken.", en: "Dry from {von}.", tr: "{von} sonrası kuru." },
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
   hourDetailAria:  { de: "Details für {time}, {condition}, {temp}", en: "Details for {time}, {condition}, {temp}", tr: "{time} için ayrıntılar, {condition}, {temp}" },
+  // ── Stundendetail-Panel (Etappe 3)
+  hourPanelTitle:  { de: "Stundendetails", en: "Hourly details", tr: "Saatlik ayrıntılar" },
+  close:           { de: "Schließen", en: "Close", tr: "Kapat" },
+  temperature:     { de: "Temperatur", en: "Temperature", tr: "Sıcaklık" },
+  precipProbability: { de: "Niederschlag", en: "Precipitation", tr: "Yağış" },
+  precipAmount:    { de: "Menge in dieser Stunde", en: "Amount this hour", tr: "Bu saatteki miktar" },
+  windDirection:   { de: "Windrichtung", en: "Wind direction", tr: "Rüzgar yönü" },
+  windGusts:       { de: "Böen", en: "Gusts", tr: "Rüzgar hamleleri" },
+  dewPoint:        { de: "Taupunkt", en: "Dew point", tr: "Çiy noktası" },
+  cloudCover:      { de: "Bewölkung", en: "Cloud cover", tr: "Bulutluluk" },
+  pressure:        { de: "Luftdruck", en: "Pressure", tr: "Basınç" },
+  // 8-Punkt-Kompass, indexiert per round(grad/45)%8 (technische Kürzel)
+  compassPoints:   { de: "N,NO,O,SO,S,SW,W,NW", en: "N,NE,E,SE,S,SW,W,NW", tr: "K,KD,D,GD,G,GB,B,KB" },
   // ── Temperaturverlauf (ruhige Linie unter der Stundenleiste)
   tc_aria:         { de: "Gefühlte Temperatur der nächsten 24 Stunden", en: "Apparent temperature for the next 24 hours", tr: "Önümüzdeki 24 saatin hissedilen sıcaklığı" },
   tc_heading:      { de: "Gefühlte Temperatur · 24 Stunden", en: "Apparent temperature · 24 hours", tr: "Hissedilen sıcaklık · 24 saat" },

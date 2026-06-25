@@ -1072,6 +1072,23 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .hour-time{font-size:var(--fs-xs);color:var(--l4);white-space:nowrap;}
 .hour-ico{width:22px;height:22px;color:var(--l2);}
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
+/* Aktive Stunde, deren Detail-Panel offen ist: dezent getönt wie aria-current
+   im Sprachmenü und im Tage-Umschalter (--accent-soft). */
+.hour-cell--active{background:var(--accent-soft);}
+/* Stundendetail-Panel: schlichtes Aufklapp-Panel direkt unter der Stundenleiste,
+   im Muster des Sprachmenüs (statischer Container, per [hidden] geschaltet). Volle
+   Inhaltsbreite statt an einer schmalen, scrollenden Zelle zu kleben; .list-card
+   liefert Hintergrund, Radius und Schatten. */
+.hour-panel{margin-top:var(--sp-3);}
+.hour-panel-head{display:flex;align-items:center;gap:10px;}
+.hour-panel-ico{width:28px;height:28px;color:var(--l2);flex:none;}
+.hour-panel-htext{flex:1 1 auto;min-width:0;}
+.hour-panel-time{font-size:var(--fs-md);font-weight:700;}
+.hour-panel-cond{font-size:var(--fs-xs);color:var(--l4);}
+.hour-panel-close{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:var(--s2);border:0;border-radius:var(--r-sm);color:var(--l2);cursor:pointer;}
+.hour-panel-close:hover{background:var(--accent-soft);color:var(--accent-text);}
+.hour-panel-close-ico{width:18px;height:18px;}
+.hour-panel-meta{margin-top:var(--sp-3);}
 
 /* ══ Temperaturverlauf (rollende 24 Stunden ab jetzt) ══
    Der Kartentitel steht als äußere .sh-Eyebrow im HTML (gleiches Muster wie
