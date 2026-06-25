@@ -18,6 +18,18 @@ export interface HourlyEntry {
   precipitationProbability: number;
   weatherCode: number;
   windSpeed?: number; // optional: Forecast-Caches vor dem Trockenfenster-Feature haben das Feld nicht
+  // Reichere Stundendaten fürs spätere Stundendetail-Panel. Alle optional:
+  // ältere localStorage-Forecast-Caches kennen diese Felder nicht (dann
+  // undefined, das Panel lässt fehlende Werte aus). Open-Meteo-Defaults liefern
+  // die Einheiten in Klammern, kein zusätzlicher Query-Parameter nötig.
+  relativeHumidity?: number; // %
+  dewPoint?: number; // °C
+  precipitation?: number; // mm (Summe der Vorstunde)
+  windDirection?: number; // °
+  windGusts?: number; // km/h (Max der Vorstunde)
+  cloudCover?: number; // %
+  pressure?: number; // hPa (pressure_msl)
+  uvIndex?: number; // Index
 }
 export interface DailyEntry {
   date: string;
@@ -45,7 +57,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     latitude: String(latitude),
     longitude: String(longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
-    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m",
+    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m,dew_point_2m,precipitation,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,uv_index",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
     timezone: "auto",
     forecast_days: "16", // bis zu 16 Tage in den Daten; die Anzeige kürzt clientseitig (Default 7)
@@ -101,6 +113,14 @@ function normalize(data: any): Forecast {
       precipitationProbability: h.precipitation_probability?.[i] ?? 0,
       weatherCode: h.weather_code[i],
       windSpeed: h.wind_speed_10m?.[i] ?? undefined,
+      relativeHumidity: h.relative_humidity_2m?.[i] ?? undefined,
+      dewPoint: h.dew_point_2m?.[i] ?? undefined,
+      precipitation: h.precipitation?.[i] ?? undefined,
+      windDirection: h.wind_direction_10m?.[i] ?? undefined,
+      windGusts: h.wind_gusts_10m?.[i] ?? undefined,
+      cloudCover: h.cloud_cover?.[i] ?? undefined,
+      pressure: h.pressure_msl?.[i] ?? undefined,
+      uvIndex: h.uv_index?.[i] ?? undefined,
     });
   }
 
