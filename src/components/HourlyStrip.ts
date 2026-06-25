@@ -30,7 +30,7 @@ function hourIsDay(iso: string, spans: Spans): boolean {
 // angezeigte Stunde auflöst. WeakMap: kein Leak, kein Doppel-Listener.
 const stripForecasts = new WeakMap<HTMLElement, Forecast>();
 
-export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
+export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen = false): void {
   // Die Zellen werden gleich neu erzeugt → ein offenes Panel gehört zur alten
   // Stadt/zum alten Stand und wird geschlossen (Stadtwechsel, Refresh, Sprach-
   // und Tageswechsel laufen alle über renderContent → hier durch).
@@ -70,6 +70,20 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast): void {
     .join("");
   el.innerHTML = `<div class="hourly-track" role="list">${cells}</div>`;
   if (firstRender) bindHourlyStrip(el);
+  // Auto-Open nur, wenn der Aufrufer es erlaubt (initiales Laden, app.ts hält das
+  // über den Cache→Netz-Doppelrender hinweg "armed"). Stadtwechsel/Refresh laufen
+  // mit autoOpen=false → kein Auto-Open. Kein Fokus/Scroll (openHourDetail false).
+  if (autoOpen && forecast.hourly.length > 0) {
+    // Aktuelle Stunde = erster Eintrag mit Zeit >= jetzt (dieselbe Prädikat-Logik
+    // wie normalize()); Fallback Index 0 bei keinem Treffer.
+    const autoIdx = Math.max(0, forecast.hourly.findIndex((h) => h.time >= forecast.current.time));
+    const autoHour = forecast.hourly[autoIdx];
+    const autoBtn = el.querySelector<HTMLButtonElement>(`.hour-cell[data-hour-index="${autoIdx}"]`);
+    if (autoBtn) {
+      const icon = pickIcon(autoHour.weatherCode, hourIsDay(autoHour.time, spans));
+      openHourDetail(autoHour, autoIdx, autoBtn, icon, false);
+    }
+  }
 }
 
 // Einmalige Event-Delegation auf dem (statischen) Container plus die globalen
@@ -134,7 +148,7 @@ let activeButton: HTMLButtonElement | null = null;
 
 // Etappe 3: füllt und öffnet das Detail-Panel mit den Daten der angetippten
 // Stunde, markiert die aktive Zelle und legt den Fokus ins Panel.
-function openHourDetail(hour: HourlyEntry, index: number, button: HTMLButtonElement, icon: string): void {
+function openHourDetail(hour: HourlyEntry, index: number, button: HTMLButtonElement, icon: string, focusPanel = true): void {
   const panel = getPanel();
   if (!panel) return;
   const locale = getLocale();
@@ -160,7 +174,9 @@ function openHourDetail(hour: HourlyEntry, index: number, button: HTMLButtonElem
     .querySelector<HTMLButtonElement>(".hour-panel-close")
     ?.addEventListener("click", () => closeHourDetail(true));
 
-  panel.focus(); // Fokus ins Panel (tabindex=-1); Escape/X geben ihn zurück
+  // Fokus nur beim Nutzer-Klick ins Panel (Escape/X geben ihn zurück); beim
+  // Auto-Open (focusPanel=false) NICHT, damit die Seite beim Laden nicht scrollt.
+  if (focusPanel) panel.focus();
 }
 
 function closeHourDetail(returnFocus = false): void {

@@ -135,6 +135,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   dry_window:      { de: "Trockenes Fenster {von} bis {bis} Uhr.", en: "Dry window {von} to {bis}.", tr: "{von} ile {bis} arası kuru." },
   dry_from:        { de: "Ab {von} Uhr trocken.", en: "Dry from {von}.", tr: "{von} sonrası kuru." },
   hourlyHeading:   { de: "Nächste 24 Stunden", en: "Next 24 hours", tr: "Sonraki 24 saat" },
+  hourHint:        { de: "Stunde antippen für Details.", en: "Tap an hour for details.", tr: "Ayrıntılar için bir saate dokunun." },
   hourDetailAria:  { de: "Details für {time}, {condition}, {temp}", en: "Details for {time}, {condition}, {temp}", tr: "{time} için ayrıntılar, {condition}, {temp}" },
   // ── Stundendetail-Panel (Etappe 3)
   hourPanelTitle:  { de: "Stundendetails", en: "Hourly details", tr: "Saatlik ayrıntılar" },

@@ -72,6 +72,14 @@ interface State {
 
 const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "", forecastDays: DEFAULT_FORECAST_DAYS };
 
+// Auto-Open des Stundendetail-Panels: NUR beim initialen Laden, über den Cache→
+// Netz-Doppelrender desselben Orts hinweg "armed". Sobald der erste Ladeversuch
+// aufgelöst ist (freshness wird "fresh"/"offline", nicht mehr "stale"), wird
+// entwaffnet — Stadtwechsel, Refresh, Sprach- und Tageswechsel öffnen dann NICHT
+// automatisch. Der Strip selbst kann Startup nicht von Nutzeraktion unterscheiden,
+// daher liegt das Flag hier.
+let hourlyAutoOpenArmed = true;
+
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -318,7 +326,11 @@ function renderContent(): void {
     updatedAt: state.updatedAt,
   });
   renderDressToday(byId("dressToday"), state.forecast);
-  renderHourlyStrip(byId("hourlyStrip"), state.forecast);
+  renderHourlyStrip(byId("hourlyStrip"), state.forecast, hourlyAutoOpenArmed);
+  // Nach dem aufgelösten Erst-Ladeversuch entwaffnen. Der Cache-Render bleibt
+  // "stale" (also armed), der darauffolgende Netz-Render desselben Orts öffnet
+  // damit erneut (kein Blitzen), danach kein automatisches Öffnen mehr.
+  if (hourlyAutoOpenArmed && state.freshness !== "stale") hourlyAutoOpenArmed = false;
   // Diagramm rendern; der äußere Kartentitel (gleiches .sh-Muster wie die
   // Nachbarkarten) folgt der Sichtbarkeit des Diagramms — versteckt es sich bei
   // zu wenigen Daten, verschwindet auch der Titel (wie beim Pollen-Muster).
