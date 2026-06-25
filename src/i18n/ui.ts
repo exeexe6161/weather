@@ -152,6 +152,9 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   footerAttributionPrefix: { de: "Wetterdaten von", en: "Weather data by", tr: "Hava verileri" },
   noscriptText:    { de: "Diese App benötigt JavaScript. Bitte aktiviere JavaScript in deinem Browser.", en: "This app requires JavaScript. Please enable JavaScript in your browser.", tr: "Bu uygulama JavaScript gerektirir. Lütfen tarayıcında JavaScript etkinleştir." },
   themeAria:       { de: "Farbschema wechseln", en: "Switch color scheme", tr: "Renk düzenini değiştir" },
+  themeLight:      { de: "Farbschema: hell", en: "Color scheme: light", tr: "Renk düzeni: açık" },
+  themeDark:       { de: "Farbschema: dunkel", en: "Color scheme: dark", tr: "Renk düzeni: koyu" },
+  themeSystem:     { de: "Farbschema: automatisch", en: "Color scheme: automatic", tr: "Renk düzeni: otomatik" },
   langAria:        { de: "Sprache wechseln", en: "Change language", tr: "Dili değiştir" },
   resultsAria:     { de: "Suchergebnisse", en: "Search results", tr: "Arama sonuçları" },
 };

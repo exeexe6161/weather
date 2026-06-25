@@ -1,6 +1,6 @@
 // Einstiegspunkt: Sprache initialisieren, App mounten, Sprachmenü und
 // Service Worker verdrahten. Theme übernimmt theme-init.js (pre-paint).
-import { initLang, setLang, getLang, LANGS, type Lang } from "./i18n/ui";
+import { initLang, setLang, getLang, t, LANGS, type Lang } from "./i18n/ui";
 import { initApp } from "./app";
 import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
@@ -47,6 +47,27 @@ function initLangMenu(): void {
   });
 
   sync();
+}
+
+// Das aria-label (und der Titel) des Theme-Knopfs spiegeln den aktuellen Modus
+// lokalisiert wider. theme-init.js besitzt die Theme-Logik und schreibt
+// data-theme-mode auf <html> plus das themechange-Event; hier wird daraus nur
+// der zugängliche Name gesetzt: bei Start, bei Moduswechsel und bei
+// Sprachwechsel. Auf den Rechtsseiten ohne App-Bundle bleibt das statische
+// Fallback-Label aus dem Markup.
+function initThemeLabel(): void {
+  const btn = document.getElementById("themeBtn");
+  if (!btn) return;
+  const keyFor = (mode: string | null): string =>
+    mode === "light" ? "themeLight" : mode === "dark" ? "themeDark" : "themeSystem";
+  const apply = (): void => {
+    const label = t(keyFor(document.documentElement.getAttribute("data-theme-mode")));
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("title", label);
+  };
+  apply();
+  document.addEventListener("themechange", apply);
+  document.addEventListener("weather:langchange", apply);
 }
 
 // Pinch-Zoom nur in der vom Home-Bildschirm gestarteten PWA unterbinden. Im
@@ -122,6 +143,7 @@ function boot(): void {
   const splashStart = Date.now();
   initLang();
   initLangMenu();
+  initThemeLabel();
   initApp();
   lockStandaloneScale();
   preventPinchZoomInStandalone();

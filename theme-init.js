@@ -45,22 +45,57 @@
     }
   }
 
-  try {
-    var saved = null;
-    try { saved = localStorage.getItem("theme"); } catch (_) {}
-    // Defensive: drop any legacy/invalid theme value
-    if (saved && saved !== "dark" && saved !== "light") {
-      try { localStorage.removeItem("theme"); } catch (_) {}
-      saved = null;
-    }
-    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (saved === "dark" || (!saved && prefersDark)) html.setAttribute("data-theme", "dark");
-    else if (saved === "light") html.setAttribute("data-theme", "light");
+  // Theme-Modus: "light" | "dark" | "system". Liegt in localStorage "theme".
+  // Fehlt der Wert oder ist er ungültig, gilt "system" (Default für neue Nutzer,
+  // folgt dem Gerät). Bestands-Werte "light"/"dark" bleiben unverändert gültig.
+  var themeMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function prefersDark() { return !!(themeMedia && themeMedia.matches); }
+
+  function readMode() {
+    var v = null;
+    try { v = localStorage.getItem("theme"); } catch (_) {}
+    if (v === "light" || v === "dark" || v === "system") return v;
+    // Unbekannter/veralteter Wert: verwerfen, nichts speichern, Default system.
+    if (v != null) { try { localStorage.removeItem("theme"); } catch (_) {} }
+    return "system";
+  }
+
+  function resolveTheme(mode) {
+    if (mode === "dark") return "dark";
+    if (mode === "light") return "light";
+    return prefersDark() ? "dark" : "light"; // system: folgt dem Gerät
+  }
+
+  var currentMode = "system";
+
+  // Setzt data-theme (aufgelöst), data-theme-mode (roher Modus) und Statusbarfarbe.
+  function applyMode(mode) {
+    currentMode = mode;
+    html.setAttribute("data-theme", resolveTheme(mode));
+    html.setAttribute("data-theme-mode", mode);
     syncThemeColor();
-  } catch (_) {}
+  }
+
+  // Pre-paint setzen, damit es beim Laden kein Aufblitzen gibt (auch bei system).
+  try { applyMode(readMode()); } catch (_) {}
+
+  // Live: wechselt das Gerät hell/dunkel, folgt die App NUR im System-Modus
+  // sofort ohne Reload. Bei fest "light"/"dark" bleibt die Wahl unberührt.
+  if (themeMedia) {
+    var onSystemChange = function () {
+      if (currentMode !== "system") return;
+      html.setAttribute("data-theme", resolveTheme("system"));
+      syncThemeColor();
+      document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: html.getAttribute("data-theme"), mode: currentMode } }));
+    };
+    if (themeMedia.addEventListener) themeMedia.addEventListener("change", onSystemChange);
+    else if (themeMedia.addListener) themeMedia.addListener(onSystemChange); // Safari < 14
+  }
 
   var MOON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
   var SUN_SVG  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+  // Lucide "sun-moon" (v0.525.0, ISC) — automatisch/Gerät, gleiche Bauart wie oben.
+  var SUNMOON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v2"/><path d="M13 8.129A4 4 0 0 1 15.873 11"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/><path d="M9 8a5 5 0 1 0 7 7 7 7 0 1 1-7-7"/></svg>';
 
   function ready(fn) {
     if (document.readyState !== "loading") fn();
@@ -69,20 +104,22 @@
 
   ready(function () {
     var btn = document.getElementById("themeBtn");
+    // Icon zeigt den AKTUELLEN Modus (Zustand, nicht die Aktion):
+    // hell → Sonne, dunkel → Mond, system → Sonne+Mond.
     function glyph() {
       if (!btn) return;
-      btn.innerHTML = html.getAttribute("data-theme") === "dark" ? SUN_SVG : MOON_SVG;
+      btn.innerHTML = currentMode === "light" ? SUN_SVG : currentMode === "dark" ? MOON_SVG : SUNMOON_SVG;
     }
     glyph();
 
     if (btn) {
       btn.addEventListener("click", function () {
-        var next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        html.setAttribute("data-theme", next);
+        // Zyklus: hell → dunkel → system → hell.
+        var next = currentMode === "light" ? "dark" : currentMode === "dark" ? "system" : "light";
+        applyMode(next);
         try { localStorage.setItem("theme", next); } catch (_) {}
-        syncThemeColor();
         glyph();
-        document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: next } }));
+        document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: html.getAttribute("data-theme"), mode: next } }));
       });
     }
 
