@@ -1126,6 +1126,21 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .tc-area-group{opacity:.3;}
 html[data-theme="dark"] .tc-area-group{opacity:.5;}
 
+/* ══ Niederschlag (rollende 24 Stunden ab jetzt) ══
+   Schwester der TempCurve: gleiche Kartenbreite, gleiches x-Raster, daher
+   zeitlich deckungsgleich darunter. Balken statt Linie, weil Regen stückweise
+   ist. Die Balkenfarbe ist BEWUSST in EINER Variable (--rc-bar) gekapselt, die
+   nur .rc-bar liest: ein späterer Wechsel auf einen eigenen Regen-Ton (falls die
+   zwei blauen Diagramme zu ähnlich wirken) ist dann ein Einzeiler hier. Aktuell
+   --accent-text (theme-aware Zenit-Stufe, in Hell wie Dunkel AA-lesbar). Maxwert
+   und Zeitachse in --l4 (leise, theme-aware). */
+:root{--rc-bar:var(--accent-text);}
+.rc-card{padding:var(--sp-3) var(--sp-4);}
+.rc-svg{width:100%;height:auto;display:block;}
+.rc-bar{fill:var(--rc-bar);}
+.rc-peak{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
+.rc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
+
 /* ══ 7 Tage ══ */
 /* Kopfzeile der Tagesliste: Überschrift links, 7/10/16-Umschalter rechts. Die
    .sh-Abstände wandern auf den Container, das h2 selbst wird margin-frei, damit

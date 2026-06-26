@@ -2,7 +2,7 @@ import type { Forecast, HourlyEntry } from "../lib/weather";
 import { pickIcon, getWmo } from "../lib/wmo";
 import { nightSpans, isNightAt } from "../lib/daylight";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatHour, formatTemp, formatPercent, formatWind } from "../lib/format";
+import { formatHour, formatTemp, formatPercent, formatWind, fmtMm } from "../lib/format";
 import { getLang, getLocale, t } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
@@ -252,11 +252,9 @@ function isNum(v: unknown): v is number {
 function metaRow(lbl: string, val: string): string {
   return `<li class="cw-meta-item"><span class="cw-meta-lbl">${esc(lbl)}</span><span class="cw-meta-val">${esc(val)}</span></li>`;
 }
-// Schlanke, konsistente Formatierung für die neuen Einheiten (mm, hPa, Richtung).
-// Bestehende Werte laufen über formatTemp/formatPercent/formatWind.
-function fmtMm(v: number, locale: string): string {
-  return `${v.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mm`;
-}
+// Schlanke, konsistente Formatierung für die neuen Einheiten (hPa, Richtung).
+// mm läuft über das geteilte fmtMm aus ../lib/format (auch vom Regen-Diagramm
+// genutzt); bestehende Werte über formatTemp/formatPercent/formatWind.
 function fmtHpa(v: number): string {
   return `${Math.round(v)} hPa`;
 }

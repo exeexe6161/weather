@@ -15,6 +15,7 @@ import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderTempCurve, stationStartHour, type TempCurveInput } from "./components/TempCurve";
+import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
@@ -299,6 +300,20 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   };
 }
 
+// Eingabe fürs Regen-Diagramm: dasselbe rollende 24-Stunden-Fenster wie die
+// TempCurve (slice(0,25) → deckungsgleiche x-Achse). precipitation ist optional
+// (alte Caches kennen das Feld nicht); fehlende Werte als 0, kein NaN. Ob die
+// Sektion sichtbar wird, entscheidet RainChart selbst anhand der Spitze.
+function buildRainChartInput(forecast: Forecast): RainChartInput {
+  const precip = forecast.hourly.slice(0, 25).map((h) => (typeof h.precipitation === "number" ? h.precipitation : 0));
+  return {
+    precip,
+    startHour: stationStartHour(forecast.timezone),
+    locale: getLocale(),
+    ariaLabel: t("rain_aria"),
+  };
+}
+
 // Dezentes gestaffeltes Einblenden der Inhaltskarten. Reflow-Neustart (remove →
 // offsetWidth lesen → add), damit die CSS-Animation bei JEDEM Aufruf neu läuft.
 // Bewusst NICHT in renderContent(), sondern nur an den Stellen aufgerufen, an
@@ -341,6 +356,11 @@ function renderContent(): void {
   const tempCurveEl = byId("tempCurve");
   renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
   byId("tempCurveHeading").hidden = tempCurveEl.hidden;
+  // Regen-Diagramm direkt darunter, gleiches Hide-Muster: die Komponente
+  // versteckt sich bei zu wenig Regen selbst, der äußere Titel folgt.
+  const rainChartEl = byId("rainChart");
+  renderRainChart(rainChartEl, buildRainChartInput(state.forecast));
+  byId("rainChartHeading").hidden = rainChartEl.hidden;
   // Dynamische Überschrift "{n} Tage Vorhersage" (deckt Sprachwechsel mit ab,
   // da renderContent auch auf weather:langchange läuft). Das h2 trägt KEIN
   // data-i18n mehr — die Zahl käme dort nicht hinein; gesetzt wird sie hier.

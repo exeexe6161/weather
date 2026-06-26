@@ -33,6 +33,12 @@ export function formatTemp(value: number | null | undefined): string {
 export function formatWind(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)} km/h` : MISSING;
 }
+// Niederschlagsmenge in mm, locale-aware, immer eine Nachkommastelle. Eine Quelle
+// für alle Aufrufer (Stundenpanel und Regen-Diagramm), damit "1,2 mm" / "1.2 mm"
+// überall identisch formatiert sind.
+export function fmtMm(value: number, locale = "de-DE"): string {
+  return `${value.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mm`;
+}
 export function formatPercent(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)}\u202F%` : MISSING; // schmales geschütztes Leerzeichen
 }

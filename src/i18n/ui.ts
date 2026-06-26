@@ -153,6 +153,9 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   // ── Temperaturverlauf (ruhige Linie unter der Stundenleiste)
   tc_aria:         { de: "Gefühlte Temperatur der nächsten 24 Stunden", en: "Apparent temperature for the next 24 hours", tr: "Önümüzdeki 24 saatin hissedilen sıcaklığı" },
   tc_heading:      { de: "Gefühlte Temperatur · 24 Stunden", en: "Apparent temperature · 24 hours", tr: "Hissedilen sıcaklık · 24 saat" },
+  // ── Niederschlag (Balkendiagramm direkt unter dem Temperaturverlauf)
+  rain_aria:       { de: "Niederschlag der nächsten 24 Stunden", en: "Precipitation for the next 24 hours", tr: "Önümüzdeki 24 saatin yağışı" },
+  rain_heading:    { de: "Niederschlag · 24 Stunden", en: "Precipitation · 24 hours", tr: "Yağış · 24 saat" },
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   dailyHeadingDays:{ de: "{n} Tage Vorhersage", en: "{n} day forecast", tr: "{n} günlük tahmin" },
   daysAria:        { de: "Länge der Vorhersage wählen", en: "Choose forecast length", tr: "Tahmin uzunluğunu seç" },
