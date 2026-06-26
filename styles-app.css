@@ -60,6 +60,7 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
   --wp-stahl:#65707B;
   --wp-linie:#E2E6E9;
   --wp-zenit:#2E7FE0;
+  --wp-wasser:#3E86C9;  /* ruhiger, leicht entsättigter Regen-/Wasser-Blau, dezent abgesetzt von Zenit */
   --wp-erfolg:#1E9E5A;
   --wp-warnung:#C8820E;
   --wp-fehler:#D5453E;
@@ -138,6 +139,7 @@ html[data-theme="dark"]{
   --wp-surface:#1E2125;
   --wp-fg:var(--wp-pur);
   --wp-stahl:#9AA3AC;
+  --wp-wasser:#6FA9DC;  /* hellere Wasser-Stufe auf Karbon, AA-lesbar */
   --wp-linie:#2A2E33;
 
   --red:#E4736D;            /* hellere Fehler Stufe auf Karbon */
@@ -1132,11 +1134,25 @@ html[data-theme="dark"] .tc-area-group{opacity:.5;}
    ist. Die Balkenfarbe ist BEWUSST in EINER Variable (--rc-bar) gekapselt, die
    nur .rc-bar liest: ein späterer Wechsel auf einen eigenen Regen-Ton (falls die
    zwei blauen Diagramme zu ähnlich wirken) ist dann ein Einzeiler hier. Aktuell
-   --accent-text (theme-aware Zenit-Stufe, in Hell wie Dunkel AA-lesbar). Maxwert
-   und Zeitachse in --l4 (leise, theme-aware). */
-:root{--rc-bar:var(--accent-text);}
+   ruhiger Wasser-Blau --wp-wasser (theme-aware, dezent abgesetzt von der Zenit-
+   Linie darüber). Maxwert und Zeitachse in --l4 (leise, theme-aware).
+   Grundlinie (--rc-base) und Leer-Spur (--rc-socket) sind bewusst alpha-basiert
+   (Präzedenz: der Tagesliste-Track weiter unten), damit sie als zarte Struktur
+   tragen, ohne als Fläche zu drücken. Wechsel des Balken-Tons = Einzeiler an
+   --rc-bar. */
+:root{
+  --rc-bar:var(--wp-wasser);
+  --rc-base:rgba(62,134,201,.32);    /* Wasser-Blau, gedämpft: sichtbarer Boden */
+  --rc-socket:rgba(62,134,201,.12);  /* sehr leise Spur für leere Stunden */
+}
+html[data-theme="dark"]{
+  --rc-base:rgba(111,169,220,.34);
+  --rc-socket:rgba(111,169,220,.14);
+}
 .rc-card{padding:var(--sp-3) var(--sp-4);}
 .rc-svg{width:100%;height:auto;display:block;}
+.rc-base{stroke:var(--rc-base);stroke-width:1;}
+.rc-socket{fill:var(--rc-socket);}
 .rc-bar{fill:var(--rc-bar);}
 .rc-peak{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
 .rc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}

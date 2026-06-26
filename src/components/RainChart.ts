@@ -72,6 +72,21 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   const barW = Math.max(2, Math.min(6, step * 0.45));
   const rx = Math.min(2, barW / 2);
 
+  // Grundlinie: zarte durchgehende Linie bei baseY, auf der die Balken stehen —
+  // gibt dem Diagramm Halt, statt die Balken frei schweben zu lassen. Farbe ueber
+  // .rc-base (alpha-basierter Token, theme-aware).
+  const base = `<line x1="${padL.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${(W - padR).toFixed(2)}" y2="${baseY.toFixed(2)}" class="rc-base" vector-effect="non-scaling-stroke"/>`;
+
+  // Leer-Spur: an JEDER Stunde ein sehr leiser Sockel-Stummel auf der Grundlinie
+  // (auch bei precip 0). Erzeugt gleichmaessiges Raster/Rhythmus, ohne laut zu
+  // werden; echte Balken ueberdecken ihren Sockel.
+  const SOCKET_H = 3;
+  const sockets = vals.map((_v, i) => {
+    const x = xAt(i) - barW / 2;
+    const y = baseY - SOCKET_H;
+    return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${SOCKET_H.toFixed(2)}" rx="${rx.toFixed(2)}" class="rc-socket"/>`;
+  }).join("");
+
   const bars = vals.map((v, i) => {
     if (v <= 0) return "";
     const h = Math.max(MIN_BAR, (plotH * v) / peak);
@@ -101,7 +116,7 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
 
   const svg =
     `<svg viewBox="0 0 ${W} ${H}" class="rc-svg" role="img" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
-    peakLabel + bars + axis.join("") +
+    base + sockets + bars + peakLabel + axis.join("") +
     `</svg>`;
 
   container.replaceChildren();
