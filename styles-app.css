@@ -1080,7 +1080,7 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 /* Aktive Stunde, deren Detail-Panel offen ist: dezent getönt wie aria-current
    im Sprachmenü und im Tage-Umschalter (--accent-soft). */
-.hour-cell--active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent);}
+.hour-cell--active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--l4);}
 /* Leiser Hinweis unter der Stundenleisten-Überschrift, dass die Zellen antippbar
    sind (Farbe --l4, kein Kasten, keine Animation). */
 .hourly-hint{font-size:var(--fs-xs);color:var(--l4);margin:0 0 var(--sp-3);}
@@ -1088,7 +1088,7 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
    im Muster des Sprachmenüs (statischer Container, per [hidden] geschaltet). Volle
    Inhaltsbreite statt an einer schmalen, scrollenden Zelle zu kleben; .list-card
    liefert Hintergrund, Radius und Schatten. */
-.hour-panel{margin-top:var(--sp-3);box-shadow:inset 0 0 0 2px var(--accent),var(--card-shadow);}
+.hour-panel{margin-top:var(--sp-3);box-shadow:inset 0 0 0 2px var(--l4),var(--card-shadow);}
 .hour-panel-head{display:flex;align-items:center;gap:10px;}
 .hour-panel-ico{width:28px;height:28px;color:var(--l2);flex:none;}
 .hour-panel-htext{flex:1 1 auto;min-width:0;}
