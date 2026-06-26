@@ -148,6 +148,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   dewPoint:        { de: "Taupunkt", en: "Dew point", tr: "Çiy noktası" },
   cloudCover:      { de: "Bewölkung", en: "Cloud cover", tr: "Bulutluluk" },
   pressure:        { de: "Luftdruck", en: "Pressure", tr: "Basınç" },
+  snow:            { de: "Schnee", en: "Snow", tr: "Kar" },
+  visibility:      { de: "Sichtweite", en: "Visibility", tr: "Görüş mesafesi" },
   // 8-Punkt-Kompass, indexiert per round(grad/45)%8 (technische Kürzel)
   compassPoints:   { de: "N,NO,O,SO,S,SW,W,NW", en: "N,NE,E,SE,S,SW,W,NW", tr: "K,KD,D,GD,G,GB,B,KB" },
   // ── Temperaturverlauf (ruhige Linie unter der Stundenleiste)
