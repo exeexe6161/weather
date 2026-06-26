@@ -30,7 +30,7 @@ function hourIsDay(iso: string, spans: Spans): boolean {
 // angezeigte Stunde auflöst. WeakMap: kein Leak, kein Doppel-Listener.
 const stripForecasts = new WeakMap<HTMLElement, Forecast>();
 
-export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen = false): void {
+export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen = false): boolean {
   // Die Zellen werden gleich neu erzeugt → ein offenes Panel gehört zur alten
   // Stadt/zum alten Stand und wird geschlossen (Stadtwechsel, Refresh, Sprach-
   // und Tageswechsel laufen alle über renderContent → hier durch).
@@ -73,6 +73,11 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
   // Auto-Open nur, wenn der Aufrufer es erlaubt (initiales Laden, app.ts hält das
   // über den Cache→Netz-Doppelrender hinweg "armed"). Stadtwechsel/Refresh laufen
   // mit autoOpen=false → kein Auto-Open. Kein Fokus/Scroll (openHourDetail false).
+  // didAutoOpen meldet dem Aufrufer (app.ts), ob wirklich ein Panel geöffnet
+  // wurde — nur dann darf das Auto-Open-Flag entwaffnen (Befund 2: ein
+  // degenerierter Render mit leerem hourly öffnet nicht und soll daher auch nicht
+  // entwaffnen, sonst öffnet kein späterer Render mehr).
+  let didAutoOpen = false;
   if (autoOpen && forecast.hourly.length > 0) {
     // Aktuelle Stunde = erster Eintrag mit Zeit >= jetzt (dieselbe Prädikat-Logik
     // wie normalize()); Fallback Index 0 bei keinem Treffer.
@@ -82,8 +87,10 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
     if (autoBtn) {
       const icon = pickIcon(autoHour.weatherCode, hourIsDay(autoHour.time, spans));
       openHourDetail(autoHour, autoIdx, autoBtn, icon, false);
+      didAutoOpen = panelOpen(); // tatsächlich offen? (deckt openHourDetail-Frühausstieg ab)
     }
   }
+  return didAutoOpen;
 }
 
 // Einmalige Event-Delegation auf dem (statischen) Container plus die globalen
@@ -93,6 +100,9 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
 // und Tastatur. Der Container bleibt über Re-Render bestehen, der Listener also
 // gültig und nie doppelt.
 function bindHourlyStrip(el: HTMLElement): void {
+  // Strip merken: der (nur bei offenem Panel scharfe) Outside-Klick-Listener
+  // braucht ihn, um Klicks innerhalb der Leiste auszunehmen.
+  boundStripEl = el;
   el.addEventListener("click", (e) => {
     const node = e.target instanceof Element ? e.target.closest<HTMLElement>(".hour-cell[data-hour-index]") : null;
     if (!node || !el.contains(node)) return;
@@ -118,17 +128,12 @@ function bindHourlyStrip(el: HTMLElement): void {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && panelOpen()) closeHourDetail(true);
   });
-  // Klick außerhalb schließt. Klicks IN der Leiste (Zellen verwalten Öffnen/
-  // Umschalten/Toggle selbst) und IM Panel sind ausgenommen. Kein Fokus-Rückwurf
-  // hier: der Klick hat den Fokus bewusst woandershin gesetzt.
-  document.addEventListener("click", (e) => {
-    if (!panelOpen()) return;
-    const target = e.target as Node | null;
-    const panel = getPanel();
-    if (!target || !panel) return;
-    if (panel.contains(target) || el.contains(target)) return;
-    closeHourDetail(false);
-  });
+  // Klick außerhalb schließt — aber NICHT der Klick, der gerade geöffnet hat.
+  // Daher KEIN dauerhafter document-Listener mehr (der wäre vom öffnenden Klick
+  // mit-getroffen worden, Befund 1): armOutsideClick schaltet ihn erst im nächsten
+  // Task scharf (s. openHourDetail), disarmOutsideClick meldet ihn beim Schließen
+  // wieder ab. Kein Fokus-Rückwurf beim Outside-Schließen: der Klick hat den Fokus
+  // bewusst woandershin gesetzt.
 }
 
 // ── Panel-Steuerung ───────────────────────────────────────────────────────
@@ -145,6 +150,42 @@ function panelOpen(): boolean {
 
 let activeIndex: number | null = null;
 let activeButton: HTMLButtonElement | null = null;
+// Vom bindHourlyStrip gemerkter Strip; der Outside-Klick-Handler nimmt Klicks
+// darin aus (Zellen verwalten Öffnen/Umschalten/Toggle selbst).
+let boundStripEl: HTMLElement | null = null;
+// Pending-Timer, der den Outside-Klick-Listener verzögert scharf schaltet.
+let outsideClickTimer: number | null = null;
+
+// Outside-Klick schließt das offene Panel. Klicks IM Panel und IN der Leiste sind
+// ausgenommen (Letztere verwalten Öffnen/Umschalten/Toggle selbst).
+function handleOutsideClick(e: MouseEvent): void {
+  if (!panelOpen()) return;
+  const target = e.target as Node | null;
+  const panel = getPanel();
+  if (!target || !panel) return;
+  if (panel.contains(target) || (boundStripEl?.contains(target) ?? false)) return;
+  closeHourDetail(false);
+}
+
+// Scharf schalten ERST im nächsten Makro-Task (setTimeout 0), nachdem der
+// öffnende Klick komplett durchgelaufen ist. queueMicrotask reicht NICHT: nach
+// jedem Event-Listener wird ein Microtask-Checkpoint abgearbeitet, der Listener
+// wäre also noch im selben blubbernden Klick aktiv und würde sofort schließen.
+function armOutsideClick(): void {
+  if (outsideClickTimer !== null) return; // schon geplant
+  outsideClickTimer = window.setTimeout(() => {
+    outsideClickTimer = null;
+    if (panelOpen()) document.addEventListener("click", handleOutsideClick);
+  }, 0);
+}
+
+function disarmOutsideClick(): void {
+  if (outsideClickTimer !== null) {
+    clearTimeout(outsideClickTimer);
+    outsideClickTimer = null;
+  }
+  document.removeEventListener("click", handleOutsideClick);
+}
 
 // Etappe 3: füllt und öffnet das Detail-Panel mit den Daten der angetippten
 // Stunde, markiert die aktive Zelle und legt den Fokus ins Panel.
@@ -174,12 +215,18 @@ function openHourDetail(hour: HourlyEntry, index: number, button: HTMLButtonElem
     .querySelector<HTMLButtonElement>(".hour-panel-close")
     ?.addEventListener("click", () => closeHourDetail(true));
 
+  // Outside-Klick-Listener erst nach dem aktuellen Event scharf schalten, damit
+  // der öffnende Klick (z.B. Favoriten-Chip → Cache-Auto-Open) ihn nicht selbst
+  // auslöst (Befund 1).
+  armOutsideClick();
+
   // Fokus nur beim Nutzer-Klick ins Panel (Escape/X geben ihn zurück); beim
   // Auto-Open (focusPanel=false) NICHT, damit die Seite beim Laden nicht scrollt.
   if (focusPanel) panel.focus();
 }
 
 function closeHourDetail(returnFocus = false): void {
+  disarmOutsideClick(); // Outside-Klick-Listener immer mit abmelden
   const panel = getPanel();
   if (panel && !panel.hidden) {
     panel.hidden = true;

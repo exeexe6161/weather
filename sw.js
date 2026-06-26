@@ -20,16 +20,16 @@
  * Do not edit the value by hand — build-sw.mjs is the single source.
  */
 
-const CACHE_VERSION  = 'v1782446060282';
+const CACHE_VERSION  = 'v1782447402955';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260626-035420',
-  '/theme-init.js?v=20260626-035420',
-  '/script.min.js?v=20260626-035420',
+  '/styles-app.min.css?v=20260626-041642',
+  '/theme-init.js?v=20260626-041642',
+  '/script.min.js?v=20260626-041642',
   '/fonts/InterVariable.woff2',
   '/fonts/InstrumentSerif-Italic-latin.woff2',
   '/fonts/InstrumentSerif-Italic-latin-ext.woff2',

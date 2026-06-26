@@ -326,11 +326,15 @@ function renderContent(): void {
     updatedAt: state.updatedAt,
   });
   renderDressToday(byId("dressToday"), state.forecast);
-  renderHourlyStrip(byId("hourlyStrip"), state.forecast, hourlyAutoOpenArmed);
+  const didAutoOpen = renderHourlyStrip(byId("hourlyStrip"), state.forecast, hourlyAutoOpenArmed);
   // Nach dem aufgelösten Erst-Ladeversuch entwaffnen. Der Cache-Render bleibt
   // "stale" (also armed), der darauffolgende Netz-Render desselben Orts öffnet
-  // damit erneut (kein Blitzen), danach kein automatisches Öffnen mehr.
-  if (hourlyAutoOpenArmed && state.freshness !== "stale") hourlyAutoOpenArmed = false;
+  // damit erneut (kein Blitzen), danach kein automatisches Öffnen mehr. Zusätzlich
+  // nur entwaffnen, wenn wirklich geöffnet wurde (didAutoOpen) — ein degenerierter
+  // Render mit leerem hourly öffnet nicht und darf das Flag nicht vorzeitig
+  // verbrauchen (Befund 2). Der "stale"-Guard bleibt: sonst würde schon der
+  // Cache-Render entwaffnen und der Netz-Render das Panel ungeöffnet zurücklassen.
+  if (hourlyAutoOpenArmed && state.freshness !== "stale" && didAutoOpen) hourlyAutoOpenArmed = false;
   // Diagramm rendern; der äußere Kartentitel (gleiches .sh-Muster wie die
   // Nachbarkarten) folgt der Sichtbarkeit des Diagramms — versteckt es sich bei
   // zu wenigen Daten, verschwindet auch der Titel (wie beim Pollen-Muster).
