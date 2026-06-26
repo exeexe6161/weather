@@ -30,6 +30,8 @@ export interface HourlyEntry {
   cloudCover?: number; // %
   pressure?: number; // hPa (pressure_msl)
   uvIndex?: number; // Index
+  snowfall?: number; // cm (Summe der Vorstunde)
+  visibility?: number; // m
 }
 export interface DailyEntry {
   date: string;
@@ -57,7 +59,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     latitude: String(latitude),
     longitude: String(longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
-    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m,dew_point_2m,precipitation,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,uv_index",
+    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m,dew_point_2m,precipitation,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,uv_index,snowfall,visibility",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
     timezone: "auto",
     forecast_days: "16", // bis zu 16 Tage in den Daten; die Anzeige kürzt clientseitig (Default 7)
@@ -121,6 +123,8 @@ function normalize(data: any): Forecast {
       cloudCover: h.cloud_cover?.[i] ?? undefined,
       pressure: h.pressure_msl?.[i] ?? undefined,
       uvIndex: h.uv_index?.[i] ?? undefined,
+      snowfall: h.snowfall?.[i] ?? undefined,
+      visibility: h.visibility?.[i] ?? undefined,
     });
   }
 
