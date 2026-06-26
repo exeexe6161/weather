@@ -1259,10 +1259,12 @@ html[data-theme="dark"]{
 /* Ausblick: Text bleibt lesbar (>=4.5:1), nur Dekoratives wird gedaempft */
 .day-row--outlook .day-ico,
 .day-row--outlook .day-bar,
-.day-row--outlook .day-rain-ico{opacity:.55;}
+.day-row--outlook .day-rain-ico,
+.day-row--outlook .day-sun-ico{opacity:.55;}
 html[data-theme="dark"] .day-row--outlook .day-ico,
 html[data-theme="dark"] .day-row--outlook .day-bar,
-html[data-theme="dark"] .day-row--outlook .day-rain-ico{opacity:.5;}
+html[data-theme="dark"] .day-row--outlook .day-rain-ico,
+html[data-theme="dark"] .day-row--outlook .day-sun-ico{opacity:.5;}
 /* Light: gedaempfte, aber kontraststarke Textfarben im Ausblick */
 html:not([data-theme="dark"]) .day-row--outlook .day-date,
 html:not([data-theme="dark"]) .day-row--outlook .day-min{color:var(--l4);}
@@ -1309,6 +1311,22 @@ html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
    liegt bereits auf .day-max/.day-min (Sammelregel oben), daher hier nur die
    Slot-Breite + Rechtsbündigkeit. */
 .day-max,.day-min{display:inline-block;min-width:4ch;text-align:right;}
+/* Sonnenscheindauer: leise zweite-Zeile-Angabe im LINKEN, sonst leeren Bereich
+   (Grid-Spalte 1 bis 3, Zeile 2 — unter Wochentag/Icon), gepaart mit dem
+   Temperaturbalken rechts. Zeile 1 bleibt unberührt. Icon amber (--wp-warnung,
+   wie das Regen-Icon Zenit nutzt), Text leise --l4, klein. Nur sichtbar an Tagen
+   mit >= 1 h Sonne. */
+.day-sun{
+  grid-column:1 / 3;
+  grid-row:2;
+  display:flex;
+  align-items:center;
+  gap:3px;
+  font-size:var(--fs-xs);
+  color:var(--l4);
+  white-space:nowrap;
+}
+.day-sun-ico{width:12px;height:12px;color:var(--wp-warnung);flex:none;}
 /* Temperaturbalken (Variante A): dezente zweite Zeile, eingerückt unter der
    Beschreibung (Grid-Spalte 3 bis zum rechten Rand), zeigt die Tagesspanne im
    Wochenbereich. Position der Füllung kommt per CSSOM aus DailyForecast.ts

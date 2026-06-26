@@ -42,6 +42,7 @@ export interface DailyEntry {
   sunrise: string | null; // ISO Zeit lokaler Stationszeit
   sunset: string | null;
   uvIndexMax: number | null;
+  sunshineDuration?: number; // Sekunden pro Tag (optional wegen alter Caches)
 }
 export interface Forecast {
   current: CurrentWeather;
@@ -60,7 +61,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     longitude: String(longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
     hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m,dew_point_2m,precipitation,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,uv_index,snowfall,visibility",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max,sunshine_duration",
     timezone: "auto",
     forecast_days: "16", // bis zu 16 Tage in den Daten; die Anzeige kürzt clientseitig (Default 7)
     past_days: "1", // gestriger Tag in derselben daily Antwort (Vergleichszeile)
@@ -149,6 +150,7 @@ function normalize(data: any): Forecast {
         sunrise: d.sunrise?.[i] ?? null,
         sunset: d.sunset?.[i] ?? null,
         uvIndexMax: d.uv_index_max?.[i] ?? null,
+        sunshineDuration: d.sunshine_duration?.[i] ?? undefined,
       };
     })
     // Unvollständige Tage entfernen: am äußersten Forecast-Rand (Tag 16) liefert
