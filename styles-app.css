@@ -1149,13 +1149,37 @@ html[data-theme="dark"]{
   --rc-base:rgba(111,169,220,.34);
   --rc-socket:rgba(111,169,220,.14);
 }
-.rc-card{padding:var(--sp-3) var(--sp-4);}
+.rc-card{padding:var(--sp-3) var(--sp-4);position:relative;}
 .rc-svg{width:100%;height:auto;display:block;}
 .rc-base{stroke:var(--rc-base);stroke-width:1;}
 .rc-socket{fill:var(--rc-socket);}
 .rc-bar{fill:var(--rc-bar);}
+.rc-now{fill:var(--rc-bar);}  /* leiser jetzt-Anker unter Index 0 */
 .rc-peak{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
 .rc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
+/* Spalten-Hitbox: ganze Stunde als Trefferziel (Balken+Gap), unsichtbar, aber
+   fokussier-/tippbar. fill:transparent statt opacity:0, damit Pointer-Events
+   greifen. Fokus-Ring nach Hausmuster (--accent-text), via rect-Outline. */
+.rc-hit{fill:transparent;cursor:default;}
+.rc-hit:focus{outline:none;}
+.rc-hit:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px;border-radius:4px;}
+/* Tooltip: ruhiges Kaestchen im Kartenstil (Flaeche --s1, Rand/Schatten --shadow-3,
+   Radius --r-sm), kleiner Text, theme-aware. Absolut in der Karte; Position setzt
+   JS in Bildschirmkoordinaten. pointer-events:none -> faengt keine Hover/Taps ab. */
+.rc-tip{
+  position:absolute;
+  z-index:5;
+  pointer-events:none;
+  padding:4px 8px;
+  background:var(--s1);
+  border-radius:var(--r-sm);
+  box-shadow:var(--shadow-3);
+  color:var(--l1);
+  font-size:var(--fs-xs);
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
 
 /* ══ 7 Tage ══ */
 /* Kopfzeile der Tagesliste: Überschrift links, 7/10/16-Umschalter rechts. Die

@@ -156,6 +156,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   // ── Niederschlag (Balkendiagramm direkt unter dem Temperaturverlauf)
   rain_aria:       { de: "Niederschlag der nächsten 24 Stunden", en: "Precipitation for the next 24 hours", tr: "Önümüzdeki 24 saatin yağışı" },
   rain_heading:    { de: "Niederschlag · 24 Stunden", en: "Precipitation · 24 hours", tr: "Yağış · 24 saat" },
+  rc_dry:          { de: "kein Regen", en: "no rain", tr: "yağmur yok" },
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   dailyHeadingDays:{ de: "{n} Tage Vorhersage", en: "{n} day forecast", tr: "{n} günlük tahmin" },
   daysAria:        { de: "Länge der Vorhersage wählen", en: "Choose forecast length", tr: "Tahmin uzunluğunu seç" },

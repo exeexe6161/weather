@@ -305,9 +305,12 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
 // (alte Caches kennen das Feld nicht); fehlende Werte als 0, kein NaN. Ob die
 // Sektion sichtbar wird, entscheidet RainChart selbst anhand der Spitze.
 function buildRainChartInput(forecast: Forecast): RainChartInput {
-  const precip = forecast.hourly.slice(0, 25).map((h) => (typeof h.precipitation === "number" ? h.precipitation : 0));
+  const window = forecast.hourly.slice(0, 25);
+  const precip = window.map((h) => (typeof h.precipitation === "number" ? h.precipitation : 0));
+  const times = window.map((h) => h.time);
   return {
     precip,
+    times,
     startHour: stationStartHour(forecast.timezone),
     locale: getLocale(),
     ariaLabel: t("rain_aria"),
