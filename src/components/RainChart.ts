@@ -76,8 +76,13 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   const vals = raw.map((v) => (Number.isFinite(v) && (v as number) > 0 ? (v as number) : 0));
   if (vals.length === 0) { hide(container); return; }
 
+  // peak = hoechste Einzelstunde: skaliert die Balkenhoehen (hoechster Balken =
+  // volle Hoehe) UND entscheidet die Sichtbarkeit. Die Summe unten ist NUR
+  // Anzeige-Text und beeinflusst weder Hoehen noch Selbst-Hide.
   const peak = Math.max(...vals);
   if (!(peak >= VISIBLE_MIN_MM)) { hide(container); return; } // deckt 0 und NaN-Peak
+  // Erwartete Gesamtmenge im Fenster (fehlende Werte sind oben schon 0 -> kein NaN).
+  const total = vals.reduce((a, b) => a + b, 0);
 
   container.hidden = false;
   // Offenen Tooltip der alten Stadt/des alten Stands schliessen (Re-Render durch
@@ -148,9 +153,11 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
     axis.push(`<text x="${xAt(idx).toFixed(2)}" y="${(H - 7).toFixed(2)}" class="rc-axis" text-anchor="${anchor}">${esc(label)}</text>`);
   }
 
-  // Maxwert oben rechts als leise Orientierung, identisch zum Stundenpanel
-  // formatiert (fmtMm, locale-aware, eine Nachkommastelle).
-  const peakLabel = `<text x="${(W - padR).toFixed(2)}" y="11" class="rc-peak" text-anchor="end">${esc(fmtMm(peak, input.locale))}</text>`;
+  // Erwartete GESAMTSUMME oben rechts, beschriftet ("3,2 mm erwartet"), damit klar
+  // ist, was die Zahl meint (nicht peak/Schnitt). Menge via fmtMm (locale-aware,
+  // identisch zum Panel); Label i18n.
+  const totalLabel = t("rain_total").replace("{value}", fmtMm(total, input.locale));
+  const peakLabel = `<text x="${(W - padR).toFixed(2)}" y="11" class="rc-total" text-anchor="end">${esc(totalLabel)}</text>`;
 
   // Hitboxes: transparente Spalten ueber die VOLLE Hoehe (Balken+Gap), zentriert
   // auf den Stundenpunkt und an die Plotbreite geklemmt. Fokussierbar (Tab),

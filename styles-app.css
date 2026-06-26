@@ -1155,7 +1155,7 @@ html[data-theme="dark"]{
 .rc-socket{fill:var(--rc-socket);}
 .rc-bar{fill:var(--rc-bar);}
 .rc-now{fill:var(--rc-bar);}  /* leiser jetzt-Anker unter Index 0 */
-.rc-peak{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
+.rc-total{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
 .rc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
 /* Spalten-Hitbox: ganze Stunde als Trefferziel (Balken+Gap), unsichtbar, aber
    fokussier-/tippbar. fill:transparent statt opacity:0, damit Pointer-Events
