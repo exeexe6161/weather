@@ -140,11 +140,16 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <div class="cw-place-name">${esc(place.id === GEO_PLACE_ID ? t("myLocation") : place.name)}</div>
         ${region || localTime ? `<div class="cw-place-region">${esc(region)}${region && localTime ? " · " : ""}${localTime ? `<span class="cw-local-time">${localTime}</span>` : ""}</div>` : ""}
       </div>
-      ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
-        aria-pressed="${isFav}"
-        aria-label="${isFav ? t("favRemove") : t("favAdd")}">
-        <i data-lucide="star" class="fav-toggle-ico${isFav ? " fav-toggle-ico--on" : ""}"></i>
-      </button>` : ""}
+      <div class="cw-actions">
+        <button type="button" class="cw-share" id="shareBtn" aria-label="${t("share_aria")}">
+          <i data-lucide="share-2" class="cw-share-ico"></i>
+        </button>
+        ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
+          aria-pressed="${isFav}"
+          aria-label="${isFav ? t("favRemove") : t("favAdd")}">
+          <i data-lucide="star" class="fav-toggle-ico${isFav ? " fav-toggle-ico--on" : ""}"></i>
+        </button>` : ""}
+      </div>
     </div>
     <div class="cw-main">
       <i data-lucide="${icon}" class="cw-ico"></i>

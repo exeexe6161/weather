@@ -32,6 +32,7 @@ import {
   Sunset,
   TrendingUp,
   TrendingDown,
+  Share2,
 } from "lucide";
 
 const icons = {
@@ -64,6 +65,7 @@ const icons = {
   Sunset,
   TrendingUp,
   TrendingDown,
+  Share2,
 };
 
 export function renderIcons(): void {

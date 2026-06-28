@@ -72,6 +72,7 @@ button.hour-cell,
 .theme-btn,
 .search-result,
 .search-input,
+.cw-share,
 .rc-hit,
 .day-row{touch-action:manipulation;}
 
@@ -808,7 +809,11 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-place{min-width:0;}
 .cw-place-name{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.2px;overflow-wrap:anywhere;}
 .cw-place-region{font-size:var(--fs-sm);color:var(--l4);margin-top:2px;}
-.fav-toggle{
+/* Aktionen oben rechts in der aktuellen Wetterkarte: Teilen (immer) und der
+   Favoriten-Stern (nur für benannte Orte, nicht für den Geo-Ort). */
+.cw-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+.fav-toggle,
+.cw-share{
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -822,8 +827,10 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   cursor:pointer;
   transition:transform var(--t-base);
 }
-.fav-toggle:active{transform:scale(var(--press-scale));}
+.fav-toggle:active,
+.cw-share:active{transform:scale(var(--press-scale));}
 .fav-toggle-ico{width:18px;height:18px;}
+.cw-share-ico{width:18px;height:18px;}
 .fav-toggle[aria-pressed="true"]{color:var(--star);}
 .fav-toggle[aria-pressed="true"] .fav-toggle-ico{fill:currentColor;}
 @media (prefers-reduced-motion:no-preference){
@@ -1460,4 +1467,31 @@ footer{margin-top:48px;padding:0 16px;}
     padding-right:var(--safe-r);
     padding-bottom:calc(40px + var(--safe-bot));
   }
+}
+
+/* ══ Toast ══
+   Transiente, dezente Rückmeldung (z. B. Clipboard-Fallback beim Teilen). Genau
+   ein Knoten, per JS ein-/ausgeblendet (.wp-toast--show). role=status/aria-live
+   im Markup. Token-rein; respektiert die untere Safe-Area. */
+.wp-toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(24px + var(--safe-bot));
+  transform:translate(-50%,12px);
+  z-index:300;
+  max-width:min(92vw,360px);
+  padding:10px 16px;
+  background:var(--s2);
+  color:var(--l1);
+  border-radius:var(--r-sm);
+  box-shadow:var(--shadow-float);
+  font-size:var(--fs-sm);
+  text-align:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity var(--t-base),transform var(--t-base);
+}
+.wp-toast--show{opacity:1;transform:translate(-50%,0);}
+@media (prefers-reduced-motion:reduce){
+  .wp-toast{transition:opacity var(--t-base);transform:translate(-50%,0);}
 }

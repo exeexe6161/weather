@@ -8,7 +8,8 @@ import { renderPollenList } from "./components/PollenList";
 import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
-import { weatherLabelShort } from "./i18n/weather-labels";
+import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
+import { shareText } from "./lib/share";
 import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
@@ -389,6 +390,26 @@ function renderContent(): void {
       document.getElementById("favToggle")?.classList.add("fav-toggle--added");
     }
   });
+  document.getElementById("shareBtn")?.addEventListener("click", shareCurrentWeather);
+}
+
+// Teilt das aktuell angezeigte Wetter als kurzen Text über die Web Share API
+// (Clipboard-Fallback in share.ts). Ohne geladene Daten ein No-op, kein Crash.
+// URL: stadtspezifischer Deep-Link (?stadt=) für benannte Orte, kanonische
+// Startseite für den Geo-Ort — dort NIE Koordinaten teilen (Datenschutzzusage).
+function shareCurrentWeather(): void {
+  if (!state.place || !state.forecast) return;
+  const place = state.place;
+  const c = state.forecast.current;
+  const name = place.id === GEO_PLACE_ID ? t("myLocation") : place.name;
+  const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
+  const text = `${name}: ${formatTemp(c.temperature)}, ${label}`;
+  const base = "https://weatherpure.com/";
+  const url =
+    place.id === GEO_PLACE_ID
+      ? base
+      : `${base}?${CITY_PARAM}=${encodeURIComponent(place.name.toLowerCase())}`;
+  void shareText({ title: "WeatherPure", text, url });
 }
 
 // Manuelles Aktualisieren über den Button oben (neben "Mein Standort"): lädt die
