@@ -5,8 +5,8 @@
   "description": "WeatherPure – minimalistische Wetter App (vanilla TS, esbuild, self-hosted Inter OFL, Lucide ISC, Wetterdaten Open-Meteo CC BY 4.0). www.weatherpure.com",
   "scripts": {
     "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > styles-pages.min.css",
-    "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --sourcemap=external --target=es2020 --outfile=script.min.js",
-    "build:dist": "rm -rf dist && mkdir -p dist && cp index.html impressum.html impressum-en.html impressum-tr.html datenschutz.html datenschutz-en.html datenschutz-tr.html 404.html 404.css 404.js theme-init.js sw.js site.webmanifest browserconfig.xml robots.txt sitemap.xml LICENSES.md favicon.ico favicon.svg favicon-*.png safari-pinned-tab.svg apple-touch-icon.png icon-*.png mstile-150x150.png og-image-*.png styles-app.min.css styles-pages.min.css script.min.js script.min.js.map dist/ && cp -R fonts dist/fonts && cp -R logos dist/logos && cp -R licenses dist/licenses",
+    "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --target=es2020 --outfile=script.min.js",
+    "build:dist": "rm -rf dist && mkdir -p dist && cp index.html impressum.html impressum-en.html impressum-tr.html datenschutz.html datenschutz-en.html datenschutz-tr.html 404.html 404.css 404.js theme-init.js sw.js site.webmanifest browserconfig.xml robots.txt sitemap.xml LICENSES.md favicon.ico favicon.svg favicon-*.png safari-pinned-tab.svg apple-touch-icon.png icon-*.png mstile-150x150.png og-image-*.png styles-app.min.css styles-pages.min.css script.min.js dist/ && cp -R fonts dist/fonts && cp -R logos dist/logos && cp -R licenses dist/licenses",
     "build:sw": "node build-sw.mjs",
     "build": "npm run build:css && npm run build:js && npm run build:sw && npm run build:dist",
     "build:ios": "npm run build && npx cap sync ios",
