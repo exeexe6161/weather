@@ -78,12 +78,12 @@ function preventPinchZoomInStandalone(): void {
   document.addEventListener("gesturestart", (e) => e.preventDefault());
 }
 
-// iOS ignoriert minimum-scale im Meta-Tag im Standalone. Daher den viewport zur
-// Laufzeit hart auf scale 1.0 festnageln (nur in der installierten PWA), damit
-// die App nicht herausgezoomt starten oder bleiben kann. Vergrößern bleibt durch
-// preventPinchZoomInStandalone separat geregelt.
+// Den viewport zur Laufzeit hart auf scale 1.0 festnageln (maximum-scale=1.0) —
+// in Browser UND installierter PWA. Unterbindet den iOS Fokus-Zoom beim Antippen
+// von Eingabefeldern (das Suchfeld zoomte sonst im Browser herein) und verhindert,
+// dass die App herausgezoomt startet oder bleibt. Bewusste Entscheidung: damit ist
+// auch der Lese-/Pinch-Zoom im Browser deaktiviert (in der PWA war er es bereits).
 function lockStandaloneScale(): void {
-  if (!isStandalone()) return;
   const vp = document.querySelector('meta[name="viewport"]');
   if (!vp) return;
   vp.setAttribute(
