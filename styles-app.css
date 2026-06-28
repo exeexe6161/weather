@@ -710,7 +710,10 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .fav-row{
   display:flex;
   align-items:stretch;
+  /* Zarte Trennlinie: 55% des Linien-Tokens (theme-aware, da --sep hell/dunkel
+     umschaltet). Fallback solid var(--sep) für WebViews ohne color-mix. */
   border-bottom:1px solid var(--sep);
+  border-bottom-color:color-mix(in srgb, var(--sep) 55%, transparent);
 }
 .fav-row:last-child{border-bottom:none;}
 /* Aktiver Ort (Detailkarte offen): schmaler Balken links in Schriftfarbe plus
@@ -725,7 +728,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   justify-content:space-between;
   gap:12px;
   min-height:60px;             /* Touch-Ziel > 44px, Platz für zwei Zeilen */
-  padding:8px 8px 8px 16px;    /* linker Einzug lässt dem Aktiv-Balken Raum */
+  padding:8px 16px 8px 16px;   /* links Raum für Aktiv-Balken, rechts 16px Luft zum X */
   background:none;
   border:none;
   font-family:inherit;
