@@ -47,6 +47,47 @@ html{overflow-x:hidden;overflow-x:clip;width:100%;max-width:100%;}
 body{overflow-x:hidden;overflow-x:clip;width:100%;max-width:100%;min-width:0;}
 html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
 
+/* ══ iOS Touch Härtung ══
+   touch-action:manipulation schaltet NUR den 300ms Doppeltipp-Zoom und die
+   verzögerte Klickauslösung auf diesen interaktiven Elementen ab. Pinch-Zoom und
+   Accessibility-Zoom bleiben voll erhalten (Viewport bleibt unverändert, kein
+   user-scalable=no). Bewusst gezielt auf interaktive Elemente, NICHT global auf
+   * oder body, damit Scroll- und Gestenverhalten anderswo unangetastet bleibt.
+   Auf der scrollenden Stundenleiste sitzt es auf den Zellen (button.hour-cell),
+   nicht auf dem Scroll-Container .hourly-strip: so bleibt horizontales Scrollen
+   garantiert unberührt, der Doppeltipp-Zoom verschwindet trotzdem dort, wo
+   getippt wird. user-select:none verhindert versehentliches Markieren von
+   Bedien-Text beim Wischen; bleibt auf UI-Controls begrenzt, normaler Inhalt
+   (Ortsnamen etc.) bleibt kopierbar. .day-row ist nur Anzeige (role=listitem),
+   bekommt aber touch-action gegen Doppeltipp-Zoom auf der 7-Tage-Liste. */
+button.hour-cell,
+.fav-chip-btn,
+.fav-chip-x,
+.seg-btn,
+.geo-btn,
+.hour-panel-close,
+.retry-btn,
+.top-pill,
+.top-menu-item,
+.theme-btn,
+.search-result,
+.rc-hit,
+.day-row{touch-action:manipulation;}
+
+button.hour-cell,
+.fav-chip-btn,
+.fav-chip-x,
+.seg-btn,
+.geo-btn,
+.hour-panel-close,
+.retry-btn,
+.top-pill,
+.top-menu-item,
+.theme-btn,
+.search-result,
+.hour-time,
+.hour-temp{-webkit-user-select:none;user-select:none;}
+
 /* ── WeatherPure Brand Tokens (Quelle: brand/06-web/tokens.css) ──
    Karbon #15171A · Pur #FFFFFF · Dunst #F3F5F6 · Stahl #65707B · Linie #E2E6E9
    Zenit #2E7FE0 (einziger Akzent) · Erfolg / Warnung / Fehler als Funktionsfarben.
