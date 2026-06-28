@@ -144,10 +144,13 @@ export function summaryFor(forecast: Forecast): Summary | null {
   if (tod === "night") {
     if (clearish && band === "mild") return { kind: "fixed", key: "sum1_night_mild_clear" };
     if (clearish && (band === "frosty" || band === "cold")) return { kind: "fixed", key: "sum1_night_cold" };
-    // Klarer Himmel außerhalb der Nacht-Sätze: "sonnig" wäre nachts Unsinn,
-    // also Zeile weglassen. Bewölkte Lagen sind zeitneutral → Ebene 2.
+    // Warm und klar in der Nacht: korrekte Klar-Variante (kein "sonnig"), füllt
+    // die bisherige Lücke (warm+klar ergab nachts gar keine Zeile).
+    if (clearish && band === "warm") return { kind: "fixed", key: "sum1_warm_clear" };
+    // Übriger klarer Himmel (cool/heiß) außerhalb der Nacht-Sätze: "sonnig" wäre
+    // nachts Unsinn, also Zeile weglassen. Bewölkte Lagen sind zeitneutral → Ebene 2.
     if (clearish) return null;
-    return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh: false, tod });
+    return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh: false, tod, isDay: c.isDay });
   }
 
   // ── Ebene 1, geordnete Liste: erster Treffer gewinnt
@@ -161,7 +164,11 @@ export function summaryFor(forecast: Forecast): Summary | null {
     return { kind: "fixed", key: "sum1_hot_dry" };
   }
   if (band === "warm" && clearish && uvHigh && tod === "day") return { kind: "fixed", key: "sum1_warm_sunny_uv" };
-  if (band === "warm" && clearish && dry) return { kind: "fixed", key: "sum1_warm_sunny" };
+  // "sonnig" nur bei echtem Tag (c.isDay, sonnenstandbasiert wie das Icon); nach
+  // Sonnenuntergang (z. B. abends vor 22 Uhr) die Klar-Variante, kein Widerspruch.
+  if (band === "warm" && clearish && dry) {
+    return { kind: "fixed", key: c.isDay ? "sum1_warm_sunny" : "sum1_warm_clear" };
+  }
   if (band === "mild" && clearish && dry && tod === "day") {
     // Abend-Zusatz nur, wenn die Abendstunden laut hourly wirklich kühl werden.
     return { kind: "fixed", key: eveningTurnsCool ? "sum1_mild_sunny_day" : "sum1_mild_sunny" };
@@ -179,7 +186,7 @@ export function summaryFor(forecast: Forecast): Summary | null {
   if (band === "frosty" && clearish && dry) return { kind: "fixed", key: "sum1_frosty_clear" };
 
   // ── Ebene 2, modular
-  return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh, tod });
+  return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh, tod, isDay: c.isDay });
 }
 
 interface ModularContext {
@@ -189,6 +196,7 @@ interface ModularContext {
   windy: boolean;
   uvHigh: boolean;
   tod: TimeOfDay;
+  isDay: boolean; // echtes Tag-Signal (wie das Icon) → "sonnig" nur bei Tag
 }
 
 function modular(band: Band, sky: Sky, ctx: ModularContext): Summary | null {
@@ -198,7 +206,7 @@ function modular(band: Band, sky: Sky, ctx: ModularContext): Summary | null {
     sky === "rain" || sky === "thunder"
       ? "sum_s_grey"
       : sky === "sunny"
-        ? "sum_s_sunny"
+        ? ctx.isDay ? "sum_s_sunny" : "sum_s_clear" // nach Sonnenuntergang "klar" statt "sonnig"
         : sky === "friendly"
           ? "sum_s_friendly"
           : sky === "cloudy"
