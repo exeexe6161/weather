@@ -72,6 +72,7 @@ button.hour-cell,
 .search-input,
 .cw-share,
 .fav-row-select,
+.fav-row-move-btn,
 .fav-row-x,
 .rc-hit,
 .day-row{touch-action:manipulation;}
@@ -760,6 +761,23 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 .fav-row-wx-ico{width:18px;height:18px;color:var(--l4);flex:0 0 auto;}
 .fav-row-temp{font-size:var(--fs-base);font-weight:700;}
+/* Umsortier-Spalte: zwei gestapelte Chevrons (zusammen ~44px hohes Tippziel),
+   dezent gedämpft. Deaktiviert (Rand) sichtbar leiser, nicht klickbar. */
+.fav-row-move{display:flex;flex-direction:column;justify-content:center;flex:0 0 auto;}
+.fav-row-move-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:22px;
+  background:none;
+  border:none;
+  color:var(--l4);
+  cursor:pointer;
+}
+.fav-row-move-btn:hover:not(:disabled){color:var(--l2);}
+.fav-row-move-btn:disabled{opacity:.3;cursor:default;}
+.fav-row-move-ico{width:16px;height:16px;}
 .fav-row-x{
   flex:0 0 auto;
   align-self:stretch;

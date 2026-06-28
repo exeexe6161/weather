@@ -38,6 +38,22 @@ export function removeFavorite(id: number): Place[] {
   return next;
 }
 
+// Verschiebt einen Favoriten um eine Position (Tausch mit dem Nachbarn). Die
+// Reihenfolge IST die Array-Reihenfolge, daher genügt ein Swap + persist. Liest
+// frisch (mehrfache schnelle Klicks bleiben konsistent). Defensive: id unbekannt
+// oder schon am Rand → unverändert, kein Out-of-bounds.
+export function moveFavorite(id: number, dir: "up" | "down"): Place[] {
+  const list = getFavorites();
+  const i = list.findIndex((p) => p.id === id);
+  if (i === -1) return list;
+  const j = dir === "up" ? i - 1 : i + 1;
+  if (j < 0 || j >= list.length) return list;
+  const next = [...list];
+  [next[i], next[j]] = [next[j], next[i]];
+  persist(next);
+  return next;
+}
+
 function persist(list: Place[]): void {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(list));

@@ -35,6 +35,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   favAdd:          { de: "Als Favorit speichern", en: "Save as favorite", tr: "Favori olarak kaydet" },
   favRemove:       { de: "Favorit entfernen", en: "Remove favorite", tr: "Favoriyi kaldır" },
   favSelectAria:   { de: "Wetter für {place} anzeigen", en: "Show weather for {place}", tr: "{place} için hava durumunu göster" },
+  favMoveUp:       { de: "{place} nach oben", en: "Move {place} up", tr: "{place} yukarı taşı" },
+  favMoveDown:     { de: "{place} nach unten", en: "Move {place} down", tr: "{place} aşağı taşı" },
   share_aria:      { de: "Wetter teilen", en: "Share weather", tr: "Hava durumunu paylaş" },
   share_copied:    { de: "In die Zwischenablage kopiert", en: "Copied to clipboard", tr: "Panoya kopyalandı" },
   emptyTitle:      { de: "Suche eine Stadt für die Vorhersage", en: "Search a city to see the forecast", tr: "Tahmin için bir şehir ara" },

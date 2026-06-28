@@ -5,7 +5,7 @@ import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
-import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorites } from "./lib/favorites";
+import { getFavorites, isFavorite, addFavorite, removeFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
@@ -241,6 +241,14 @@ function renderFavorites(): void {
       pruneFavWeatherCache(getFavorites().map((p) => p.id));
       renderFavorites();
       renderContent();
+      renderIcons();
+    },
+    onMove: (place, dir) => {
+      // Nur die Reihenfolge ändert sich; aktive Stadt und Wetterinhalt bleiben.
+      // Daher reicht ein frisches Listen-Render (liest getFavorites neu) plus
+      // renderIcons für die neu eingefügten Lucide-Knoten — kein renderContent.
+      moveFavorite(place.id, dir);
+      renderFavorites();
       renderIcons();
     },
   }, weather);

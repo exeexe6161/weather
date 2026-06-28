@@ -33,6 +33,8 @@ import {
   TrendingUp,
   TrendingDown,
   Share2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide";
 
 const icons = {
@@ -66,6 +68,8 @@ const icons = {
   TrendingUp,
   TrendingDown,
   Share2,
+  ChevronUp,
+  ChevronDown,
 };
 
 export function renderIcons(): void {
