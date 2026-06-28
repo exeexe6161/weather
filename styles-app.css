@@ -831,6 +831,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-share:active{transform:scale(var(--press-scale));}
 .fav-toggle-ico{width:18px;height:18px;}
 .cw-share-ico{width:18px;height:18px;}
+/* Während das Share-Bild erzeugt wird: Knopf dezent gedämpft, nicht klickbar. */
+.cw-share--busy{opacity:.55;cursor:default;}
 .fav-toggle[aria-pressed="true"]{color:var(--star);}
 .fav-toggle[aria-pressed="true"] .fav-toggle-ico{fill:currentColor;}
 @media (prefers-reduced-motion:no-preference){

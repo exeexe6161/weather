@@ -31,6 +31,46 @@ export async function shareText(payload: SharePayload): Promise<void> {
   }
 }
 
+// Bild-Teilen (Etappe 2), Muster aus EVSpend (shareImageCanvas). Dreistufig:
+//   1) navigator.share({files, title, text, url})
+//   2) bei Fehler erneut OHNE url (manche Ziele lehnen files+url ab)
+//   3) scheitert auch das, das PNG herunterladen.
+// Kann das Gerät gar keine Dateien teilen (kein canShare(files), z. B. Desktop),
+// fällt es auf Text-Teilen aus Etappe 1 zurück — nützlicher als ein Zwangs-
+// Download. AbortError (Nutzer bricht ab) ist in keiner Stufe ein Fehler.
+export async function shareImage(payload: SharePayload, file: File): Promise<void> {
+  const { title, text, url } = payload;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title, text, url });
+      return;
+    } catch (err) {
+      if ((err as DOMException)?.name === "AbortError") return;
+      try {
+        await navigator.share({ files: [file], title, text });
+        return;
+      } catch (err2) {
+        if ((err2 as DOMException)?.name === "AbortError") return;
+        downloadBlob(file, file.name);
+        return;
+      }
+    }
+  }
+  // Datei-Teilen nicht unterstützt → Text-Teilen (Etappe 1).
+  await shareText(payload);
+}
+
+function downloadBlob(blob: Blob, name: string): void {
+  const objUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objUrl;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objUrl);
+}
+
 // Schlanke, transiente Rückmeldung für den Clipboard-Fallback. Genau ein Toast-
 // Knoten modulweit, role=status/aria-live für Screenreader, automatisch nach
 // kurzer Zeit wieder ausgeblendet.

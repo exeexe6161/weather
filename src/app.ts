@@ -9,7 +9,8 @@ import { getFavorites, isFavorite, addFavorite, removeFavorite, pruneGeoFavorite
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
-import { shareText } from "./lib/share";
+import { shareText, shareImage } from "./lib/share";
+import { renderWeatherCard } from "./lib/shareImage";
 import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
@@ -393,14 +394,18 @@ function renderContent(): void {
   document.getElementById("shareBtn")?.addEventListener("click", shareCurrentWeather);
 }
 
-// Teilt das aktuell angezeigte Wetter als kurzen Text über die Web Share API
-// (Clipboard-Fallback in share.ts). Ohne geladene Daten ein No-op, kein Crash.
-// URL: stadtspezifischer Deep-Link (?stadt=) für benannte Orte, kanonische
-// Startseite für den Geo-Ort — dort NIE Koordinaten teilen (Datenschutzzusage).
-function shareCurrentWeather(): void {
-  if (!state.place || !state.forecast) return;
+// Teilt das aktuell angezeigte Wetter. Bevorzugt ein handgezeichnetes PNG (mit
+// Text + URL als Begleittext); kann das Gerät keine Dateien teilen, fällt es auf
+// Text-Teilen zurück (alles in share.ts). EIN Knopf, ein Verhalten, Bild bevorzugt.
+// Ohne geladene Daten ein No-op, kein Crash. URL: stadtspezifischer Deep-Link
+// (?stadt=) für benannte Orte, kanonische Startseite für den Geo-Ort — dort NIE
+// Koordinaten teilen (Datenschutzzusage); auch das Bild zeigt nur "Mein Standort".
+let sharing = false;
+async function shareCurrentWeather(): Promise<void> {
+  if (sharing || !state.place || !state.forecast) return;
   const place = state.place;
-  const c = state.forecast.current;
+  const forecast = state.forecast;
+  const c = forecast.current;
   const name = place.id === GEO_PLACE_ID ? t("myLocation") : place.name;
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
   const text = `${name}: ${formatTemp(c.temperature)}, ${label}`;
@@ -409,7 +414,25 @@ function shareCurrentWeather(): void {
     place.id === GEO_PLACE_ID
       ? base
       : `${base}?${CITY_PARAM}=${encodeURIComponent(place.name.toLowerCase())}`;
-  void shareText({ title: "WeatherPure", text, url });
+  const payload = { title: "WeatherPure", text, url };
+
+  // Knopf während Font-ready + Zeichnen + toBlob kurz sperren (kein Doppel-Tap).
+  const btn = document.getElementById("shareBtn") as HTMLButtonElement | null;
+  sharing = true;
+  if (btn) { btn.disabled = true; btn.classList.add("cw-share--busy"); }
+  try {
+    const blob = await renderWeatherCard({ name, forecast, locale: getLocale(), lang: getLang() });
+    if (blob) {
+      const file = new File([blob], "weatherpure.png", { type: "image/png" });
+      await shareImage(payload, file);
+    } else {
+      // Zeichnen/toBlob gescheitert → sauberer Rückfall auf Text-Teilen.
+      await shareText(payload);
+    }
+  } finally {
+    sharing = false;
+    if (btn) { btn.disabled = false; btn.classList.remove("cw-share--busy"); }
+  }
 }
 
 // Manuelles Aktualisieren über den Button oben (neben "Mein Standort"): lädt die
