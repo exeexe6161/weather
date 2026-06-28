@@ -61,8 +61,6 @@ html[data-theme="dark"],html[data-theme="dark"] body{background:#15171A;}
    (Ortsnamen etc.) bleibt kopierbar. .day-row ist nur Anzeige (role=listitem),
    bekommt aber touch-action gegen Doppeltipp-Zoom auf der 7-Tage-Liste. */
 button.hour-cell,
-.fav-chip-btn,
-.fav-chip-x,
 .seg-btn,
 .geo-btn,
 .hour-panel-close,
@@ -73,12 +71,14 @@ button.hour-cell,
 .search-result,
 .search-input,
 .cw-share,
+.fav-row-select,
+.fav-row-x,
 .rc-hit,
 .day-row{touch-action:manipulation;}
 
 button.hour-cell,
-.fav-chip-btn,
-.fav-chip-x,
+.fav-row-select,
+.fav-row-x,
 .seg-btn,
 .geo-btn,
 .hour-panel-close,
@@ -692,61 +692,85 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   font-variant-numeric:tabular-nums;
 }
 
-/* ══ Favoriten ══ */
+/* ══ Favoriten (vertikale Liste im Broker-Stil, Vorbild StockPure-Watchlist) ══ */
 .fav-section{text-align:left;}
+/* Die Liste ist eine zusammenhängende Karte (wie die übrigen .list-card-Karten,
+   gleicher --card-shadow). Kein Innenabstand → die Zeilen-Trenner und der
+   Aktiv-Balken laufen bis an den Kartenrand; overflow:hidden clippt Balken und
+   Radius. */
 .fav-list{
   list-style:none;
   display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-.fav-chip{
-  display:inline-flex;
-  align-items:center;
+  flex-direction:column;
   background:var(--s1);
-  border-radius:var(--r-sm);
-  box-shadow:inset 0 0 0 1px var(--sep); /* genau eine scharfe 1px-Kante, kein Layout-Wachstum (inset statt border) */
+  border-radius:var(--r-card);
+  box-shadow:var(--card-shadow);
   overflow:hidden;
 }
-.fav-chip--active{box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft);}
-.fav-chip--active .fav-chip-ico{color:var(--accent);}
-.fav-chip-btn{
-  padding:9px 6px 9px 14px;
-  min-height:44px;
-  display:inline-flex;
+.fav-row{
+  display:flex;
+  align-items:stretch;
+  border-bottom:1px solid var(--sep);
+}
+.fav-row:last-child{border-bottom:none;}
+/* Aktiver Ort (Detailkarte offen): schmaler Balken links in Schriftfarbe plus
+   dezent abgesetzte Fläche. inset-Schatten = kein Layout-Wachstum (kein
+   border-left, kein Shift). Ersetzt den früheren blauen Akzent-Rahmen. */
+.fav-row--active{background:var(--s2);box-shadow:inset 3px 0 0 0 var(--l1);}
+.fav-row-select{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
   align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:60px;             /* Touch-Ziel > 44px, Platz für zwei Zeilen */
+  padding:8px 8px 8px 16px;    /* linker Einzug lässt dem Aktiv-Balken Raum */
   background:none;
   border:none;
   font-family:inherit;
-  font-size:var(--fs-base);
-  font-weight:600;
   color:var(--l1);
   cursor:pointer;
+  text-align:left;
   transition:transform var(--t-base);
 }
-.fav-chip-ico{width:14px;height:14px;color:var(--l4);margin-right:6px;flex:0 0 auto;}
-.fav-chip-name{white-space:nowrap;}
-/* Gecachtes Favoriten-Wetter: dezent, der Name führt. Icon wie der Pin (--l4),
-   Temp eine Stufe kräftiger (--l3) und mit tabular-nums gegen Breiten-Jitter. */
-.fav-chip-wx-ico{width:15px;height:15px;color:var(--l4);margin-left:8px;flex:0 0 auto;}
-.fav-chip-temp{margin-left:4px;color:var(--l3);font-weight:600;font-variant-numeric:tabular-nums;}
 @media (prefers-reduced-motion:no-preference){
-  .fav-chip-btn:active{transform:scale(var(--press-scale));}
+  .fav-row-select:active{transform:scale(var(--press-scale));}
 }
-.fav-chip-x{
+.fav-row-id{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.fav-row-name{font-size:var(--fs-lg);font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Zustand-Subline ("bedeckt"): klein, gedämpft. min-height hält die Zeile auch
+   leer (Wetter noch nicht geladen), damit nichts springt, wenn das Label kommt. */
+.fav-row-sub{font-size:var(--fs-xs);color:var(--l4);min-height:1.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Rechter Werteblock: Symbol + Temperatur nebeneinander, rechtsbündig. Feste
+   min-width + tabular-nums → die Spalte springt beim Nachladen der Temperatur
+   nicht (kein CLS). */
+.fav-row-vals{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  min-width:84px;
+  color:var(--l3);
+  font-variant-numeric:tabular-nums;
+}
+.fav-row-wx-ico{width:18px;height:18px;color:var(--l4);flex:0 0 auto;}
+.fav-row-temp{font-size:var(--fs-base);font-weight:700;}
+.fav-row-x{
+  flex:0 0 auto;
+  align-self:stretch;
+  width:44px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:44px;
-  height:44px;
-  padding-right:6px;
   background:none;
   border:none;
   color:var(--l4);
   cursor:pointer;
 }
-.fav-chip-x:hover{color:var(--red);}
-.fav-chip-x-ico{width:14px;height:14px;}
+.fav-row-x:hover{color:var(--red);}
+.fav-row-x-ico{width:15px;height:15px;}
 
 /* ══ Zustände ══ */
 .weather-section{margin-top:var(--sp-5);min-width:0;max-width:100%;}
