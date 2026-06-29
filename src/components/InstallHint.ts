@@ -1,8 +1,7 @@
 // Dezenter Hinweis "Zum Home Bildschirm hinzufügen" (PWA Installation).
-// Bewusst zurückhaltend: erst ab dem zweiten Besuch, nie in der installierten
-// App, nach Wegklicken eine Woche Ruhe, nach Installation nie wieder. Einziger
-// gespeicherter Wert ist ein lokaler Merker (kein personenbezogenes Datum,
-// keine Übertragung) — in der Datenschutzerklärung ausgewiesen.
+// Bewusst zurückhaltend: nie in der installierten App, auf iOS erst nach kurzer
+// Verzögerung, nach Wegklicken eine Woche Ruhe, nach Installation nie wieder.
+// Gespeichert wird erst nach einer bewussten Nutzeraktion.
 import { t } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
@@ -10,11 +9,11 @@ import { isNativeApp, isStandalone } from "../lib/platform";
 
 // Nach dem Wegklicken so viele Tage Ruhe, dann darf der Hinweis wiederkommen
 export const REMIND_AFTER_DAYS = 7;
+const IOS_HINT_DELAY_MS = 4_000;
 
 const HINT_KEY = "weather:install-hint";
 
 interface HintState {
-  seen?: string;        // erster Besuch (ISO); Hinweis erst ab dem Folgebesuch
   dismissedAt?: string; // letztes Wegklicken (ISO)
   done?: boolean;       // installiert → nie wieder
 }
@@ -29,7 +28,11 @@ type Variant = "prompt" | "ios";
 
 function readState(): HintState {
   try {
-    return JSON.parse(localStorage.getItem(HINT_KEY) ?? "{}");
+    const raw = JSON.parse(localStorage.getItem(HINT_KEY) ?? "{}") as Record<string, unknown>;
+    return {
+      dismissedAt: typeof raw.dismissedAt === "string" ? raw.dismissedAt : undefined,
+      done: raw.done === true ? true : undefined,
+    };
   } catch {
     return {};
   }
@@ -58,12 +61,6 @@ export function initInstallHint(root: HTMLElement): void {
 
   const state = readState();
   if (state.done) return;
-
-  // Erster Besuch: nur den Marker setzen, Hinweis erst ab dem nächsten Besuch
-  if (typeof state.seen !== "string") {
-    writeState({ ...state, seen: new Date().toISOString() });
-    return;
-  }
 
   if (state.dismissedAt) {
     const elapsed = Date.now() - Date.parse(state.dismissedAt);
@@ -130,8 +127,9 @@ export function initInstallHint(root: HTMLElement): void {
   });
   window.addEventListener("appinstalled", markDone);
 
-  // iOS Safari: keine auslösbare Installation, stattdessen kurze Anleitung
-  if (isIosSafari()) show("ios");
+  // iOS Safari: keine auslösbare Installation, daher nach kurzer Ruhephase die
+  // Anleitung zeigen. Bis dahin wird nichts im Browser gespeichert.
+  if (isIosSafari()) window.setTimeout(() => show("ios"), IOS_HINT_DELAY_MS);
   // Alles andere (Desktop Safari, Firefox): bewusst kein Hinweis
 
   // Sprachwechsel: sichtbaren Hinweis mit neuen Texten neu rendern
