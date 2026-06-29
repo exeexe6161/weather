@@ -26,7 +26,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   searchNoResults: { de: "Keine Treffer", en: "No results", tr: "Sonuç yok" },
   searchError:     { de: "Suche derzeit nicht möglich", en: "Search is currently unavailable", tr: "Arama şu anda kullanılamıyor" },
   geoBtn:          { de: "Mein Standort", en: "My location", tr: "Konumum" },
-  geoHint:         { de: "Nur nach deiner Zustimmung, dein Standort wird nicht gespeichert.", en: "Only with your consent, your location is never stored.", tr: "Yalnızca senin onayınla, konumun kaydedilmez." },
+  geoHint:         { de: "Nur mit Zustimmung. Nicht dauerhaft gespeichert; an Open-Meteo übertragen.", en: "Only with consent. Not stored permanently; sent to Open-Meteo.", tr: "Yalnızca onayla. Kalıcı olarak saklanmaz; Open-Meteo'ya iletilir." },
   geoDenied:       { de: "Standortfreigabe wurde abgelehnt", en: "Location permission was denied", tr: "Konum izni reddedildi" },
   geoFailed:       { de: "Standort konnte nicht ermittelt werden", en: "Location could not be determined", tr: "Konum belirlenemedi" },
   geoUnsupported:  { de: "Standortabfrage wird von diesem Browser nicht unterstützt", en: "Geolocation is not supported by this browser", tr: "Bu tarayıcı konum sorgusunu desteklemiyor" },
