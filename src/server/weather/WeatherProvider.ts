@@ -1,4 +1,4 @@
-import type { Forecast, Place, PollenLevels, FavWeather } from "./types";
+import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 
 export type ProviderId = "OPEN_METEO" | "OPEN_WEATHER" | "TOMORROW" | "METEOMATICS";
 

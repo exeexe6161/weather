@@ -1,4 +1,4 @@
-import { WeatherService } from "../src/server/weather/WeatherService";
+import { WeatherService } from "../src/server/weather/WeatherService.js";
 import {
   type ApiRequest,
   type ApiResponse,
@@ -7,7 +7,7 @@ import {
   isValidLatitude,
   isValidLongitude,
   sendError,
-} from "./_lib/http";
+} from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!methodGuard(req, res)) return;

@@ -1,5 +1,5 @@
-import { WeatherService } from "../src/server/weather/WeatherService";
-import { type ApiRequest, type ApiResponse, methodGuard, queryParam, sendError } from "./_lib/http";
+import { WeatherService } from "../src/server/weather/WeatherService.js";
+import { type ApiRequest, type ApiResponse, methodGuard, queryParam, sendError } from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!methodGuard(req, res)) return;

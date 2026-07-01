@@ -4,10 +4,10 @@
 // Key konfiguriert und ein Provider dafür gebaut ist. Caching (siehe cache.ts)
 // sitzt hier zentral, nicht im Provider: der Cache Key enthält die Provider
 // Id, damit ein späterer Providerwechsel nie einen fremden Cache Eintrag trifft.
-import type { WeatherProvider, ProviderId, BatchPlace } from "./WeatherProvider";
-import { openMeteoProvider } from "./providers/OpenMeteoProvider";
-import type { Forecast, Place, PollenLevels, FavWeather } from "./types";
-import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache";
+import type { WeatherProvider, ProviderId, BatchPlace } from "./WeatherProvider.js";
+import { openMeteoProvider } from "./providers/OpenMeteoProvider.js";
+import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
+import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache.js";
 
 const PROVIDERS: Record<ProviderId, WeatherProvider | null> = {
   OPEN_METEO: openMeteoProvider,

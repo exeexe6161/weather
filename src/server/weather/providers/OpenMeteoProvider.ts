@@ -5,10 +5,10 @@
 // Delegation hierher einen Kreislauf erzeugen (Provider ruft die Route auf,
 // die den Provider aufruft). Diese Datei wird dann die einzige Quelle dieser
 // Logik, src/lib/weather.ts verliert ihre eigene Kopie.
-import { fetchWithTimeout } from "../../../lib/http";
-import type { WeatherProvider, BatchPlace } from "../WeatherProvider";
-import type { Forecast, DailyEntry, Place, PollenLevels, FavWeather } from "../types";
-import { POLLEN_KINDS, type PollenKind } from "../../../lib/pollen";
+import { fetchWithTimeout } from "../../../lib/http.js";
+import type { WeatherProvider, BatchPlace } from "../WeatherProvider.js";
+import type { Forecast, DailyEntry, Place, PollenLevels, FavWeather } from "../types.js";
+import { POLLEN_KINDS, type PollenKind } from "../../../lib/pollen.js";
 
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
