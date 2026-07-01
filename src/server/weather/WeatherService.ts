@@ -1,0 +1,75 @@
+// Zentrale Fassade: Komponenten und spätere API Routes dürfen ausschließlich
+// hierüber gehen, nie einen Provider direkt importieren. Free Mode: einziger
+// registrierter Provider ist OPEN_METEO, andere Slots bleiben null, bis ein
+// Key konfiguriert und ein Provider dafür gebaut ist. Caching (siehe cache.ts)
+// sitzt hier zentral, nicht im Provider: der Cache Key enthält die Provider
+// Id, damit ein späterer Providerwechsel nie einen fremden Cache Eintrag trifft.
+import type { WeatherProvider, ProviderId, BatchPlace } from "./WeatherProvider";
+import { openMeteoProvider } from "./providers/OpenMeteoProvider";
+import type { Forecast, Place, PollenLevels, FavWeather } from "./types";
+import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache";
+
+const PROVIDERS: Record<ProviderId, WeatherProvider | null> = {
+  OPEN_METEO: openMeteoProvider,
+  OPEN_WEATHER: null,
+  TOMORROW: null,
+  METEOMATICS: null,
+};
+
+function activeProvider(): WeatherProvider {
+  return PROVIDERS.OPEN_METEO!;
+}
+
+export const WeatherService = {
+  getForecast(latitude: number, longitude: number): Promise<Forecast> {
+    const provider = activeProvider();
+    const key = buildCacheKey(provider.id, ["forecast", roundCoord(latitude), roundCoord(longitude)]);
+    return getOrSet(key, TTL.WEATHER_MS, () => provider.getForecast(latitude, longitude));
+  },
+
+  getPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
+    const provider = activeProvider();
+    const key = buildCacheKey(provider.id, ["pollen", roundCoord(latitude), roundCoord(longitude)]);
+    // getPollen wirft nie, ein Ausfall liefert `null` — das nicht für die volle
+    // TTL einfrieren, sonst bleibt die Pollensektion bei einem kurzen Open
+    // Meteo Ausfall bis zu 6 Stunden leer, obwohl der Dienst längst wieder da ist.
+    return getOrSet(key, TTL.POLLEN_MS, () => provider.getPollen(latitude, longitude), (v) => v !== null);
+  },
+
+  searchPlaces(query: string, language: string): Promise<Place[]> {
+    const provider = activeProvider();
+    // Normalisiert (trim + lowercase), damit "Berlin" und "berlin" denselben
+    // Eintrag treffen; die eigentliche Mindestlänge prüft schon der Client.
+    const normalized = query.trim().toLowerCase();
+    const key = buildCacheKey(provider.id, ["geocoding", normalized, language]);
+    return getOrSet(key, TTL.GEOCODING_MS, () => provider.searchPlaces(query, language));
+  },
+
+  // Pro Ort einzeln cachen (Key über gerundete Koordinaten, nicht über die
+  // client-seitige place.id): nur die Orte ohne frischen Cache-Treffer landen
+  // in EINEM gebündelten Upstream Call, der Batching-Vorteil bleibt erhalten.
+  async getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWeather>> {
+    const provider = activeProvider();
+    const result = new Map<number, FavWeather>();
+    const missing: BatchPlace[] = [];
+
+    for (const place of places) {
+      const key = buildCacheKey(provider.id, ["favorites-weather", roundCoord(place.latitude), roundCoord(place.longitude)]);
+      const hit = get<FavWeather>(key);
+      if (hit !== undefined) result.set(place.id, hit);
+      else missing.push(place);
+    }
+
+    if (missing.length > 0) {
+      const fresh = await provider.getCurrentBatch(missing);
+      for (const place of missing) {
+        const weather = fresh.get(place.id);
+        if (!weather) continue;
+        result.set(place.id, weather);
+        const key = buildCacheKey(provider.id, ["favorites-weather", roundCoord(place.latitude), roundCoord(place.longitude)]);
+        set(key, weather, TTL.FAVORITES_WEATHER_MS);
+      }
+    }
+    return result;
+  },
+};

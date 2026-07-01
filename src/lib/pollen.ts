@@ -1,12 +1,9 @@
-// Pollenbelastung über die Open-Meteo Air Quality API. Bewusst ein eigenes
-// Modul und ein eigener Abruf, getrennt von weather.ts: die Air Quality API
-// liegt auf einer eigenen Domain (air-quality-api.open-meteo.com, in der
-// Datenschutzerklärung ausgewiesen), und ihr Ausfall darf die Wetteranzeige
-// nicht blockieren. Alle Fehler werden still zu null — dann erscheint schlicht
-// keine Pollensektion.
+// Pollenbelastung über die eigene Server Route (dahinter die Open-Meteo Air
+// Quality API, siehe src/server/weather/providers/OpenMeteoProvider.ts).
+// Bewusst ein eigenes Modul, getrennt von weather.ts: eigener Endpoint, und
+// sein Ausfall darf die Wetteranzeige nicht blockieren. Alle Fehler werden
+// still zu null — dann erscheint schlicht keine Pollensektion.
 import { fetchWithTimeout } from "./http";
-
-const AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality";
 
 export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "olive", "ragweed"] as const;
 export type PollenKind = (typeof POLLEN_KINDS)[number];
@@ -51,71 +48,12 @@ export function stageFor(kind: PollenKind, value: number | null): PollenStageKey
   return "pollen_low";
 }
 
-// "Jetzt" in der Stationszeitzone als YYYY-MM-DDTHH:mm, lexikalisch
-// vergleichbar mit den hourly.time Strings (gleiche Intl-Mechanik wie die
-// UV-Tageslicht-Prüfung; nie Stunden von Hand addieren).
-function nowInZone(timezone: unknown): string | null {
-  if (typeof timezone !== "string" || timezone === "") return null;
-  try {
-    return new Intl.DateTimeFormat("sv-SE", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
-      .format(new Date())
-      .replace(" ", "T");
-  } catch {
-    return null;
-  }
-}
-
-// Wert zur aktuellen Stunde. Wichtig: null in der Reihe ist ein PLATZHALTER
-// für noch nicht berechnete Stunden (die API füllt das Ende der Vorhersage mit
-// null auf), keine Belastung von 0. Steht zur aktuellen Stunde keiner, wird
-// rückwärts der letzte echte Wert desselben Tages genommen — Pollenbelastung
-// ändert sich über den Tag langsam, ein leicht versetzter Wert ist besser als
-// keine Anzeige. Echte Nullen (Art nicht aktiv, etwa Birke im Juni) kommen als
-// Zahl 0, bleiben erhalten und führen über die Schwellen zum Ausblenden.
-function readCurrentValue(series: unknown[], times: string[], idx: number): number | null {
-  const day = times[idx]?.slice(0, 10);
-  for (let i = idx; i >= 0; i--) {
-    if (times[i]?.slice(0, 10) !== day) break;
-    const value = series[i];
-    if (typeof value === "number") return value;
-  }
-  return null;
-}
-
 export async function fetchPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
   try {
-    const params = new URLSearchParams({
-      latitude: String(latitude),
-      longitude: String(longitude),
-      hourly: POLLEN_KINDS.map((k) => `${k}_pollen`).join(","),
-      timezone: "auto",
-    });
-    const res = await fetchWithTimeout(`${AIR_QUALITY_URL}?${params}`);
+    const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
+    const res = await fetchWithTimeout(`/api/pollen?${params}`);
     if (!res.ok) return null;
-    const data = await res.json();
-    const h = data?.hourly;
-    if (!h?.time?.length) return null;
-
-    // Erste Stunde >= jetzt, bestimmt aus der EIGENEN time Reihe dieser
-    // Antwort (die Air Quality Reihe beginnt am Vortag um Mitternacht und ist
-    // damit anders ausgerichtet als die Wetter Reihe)
-    const now = nowInZone(data.timezone);
-    const idx = now === null ? 0 : Math.max(0, h.time.findIndex((t: string) => t >= now));
-
-    const levels = {} as PollenLevels;
-    for (const kind of POLLEN_KINDS) {
-      const series = h[`${kind}_pollen`];
-      levels[kind] = Array.isArray(series) ? readCurrentValue(series, h.time, idx) : null;
-    }
-    return levels;
+    return (await res.json()) as PollenLevels | null;
   } catch {
     return null;
   }

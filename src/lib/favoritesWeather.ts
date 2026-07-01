@@ -1,12 +1,9 @@
 // Favoriten-Wetter: schlanke Datenschicht für das Favoriten-Mini-Dashboard.
 // STRIKT getrennt von fetchWeather/normalize (weather.ts) und favorites.ts:
 // eigener Endpoint-Aufbau (nur current=temperature_2m,weather_code, kein
-// hourly/daily/past_days), eigener localStorage-Cache mit eigener TTL. Diese
-// Etappe legt nur die Funktionen an; nichts ruft sie automatisch auf.
+// hourly/daily/past_days), eigener localStorage-Cache mit eigener TTL.
 import { fetchWithTimeout } from "./http";
 import type { Place } from "./geocoding";
-
-const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 // Eigener Cache-Key, unabhängig von "weather:favorites" (reine Ortsliste) und
 // "weather:last-forecast" (Einzelort-Vollforecast).
@@ -29,43 +26,21 @@ export interface FavWeatherEntry extends FavWeather {
 }
 
 // ── A) Schlanker Multi-Location-Abruf ──────────────────────────────────────
-// Holt das aktuelle Wetter ALLER übergebenen Orte in EINEM Open-Meteo-Request
-// (kommagetrennte Koordinaten). Gibt eine Map place.id → {temp, code} zurück.
-// Berührt fetchWeather/normalize nicht.
+// Holt das aktuelle Wetter ALLER übergebenen Orte über die eigene Server
+// Route /api/favorites-weather (dahinter EIN Open-Meteo-Request mit
+// kommagetrennten Koordinaten, siehe OpenMeteoProvider.getCurrentBatch). Gibt
+// eine Map place.id → {temp, code, isDay} zurück. Berührt fetchWeather nicht.
 export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number, FavWeather>> {
   const out = new Map<number, FavWeather>();
   if (places.length === 0) return out; // leere Liste → kein Call
 
-  const params = new URLSearchParams({
-    latitude: places.map((p) => String(p.latitude)).join(","),
-    longitude: places.map((p) => String(p.longitude)).join(","),
-    current: "temperature_2m,weather_code,is_day",
-    timezone: "auto",
-  });
-  const res = await fetchWithTimeout(`${FORECAST_URL}?${params}`);
+  const payload = places.map((p) => ({ id: p.id, latitude: p.latitude, longitude: p.longitude }));
+  const params = new URLSearchParams({ places: JSON.stringify(payload) });
+  const res = await fetchWithTimeout(`/api/favorites-weather?${params}`);
   if (!res.ok) throw new Error(`Favorites weather request failed: ${res.status}`);
-  const data = await res.json();
-
-  // Bei mehreren Orten liefert Open-Meteo ein ARRAY von Orts-Objekten, bei genau
-  // einem Ort ein einzelnes Objekt. Beide Fälle defensiv auf ein Array bringen.
-  const list: unknown[] = Array.isArray(data) ? data : [data];
-
-  // Zuordnung strikt über die REIHENFOLGE: Open-Meteo gibt die Orte in derselben
-  // Reihenfolge zurück, in der die Koordinaten gesendet wurden. Bewusst NICHT
-  // über die zurückgelieferten lat/lon matchen — die API snappt auf den nächsten
-  // Gitterpunkt, die Rückgabewerte weichen also leicht von den gesendeten ab.
-  for (let i = 0; i < places.length && i < list.length; i++) {
-    const cur = (list[i] as { current?: { temperature_2m?: unknown; weather_code?: unknown; is_day?: unknown } })?.current;
-    const temp = cur?.temperature_2m;
-    const code = cur?.weather_code;
-    if (
-      typeof temp === "number" && Number.isFinite(temp) &&
-      typeof code === "number" && Number.isFinite(code)
-    ) {
-      // is_day kommt als 0/1; alles außer der echten Null (auch fehlend) gilt als Tag.
-      out.set(places[i].id, { temp, code, isDay: cur?.is_day !== 0 });
-    }
-    // Fehlende/NaN-Werte einfach überspringen (Chip zeigt dann nichts), kein Crash.
+  const data: Array<{ id: number; temp: number; code: number; isDay: boolean }> = await res.json();
+  for (const entry of data) {
+    out.set(entry.id, { temp: entry.temp, code: entry.code, isDay: entry.isDay });
   }
   return out;
 }

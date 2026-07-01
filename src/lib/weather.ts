@@ -1,7 +1,5 @@
 import { fetchWithTimeout } from "./http";
 
-const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
-
 export interface CurrentWeather {
   time: string;
   temperature: number;
@@ -55,110 +53,28 @@ export interface Forecast {
   yesterdayTempMax: number | null;
 }
 
+// Ruft die eigene Server Route auf statt Open-Meteo direkt: kein API Key im
+// Browser, die Zusammenstellung von current/hourly/daily und das Mapping auf
+// dieses Modell laufen serverseitig im Provider
+// (src/server/weather/providers/OpenMeteoProvider.ts).
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
-  const params = new URLSearchParams({
-    latitude: String(latitude),
-    longitude: String(longitude),
-    current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m",
-    hourly: "temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m,relative_humidity_2m,dew_point_2m,precipitation,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,uv_index,snowfall,visibility",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max,sunshine_duration",
-    timezone: "auto",
-    forecast_days: "16", // bis zu 16 Tage in den Daten; die Anzeige kürzt clientseitig (Default 7)
-    past_days: "1", // gestriger Tag in derselben daily Antwort (Vergleichszeile)
-    // hourly nicht auf 16 Tage mitwachsen lassen: normalize() liest nur 25
-    // Stunden ab jetzt vorwärts (nie vergangene Stundenwerte), 48 gibt sicheren
-    // Puffer für die "nächste 24 Stunden"-Anzeige. past_days bleibt für daily.
-    forecast_hours: "48",
-  });
-  const res = await fetchWithTimeout(`${FORECAST_URL}?${params}`);
+  const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
+  const res = await fetchWithTimeout(`/api/weather?${params}`);
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
-  return normalize(await res.json());
+  return (await res.json()) as Forecast;
 }
 
 // Ein Tag gilt als vollständig, wenn Hoch, Tief und Wettercode echte Zahlen
 // sind. Bewusst Number.isFinite und NICHT !d.tempMax: 0 °C ist ein gültiger
 // Wert (Number.isFinite(0) === true), ein echter Frost-/Nulltag bleibt also
 // erhalten. Nur null/undefined (fehlende API-Werte) werden als unvollständig
-// erkannt.
+// erkannt. Die eigentliche Filterung läuft inzwischen serverseitig
+// (OpenMeteoProvider); bleibt hier exportiert für Bestandsschutz der
+// öffentlichen API dieses Moduls.
 export function isCompleteDay(d: DailyEntry): boolean {
   return (
     Number.isFinite(d.tempMax) &&
     Number.isFinite(d.tempMin) &&
     typeof d.weatherCode === "number"
   );
-}
-
-function normalize(data: any): Forecast {
-  const c = data.current;
-  const current: CurrentWeather = {
-    time: c.time,
-    temperature: c.temperature_2m,
-    apparentTemperature: c.apparent_temperature,
-    humidity: c.relative_humidity_2m,
-    windSpeed: c.wind_speed_10m,
-    weatherCode: c.weather_code,
-    isDay: c.is_day === 1,
-  };
-
-  const h = data.hourly;
-  const start = Math.max(0, h.time.findIndex((t: string) => t >= c.time));
-  const hourly: HourlyEntry[] = [];
-  // 25 Einträge = jetzt..+24h (inklusive): die rollende Temperaturkurve spannt
-  // damit volle 24 Stunden nach vorn (rechte Marke = Uhrzeit 24h ab jetzt,
-  // passend zur Aufschrift "24 STUNDEN"), und die Stundenleiste zeigt jetzt +
-  // 24 weitere Stunden. Die Grenze `i < h.time.length` fängt einen am Rand
-  // fehlenden 25. Wert ab: dann eben 24 vollständige Einträge, kein Teil-Eintrag.
-  for (let i = start; i < start + 25 && i < h.time.length; i++) {
-    hourly.push({
-      time: h.time[i],
-      temperature: h.temperature_2m[i],
-      apparentTemperature: h.apparent_temperature[i],
-      precipitationProbability: h.precipitation_probability?.[i] ?? 0,
-      weatherCode: h.weather_code[i],
-      windSpeed: h.wind_speed_10m?.[i] ?? undefined,
-      relativeHumidity: h.relative_humidity_2m?.[i] ?? undefined,
-      dewPoint: h.dew_point_2m?.[i] ?? undefined,
-      precipitation: h.precipitation?.[i] ?? undefined,
-      windDirection: h.wind_direction_10m?.[i] ?? undefined,
-      windGusts: h.wind_gusts_10m?.[i] ?? undefined,
-      cloudCover: h.cloud_cover?.[i] ?? undefined,
-      pressure: h.pressure_msl?.[i] ?? undefined,
-      uvIndex: h.uv_index?.[i] ?? undefined,
-      snowfall: h.snowfall?.[i] ?? undefined,
-      visibility: h.visibility?.[i] ?? undefined,
-    });
-  }
-
-  const d = data.daily;
-  // past_days=1 stellt dem daily Array den gestrigen Tag voran. Gestrigen
-  // Höchstwert abzweigen und daily ab heute schneiden — die gesamte App
-  // verlässt sich darauf, dass daily[0] der heutige Tag ist.
-  const todayDate = c.time.slice(0, 10);
-  const todayIdx = Math.max(0, d.time.findIndex((t: string) => t >= todayDate));
-  const rawYesterdayMax = todayIdx > 0 ? d.temperature_2m_max?.[todayIdx - 1] : null;
-  const yesterdayTempMax = typeof rawYesterdayMax === "number" ? rawYesterdayMax : null;
-  const daily: DailyEntry[] = d.time
-    .slice(todayIdx)
-    .map((date: string, j: number) => {
-      const i = todayIdx + j;
-      return {
-        date,
-        weatherCode: d.weather_code[i],
-        tempMax: d.temperature_2m_max[i],
-        tempMin: d.temperature_2m_min[i],
-        precipitationProbabilityMax: d.precipitation_probability_max?.[i] ?? 0,
-        sunrise: d.sunrise?.[i] ?? null,
-        sunset: d.sunset?.[i] ?? null,
-        uvIndexMax: d.uv_index_max?.[i] ?? null,
-        sunshineDuration: d.sunshine_duration?.[i] ?? undefined,
-      };
-    })
-    // Unvollständige Tage entfernen: am äußersten Forecast-Rand (Tag 16) liefert
-    // Open-Meteo teils null für Hoch/Tief/Wettercode — solche Tage erschienen
-    // sonst als "Unbekannt" und 0°/0° (Math.round(null) === 0). Es treffen nur
-    // End-Tage; der heutige Tag (daily[0]) hat immer Werte, vordere Indizes der
-    // today-Konsumenten verschieben sich also nicht.
-    .filter(isCompleteDay);
-
-  return { current, hourly, daily, timezone: data.timezone, yesterdayTempMax };
 }

@@ -65,16 +65,17 @@
 
   <h2 class="sh">Weather data from Open-Meteo</h2>
   <div class="card">
-    <p>Weather and the location search are retrieved via the programming interface of <strong>Open-Meteo</strong> (open-meteo.com). For technical reasons, the device's IP address is transmitted to Open-Meteo during retrieval, together with the coordinates or the search term of the requested location.</p>
+    <p>Weather and the location search are retrieved via WeatherPure's own server interface, which forwards the request server side to the programming interface of <strong>Open-Meteo</strong> (open-meteo.com). The user's browser no longer contacts Open-Meteo directly; Open-Meteo receives the IP address of the WeatherPure server instead of the device's IP address, together with the coordinates or the search term of the requested location.</p>
     <p>The legal basis is Art. 6 Abs. 1 lit. f DSGVO (GDPR; legitimate interest in providing the requested weather information). The weather data is licensed under CC BY 4.0.</p>
-    <p>To display pollen levels, the app additionally calls the Open-Meteo Air Quality API at air-quality-api.open-meteo.com. The device's IP address and the coordinates of the selected location are transmitted to this service for technical delivery. Open-Meteo may retain technical server logs containing the IP address, requested URL and coordinates included in it for maintenance, troubleshooting and abuse prevention for up to 90 days. According to Open-Meteo, these logs are not linked to user identities, shared with third parties or used for advertising or tracking. The legal basis is Art. 6 Abs. 1 lit. f DSGVO (GDPR).</p>
+    <p>To display pollen levels, WeatherPure's own server interface additionally calls the Open-Meteo Air Quality API at air-quality-api.open-meteo.com. The IP address of the WeatherPure server and the coordinates of the selected location are transmitted to this service for technical delivery. Open-Meteo may retain technical server logs containing the IP address, requested URL and coordinates included in it for maintenance, troubleshooting and abuse prevention for up to 90 days. According to Open-Meteo, these logs are not linked to user identities, shared with third parties or used for advertising or tracking. The legal basis is Art. 6 Abs. 1 lit. f DSGVO (GDPR).</p>
+    <p>To speed up repeated requests and reduce the number of calls to Open-Meteo, WeatherPure's own server interface temporarily caches results in the memory of the respective server instance: coordinates rounded to two decimal places for weather and favorites weather requests for up to 15 minutes, for pollen requests for up to 6 hours, and search terms from the location search for up to 7 days. This caching happens exclusively in the server instance's memory, without a database and without permanent storage, and never together with the IP address or a user account.</p>
     <p>Further information: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
   </div>
 
   <h2 class="sh">Location request (only with consent)</h2>
   <div class="card">
     <p>The "Use my location" feature is optional. The browser location request starts only after an active click on the button and additional approval in the browser dialog (consent under Art. 6 Abs. 1 lit. a DSGVO/GDPR and § 25 Abs. 1 TDDDG).</p>
-    <p>The app and its operator do not permanently store precise coordinates. They are transmitted to Open-Meteo solely for the immediate weather and pollen request; Open-Meteo's technical logging is described above. Consent can be revoked at any time via the browser settings; the app works fully without location access via the city search.</p>
+    <p>The app and its operator do not permanently store precise coordinates. They are transmitted solely for the immediate weather and pollen request to WeatherPure's own server interface, which forwards them directly to Open-Meteo to answer the request; Open-Meteo's technical logging is described above. Consent can be revoked at any time via the browser settings; the app works fully without location access via the city search.</p>
   </div>
 
   <h2 class="sh">Service worker / offline cache</h2>
@@ -84,7 +85,7 @@
 
   <h2 class="sh">Hosting</h2>
   <div class="card">
-    <p>This website is hosted by <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA. When the site is accessed, Vercel processes technically necessary connection data (IP address, time, user agent, requested URL) to deliver and secure the service (Art. 6 Abs. 1 lit. f DSGVO/GDPR). These connection data are stored only for as long as necessary for delivery and security, and are deleted afterwards.</p>
+    <p>This website is hosted by <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA. When the site is accessed, Vercel processes technically necessary connection data (IP address, time, user agent, requested URL) to deliver and secure the service (Art. 6 Abs. 1 lit. f DSGVO/GDPR). These connection data are stored only for as long as necessary for delivery and security, and are deleted afterwards. In addition, as the host of WeatherPure's own server interface, Vercel executes the weather, pollen and location search requests server side and forwards them to Open-Meteo; for the duration of each request, Vercel also processes the transmitted coordinates or search term, without storing them beyond that (Art. 6 Abs. 1 lit. f DSGVO).</p>
     <p>Vercel describes its processing in its <a href="https://vercel.com/legal/privacy-notice" rel="noopener noreferrer">Privacy Notice</a> and <a href="https://vercel.com/legal/dpa" rel="noopener noreferrer">Data Processing Addendum</a>. For transfers to the USA, Vercel identifies EU standard contractual clauses and its certification under the EU-US Data Privacy Framework as safeguards.</p>
   </div>
 
