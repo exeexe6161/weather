@@ -3,7 +3,7 @@
 // Bewusst ein eigenes Modul, getrennt von weather.ts: eigener Endpoint, und
 // sein Ausfall darf die Wetteranzeige nicht blockieren. Alle Fehler werden
 // still zu null — dann erscheint schlicht keine Pollensektion.
-import { fetchWithTimeout } from "./http";
+import { fetchWithTimeout } from "./http.js";
 
 export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "olive", "ragweed"] as const;
 export type PollenKind = (typeof POLLEN_KINDS)[number];
