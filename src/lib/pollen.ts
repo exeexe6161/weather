@@ -3,7 +3,7 @@
 // Bewusst ein eigenes Modul, getrennt von weather.ts: eigener Endpoint, und
 // sein Ausfall darf die Wetteranzeige nicht blockieren. Alle Fehler werden
 // still zu null — dann erscheint schlicht keine Pollensektion.
-import { fetchWithTimeout } from "./http.js";
+import { fetchWithTimeout, apiUrl } from "./http.js";
 
 export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "olive", "ragweed"] as const;
 export type PollenKind = (typeof POLLEN_KINDS)[number];
@@ -51,7 +51,7 @@ export function stageFor(kind: PollenKind, value: number | null): PollenStageKey
 export async function fetchPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
   try {
     const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
-    const res = await fetchWithTimeout(`/api/pollen?${params}`);
+    const res = await fetchWithTimeout(apiUrl(`/api/pollen?${params}`));
     if (!res.ok) return null;
     return (await res.json()) as PollenLevels | null;
   } catch {

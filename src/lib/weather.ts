@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "./http";
+import { fetchWithTimeout, apiUrl } from "./http";
 
 export interface CurrentWeather {
   time: string;
@@ -59,7 +59,7 @@ export interface Forecast {
 // (src/server/weather/providers/OpenMeteoProvider.ts).
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
   const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
-  const res = await fetchWithTimeout(`/api/weather?${params}`);
+  const res = await fetchWithTimeout(apiUrl(`/api/weather?${params}`));
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
   return (await res.json()) as Forecast;
 }

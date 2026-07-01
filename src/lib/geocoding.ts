@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "./http";
+import { fetchWithTimeout, apiUrl } from "./http";
 
 // Marker-Id des per Geolocation ermittelten Ortes ("Mein Standort").
 // Orte mit dieser Id dürfen nie in localStorage landen (Datenschutzzusage:
@@ -24,7 +24,7 @@ export async function searchCity(query: string, language = "de"): Promise<Place[
   const q = query.trim();
   if (q.length < 2) return [];
   const params = new URLSearchParams({ q, lang: language });
-  const res = await fetchWithTimeout(`/api/geocoding?${params}`);
+  const res = await fetchWithTimeout(apiUrl(`/api/geocoding?${params}`));
   if (!res.ok) throw new Error(`Geocoding request failed: ${res.status}`);
   return (await res.json()) as Place[];
 }

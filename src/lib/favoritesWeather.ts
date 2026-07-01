@@ -2,7 +2,7 @@
 // STRIKT getrennt von fetchWeather/normalize (weather.ts) und favorites.ts:
 // eigener Endpoint-Aufbau (nur current=temperature_2m,weather_code, kein
 // hourly/daily/past_days), eigener localStorage-Cache mit eigener TTL.
-import { fetchWithTimeout } from "./http";
+import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";
 
 // Eigener Cache-Key, unabhängig von "weather:favorites" (reine Ortsliste) und
@@ -36,7 +36,7 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
 
   const payload = places.map((p) => ({ id: p.id, latitude: p.latitude, longitude: p.longitude }));
   const params = new URLSearchParams({ places: JSON.stringify(payload) });
-  const res = await fetchWithTimeout(`/api/favorites-weather?${params}`);
+  const res = await fetchWithTimeout(apiUrl(`/api/favorites-weather?${params}`));
   if (!res.ok) throw new Error(`Favorites weather request failed: ${res.status}`);
   const data: Array<{ id: number; temp: number; code: number; isDay: boolean }> = await res.json();
   for (const entry of data) {

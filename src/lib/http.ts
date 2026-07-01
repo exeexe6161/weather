@@ -1,3 +1,16 @@
+import { isNativeApp } from "./platform.js";
+
+// Basis für eigene API Routen in der nativen App: Capacitor lädt dist/ nur als
+// statische Dateien über sein eigenes URL Schema (capacitor://localhost), dort
+// läuft keine Vercel Function. Ein relativer Pfad wie "/api/weather" würde in
+// der App ins Leere laufen. Im normalen Web bleibt es relativ (gleicher
+// Origin, siehe CSP connect-src 'self').
+const NATIVE_API_BASE = "https://weatherpure.com";
+
+export function apiUrl(path: string): string {
+  return isNativeApp() ? `${NATIVE_API_BASE}${path}` : path;
+}
+
 // Gemeinsamer fetch mit Timeout: bricht die Anfrage nach ms Millisekunden ab,
 // damit eine hängende Verbindung nicht ewig blockiert (sonst liefe der Spinner
 // bis zum Browser-Netz-Timeout, ~30–120 s). Der Abbruch lehnt das fetch-Promise
