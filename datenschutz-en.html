@@ -37,7 +37,7 @@
   <div class="page-header">
     <div class="page-meta">
       <span class="page-tag">Legal information</span>
-      <span class="page-stand">Last updated: 29 June 2026</span>
+      <span class="page-stand">Last updated: 3 July 2026</span>
     </div>
     <h1 class="page-title">Privacy</h1>
     <p class="page-subtitle">Privacy policy under Art. 13 DSGVO (the EU General Data Protection Regulation, GDPR)</p>
@@ -54,13 +54,13 @@
 
   <h2 class="sh">General</h2>
   <div class="card">
-    <p>This weather app is deliberately designed to be data minimal: no account, no sign up, no cookies, no tracking and no analytics services. The operator runs no backend of its own; all settings remain in the browser.</p>
+    <p>This weather app is deliberately designed to be data minimal: no account, no sign up, no cookies, no tracking and no analytics services. WeatherPure operates its own server interface solely for weather, pollen and location search requests and the temporary caching described below. All personal settings remain in the browser.</p>
   </div>
 
   <h2 class="sh">Local data storage (localStorage)</h2>
   <div class="card">
     <p>The app stores the following data exclusively locally in the browser: saved favorite locations, the last displayed location, the last loaded weather report (for the offline view), the chosen language, the chosen color scheme, the current weather cached per favorite (temperature, weather condition, day or night) for instant display in the favorites list, the preference for how many days the forecast is shown (7, 10 or 16 days), and a marker after the installation hint is dismissed or installation is confirmed.</p>
-    <p>These local storage operations provide the functions selected by the user (§ 25 Abs. 2 Nr. 2 TDDDG, the German Telecommunications Digital Services Data Protection Act). The installation marker is set only after a deliberate user action. These locally stored data are not transmitted to the operator or third parties. The data can be removed at any time via the browser function for deleting site data.</p>
+    <p>These local storage operations provide the functions selected by the user (§ 25 Abs. 2 Nr. 2 TDDDG, the German Telecommunications Digital Services Data Protection Act). The installation marker is set only after a deliberate user action. The local storage itself is not transmitted to the operator or third parties. When weather or pollen data is requested, however, the coordinates of the selected or saved location are sent to WeatherPure's own server interface as described below. The locally stored data can be removed at any time via the browser function for deleting site data.</p>
   </div>
 
   <h2 class="sh">Weather data from Open-Meteo</h2>
@@ -85,7 +85,7 @@
 
   <h2 class="sh">Hosting</h2>
   <div class="card">
-    <p>This website is hosted by <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA. When the site is accessed, Vercel processes technically necessary connection data (IP address, time, user agent, requested URL) to deliver and secure the service (Art. 6 Abs. 1 lit. f DSGVO/GDPR). These connection data are stored only for as long as necessary for delivery and security, and are deleted afterwards. In addition, as the host of WeatherPure's own server interface, Vercel executes the weather, pollen and location search requests server side and forwards them to Open-Meteo; for the duration of each request, Vercel also processes the transmitted coordinates or search term, without storing them beyond that (Art. 6 Abs. 1 lit. f DSGVO).</p>
+    <p>This website is hosted by <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA. When the site is accessed, Vercel processes technically necessary connection data (IP address, time, user agent, requested URL) to deliver and secure the service (Art. 6 Abs. 1 lit. f DSGVO/GDPR). These connection data are stored only for as long as necessary for delivery and security, and are deleted afterwards. In addition, as the host of WeatherPure's own server interface, Vercel executes the weather, pollen and location search requests server side and forwards them to Open-Meteo. Vercel processes the transmitted coordinates or search term for the respective request and for the temporary in-memory caching described above (Art. 6 Abs. 1 lit. f DSGVO/GDPR).</p>
     <p>Vercel describes its processing in its <a href="https://vercel.com/legal/privacy-notice" rel="noopener noreferrer">Privacy Notice</a> and <a href="https://vercel.com/legal/dpa" rel="noopener noreferrer">Data Processing Addendum</a>. For transfers to the USA, Vercel identifies EU standard contractual clauses and its certification under the EU-US Data Privacy Framework as safeguards.</p>
   </div>
 

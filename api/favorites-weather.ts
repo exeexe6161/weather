@@ -1,6 +1,6 @@
 import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
-import { type ApiRequest, type ApiResponse, methodGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
+import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
 
 // Obergrenze für die Orte je Anfrage: verhindert, dass eine überlange Liste
 // eine riesige Upstream URL an Open-Meteo baut oder den Endpoint für Missbrauch
@@ -34,6 +34,7 @@ function parsePlaces(raw: string): BatchPlace[] | null {
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!corsGuard(req, res)) return;
   if (!methodGuard(req, res)) return;
 
   const raw = queryParam(req, "places");

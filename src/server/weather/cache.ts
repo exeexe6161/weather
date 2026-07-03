@@ -10,6 +10,18 @@ interface CacheEntry<T> {
 }
 
 const store = new Map<string, CacheEntry<unknown>>();
+const MAX_CACHE_ENTRIES = 1_000;
+
+function prune(now = Date.now()): void {
+  for (const [key, entry] of store) {
+    if (entry.expiresAt <= now) store.delete(key);
+  }
+  while (store.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = store.keys().next().value as string | undefined;
+    if (oldestKey === undefined) break;
+    store.delete(oldestKey);
+  }
+}
 
 export function get<T>(key: string): T | undefined {
   const hit = store.get(key);
@@ -22,6 +34,8 @@ export function get<T>(key: string): T | undefined {
 }
 
 export function set<T>(key: string, value: T, ttlMs: number): void {
+  store.delete(key);
+  prune();
   store.set(key, { value, expiresAt: Date.now() + ttlMs });
 }
 
