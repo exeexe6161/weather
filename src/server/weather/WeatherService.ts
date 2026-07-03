@@ -40,9 +40,11 @@ export const WeatherService = {
     const provider = activeProvider();
     // Normalisiert (trim + lowercase), damit "Berlin" und "berlin" denselben
     // Eintrag treffen; die eigentliche Mindestlänge prüft schon der Client.
-    const normalized = query.trim().toLowerCase();
-    const key = buildCacheKey(provider.id, ["geocoding", normalized, language]);
-    return getOrSet(key, TTL.GEOCODING_MS, () => provider.searchPlaces(query, language));
+    const normalized = query.trim().slice(0, 100).toLowerCase();
+    const requestedLanguage = language.trim().toLowerCase();
+    const normalizedLanguage = requestedLanguage === "en" || requestedLanguage === "tr" ? requestedLanguage : "de";
+    const key = buildCacheKey(provider.id, ["geocoding", normalized, normalizedLanguage]);
+    return getOrSet(key, TTL.GEOCODING_MS, () => provider.searchPlaces(normalized, normalizedLanguage));
   },
 
   // Pro Ort einzeln cachen (Key über gerundete Koordinaten, nicht über die

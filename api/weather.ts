@@ -2,6 +2,7 @@ import { WeatherService } from "../src/server/weather/WeatherService.js";
 import {
   type ApiRequest,
   type ApiResponse,
+  corsGuard,
   methodGuard,
   queryNumber,
   isValidLatitude,
@@ -10,6 +11,7 @@ import {
 } from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!corsGuard(req, res)) return;
   if (!methodGuard(req, res)) return;
 
   const latitude = queryNumber(req, "lat");
