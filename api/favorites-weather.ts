@@ -2,10 +2,9 @@ import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
 import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
 
-// Obergrenze für die Orte je Anfrage: verhindert, dass eine überlange Liste
-// eine riesige Upstream URL an Open-Meteo baut oder den Endpoint für Missbrauch
-// öffnet. Deutlich über dem, was ein Favoriten Mini Dashboard real braucht.
-const MAX_PLACES = 50;
+// Der Starter Tarif hat keinen Bulk Endpoint. Fünf Orte halten Kosten und
+// Antwortzeit berechenbar und entsprechen der sichtbaren Favoritengrenze.
+const MAX_PLACES = 5;
 
 function parsePlaces(raw: string): BatchPlace[] | null {
   let parsed: unknown;

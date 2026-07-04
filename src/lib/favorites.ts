@@ -1,11 +1,13 @@
 import { GEO_PLACE_ID, type Place } from "./geocoding";
 
 const KEY = "weather:favorites";
+export const MAX_FAVORITES = 5;
 
 export function getFavorites(): Place[] {
   if (typeof localStorage === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    return Array.isArray(value) ? value.slice(0, MAX_FAVORITES) as Place[] : [];
   } catch {
     return [];
   }
@@ -19,7 +21,9 @@ export function addFavorite(place: Place): Place[] {
   // Geolocation-Ort nie persistieren (Datenschutzzusage); UI blendet den
   // Stern bereits aus, das hier ist die zweite Verteidigungslinie.
   if (place.id === GEO_PLACE_ID) return getFavorites();
-  const next = [...getFavorites().filter((p) => p.id !== place.id), place];
+  const current = getFavorites();
+  if (!current.some((p) => p.id === place.id) && current.length >= MAX_FAVORITES) return current;
+  const next = [...current.filter((p) => p.id !== place.id), place].slice(0, MAX_FAVORITES);
   persist(next);
   return next;
 }
@@ -27,8 +31,13 @@ export function addFavorite(place: Place): Place[] {
 // Entfernt Altlasten: früher konnte "Mein Standort" favorisiert werden und
 // lag damit samt Koordinaten in localStorage. Einmal beim App-Start aufrufen.
 export function pruneGeoFavorites(): void {
-  const all = getFavorites();
-  const next = all.filter((p) => p.id !== GEO_PLACE_ID);
+  if (typeof localStorage === "undefined") return;
+  let all: Place[] = [];
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    all = Array.isArray(value) ? value as Place[] : [];
+  } catch {}
+  const next = all.filter((p) => p.id !== GEO_PLACE_ID).slice(0, MAX_FAVORITES);
   if (next.length !== all.length) persist(next);
 }
 

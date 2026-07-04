@@ -18,8 +18,8 @@ export interface HourlyEntry {
   windSpeed?: number; // optional: Forecast-Caches vor dem Trockenfenster-Feature haben das Feld nicht
   // Reichere Stundendaten fürs spätere Stundendetail-Panel. Alle optional:
   // ältere localStorage-Forecast-Caches kennen diese Felder nicht (dann
-  // undefined, das Panel lässt fehlende Werte aus). Open-Meteo-Defaults liefern
-  // die Einheiten in Klammern, kein zusätzlicher Query-Parameter nötig.
+  // undefined, das Panel lässt fehlende Werte aus). Die interne Struktur hält
+  // die Einheiten unabhängig vom aktiven Anbieter stabil.
   relativeHumidity?: number; // %
   dewPoint?: number; // °C
   precipitation?: number; // mm (Summe der Vorstunde)
@@ -53,10 +53,10 @@ export interface Forecast {
   yesterdayTempMax: number | null;
 }
 
-// Ruft die eigene Server Route auf statt Open-Meteo direkt: kein API Key im
+// Ruft die eigene Server Route auf statt WeatherAPI direkt: kein API Key im
 // Browser, die Zusammenstellung von current/hourly/daily und das Mapping auf
 // dieses Modell laufen serverseitig im Provider
-// (src/server/weather/providers/OpenMeteoProvider.ts).
+// (src/server/weather/providers/WeatherApiProvider.ts).
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
   const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
   const res = await fetchWithTimeout(apiUrl(`/api/weather?${params}`));
@@ -69,7 +69,7 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
 // Wert (Number.isFinite(0) === true), ein echter Frost-/Nulltag bleibt also
 // erhalten. Nur null/undefined (fehlende API-Werte) werden als unvollständig
 // erkannt. Die eigentliche Filterung läuft inzwischen serverseitig
-// (OpenMeteoProvider); bleibt hier exportiert für Bestandsschutz der
+// (WeatherApiProvider); bleibt hier exportiert für Bestandsschutz der
 // öffentlichen API dieses Moduls.
 export function isCompleteDay(d: DailyEntry): boolean {
   return (

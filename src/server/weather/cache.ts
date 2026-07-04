@@ -3,7 +3,7 @@
 // Requests auf derselben Instanz — es gibt aber KEINEN geteilten Speicher
 // über mehrere Instanzen/Regionen hinweg, und ein Cold Start leert ihn. Für
 // den Free Mode reicht das, um wiederholte Anfragen auf dieselbe Koordinate
-// oder Stadt kurzfristig abzufangen und Open-Meteo Calls zu reduzieren.
+// oder Stadt kurzfristig abzufangen und WeatherAPI Calls zu reduzieren.
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
@@ -70,7 +70,7 @@ export function buildCacheKey(providerId: string, parts: (string | number)[]): s
 
 export const TTL = {
   WEATHER_MS: 15 * 60_000,
-  GEOCODING_MS: 7 * 24 * 60 * 60_000,
-  POLLEN_MS: 6 * 60 * 60_000,
+  GEOCODING_MS: 24 * 60 * 60_000,
+  POLLEN_MS: 60 * 60_000,
   FAVORITES_WEATHER_MS: 15 * 60_000,
 } as const;

@@ -27,8 +27,8 @@ export interface FavWeatherEntry extends FavWeather {
 
 // ── A) Schlanker Multi-Location-Abruf ──────────────────────────────────────
 // Holt das aktuelle Wetter ALLER übergebenen Orte über die eigene Server
-// Route /api/favorites-weather (dahinter EIN Open-Meteo-Request mit
-// kommagetrennten Koordinaten, siehe OpenMeteoProvider.getCurrentBatch). Gibt
+// Route /api/favorites-weather (dahinter maximal fünf schlanke WeatherAPI
+// Current Requests, mit serverseitigem Cache). Gibt
 // eine Map place.id → {temp, code, isDay} zurück. Berührt fetchWeather nicht.
 export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number, FavWeather>> {
   const out = new Map<number, FavWeather>();

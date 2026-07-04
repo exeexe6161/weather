@@ -5,7 +5,7 @@ import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
-import { getFavorites, isFavorite, addFavorite, removeFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
+import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
@@ -27,12 +27,7 @@ import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
 const FORECAST_CACHE_KEY = "weather:last-forecast";
-const DAYS_KEY = "weather:forecast-days"; // gemerkte Vorhersage-Länge (7/10/16)
 const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
-
-// Erlaubte Vorhersage-Längen und Default. Etappe 1 zeigt weiterhin 7 Tage:
-// die Daten enthalten 16, die Anzeige kürzt clientseitig auf forecastDays.
-const FORECAST_DAY_OPTIONS = [7, 10, 16] as const;
 const DEFAULT_FORECAST_DAYS = 7;
 
 interface ForecastCache {
@@ -44,11 +39,10 @@ interface ForecastCache {
 }
 
 // Forecast-Cache, der älter als dies ist, wird beim Start NICHT mehr als
-// Sofort-Anzeige gezeigt (eine Woche alte Vorhersage ist nutzlos): dann lieber
-// Lade-/Fehlerzustand. NICHT gelöscht — ein frischer Abruf ersetzt ihn ohnehin,
-// und bis dahin schadet er im Storage nicht. Gleicher TTL-Stil wie
+// Sofort-Anzeige gezeigt. Nach 24 Stunden wird sie außerdem gelöscht, damit
+// keine überholten Wetterdaten unnötig im Browser bleiben. Gleicher TTL-Stil wie
 // isFavWeatherStale (Date.parse + Number.isFinite-Guard).
-const MAX_FORECAST_CACHE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_FORECAST_CACHE_AGE_MS = 24 * 60 * 60 * 1000;
 function isForecastCacheTooOld(savedAt: string, nowMs = Date.now()): boolean {
   const savedMs = Date.parse(savedAt);
   if (!Number.isFinite(savedMs)) return true;
@@ -68,12 +62,9 @@ interface State {
   pollen: PollenLevels | null;
   freshness: Freshness;
   updatedAt: string;
-  // Sichtbare Vorhersage-Länge (Tage). Die Forecast-Daten enthalten bis zu 16
-  // Tage; die Tagesliste rendert nur die ersten forecastDays davon.
-  forecastDays: number;
 }
 
-const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "", forecastDays: DEFAULT_FORECAST_DAYS };
+const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "" };
 
 // Auto-Open des Stundendetail-Panels: NUR beim initialen Laden, über den Cache→
 // Netz-Doppelrender desselben Orts hinweg "armed". Sobald der erste Ladeversuch
@@ -96,79 +87,6 @@ function readJson<T>(key: string): T | null {
 function writeJson(key: string, value: unknown): void {
   if (typeof localStorage === "undefined") return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-// Gemerkte Vorhersage-Länge lesen: nur 7/10/16 sind gültig, alles andere
-// (leer, defekt, Altwert) fällt auf den Default 7 zurück.
-function readForecastDays(): number {
-  if (typeof localStorage === "undefined") return DEFAULT_FORECAST_DAYS;
-  try {
-    const raw = Number(localStorage.getItem(DAYS_KEY));
-    return (FORECAST_DAY_OPTIONS as readonly number[]).includes(raw) ? raw : DEFAULT_FORECAST_DAYS;
-  } catch {
-    return DEFAULT_FORECAST_DAYS;
-  }
-}
-
-// Vorhersage-Länge setzen: State aktualisieren, merken, neu rendern. Wird in
-// Etappe 2 vom 7/10/16-Umschalter aufgerufen — JETZT nur angelegt, nicht
-// verdrahtet. Ungültige Werte werden ignoriert (keine Render-Schleife).
-export function setForecastDays(days: number): void {
-  if (!(FORECAST_DAY_OPTIONS as readonly number[]).includes(days)) return;
-  if (state.forecastDays === days) return;
-  state.forecastDays = days;
-  writeJson(DAYS_KEY, days);
-  renderContent(); // ruft intern syncDaysSwitch() → aktiver Zustand folgt
-  renderIcons();
-}
-
-// Spiegelt state.forecastDays in die Radiogruppe: aktiver Radio aria-checked,
-// rovendes tabindex (nur der aktive ist per Tab erreichbar, Pfeile wechseln),
-// und das aria-Label je Sprache ("7 Tage"). Der Umschalter steht statisch im
-// Markup (wird nicht neu gerendert), daher von Hand synchronisiert.
-function syncDaysSwitch(): void {
-  const group = document.getElementById("daysSwitch");
-  if (!group) return;
-  const unit = t("daysUnit");
-  group.querySelectorAll<HTMLButtonElement>("[data-days]").forEach((r) => {
-    const on = Number(r.dataset.days) === state.forecastDays;
-    r.setAttribute("aria-checked", String(on));
-    r.tabIndex = on ? 0 : -1;
-    r.setAttribute("aria-label", `${r.dataset.days} ${unit}`);
-  });
-}
-
-// Bindet die Radiogruppe einmalig (Muster wie topRefresh/langSwitch): Klick und
-// Tastatur (Pfeile wechseln + wählen, Enter/Space wählt). Wechsel ruft das in
-// Etappe 1 angelegte setForecastDays (State + localStorage + renderContent).
-function initDaysSwitch(): void {
-  const group = document.getElementById("daysSwitch");
-  if (!group) return;
-  const radios = Array.from(group.querySelectorAll<HTMLButtonElement>("[data-days]"));
-
-  const choose = (r: HTMLButtonElement): void => {
-    r.focus();
-    setForecastDays(Number(r.dataset.days));
-  };
-
-  radios.forEach((r) => {
-    r.addEventListener("click", () => choose(r));
-    r.addEventListener("keydown", (e) => {
-      const idx = radios.indexOf(r);
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        e.preventDefault();
-        choose(radios[(idx + 1) % radios.length]);
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        e.preventDefault();
-        choose(radios[(idx - 1 + radios.length) % radios.length]);
-      } else if (e.key === " " || e.key === "Enter") {
-        e.preventDefault();
-        choose(r);
-      }
-    });
-  });
-
-  syncDaysSwitch(); // Startzustand aus der (ggf. gespeicherten) state.forecastDays
 }
 
 // Tab-Titel mit dem aktuellen Wetter, z. B. "14° Regen · WeatherPure" —
@@ -350,6 +268,7 @@ function renderContent(): void {
     place: state.place,
     forecast: state.forecast,
     isFav: isFavorite(state.place.id),
+    canAddFavorite: getFavorites().length < MAX_FAVORITES,
     freshness: state.freshness,
     updatedAt: state.updatedAt,
   });
@@ -377,15 +296,13 @@ function renderContent(): void {
   // Dynamische Überschrift "{n} Tage Vorhersage" (deckt Sprachwechsel mit ab,
   // da renderContent auch auf weather:langchange läuft). Das h2 trägt KEIN
   // data-i18n mehr — die Zahl käme dort nicht hinein; gesetzt wird sie hier.
-  // Überschrift zählt die TATSÄCHLICH gerenderten Tage, nicht die Wunschstufe:
-  // fehlt am Rand ein unvollständiger Tag (in normalize herausgefiltert), zeigt
-  // 16 → "15 Tage". Bei 7/10 ist daily i. d. R. länger → exakt 7/10. Deckt sich
-  // mit renderDailyForecast, das intern slice(0, days) macht (min(len, days)).
-  const shownDays = Math.min(state.forecast.daily.length, state.forecastDays);
+  // Überschrift zählt die TATSÄCHLICH gerenderten Tage. Fehlt am Rand ein
+  // unvollständiger Tag, bleibt die Zahl damit ehrlich. Deckt sich mit
+  // renderDailyForecast, das intern slice(0, days) verwendet.
+  const shownDays = Math.min(state.forecast.daily.length, DEFAULT_FORECAST_DAYS);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
   renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, state.forecastDays, state.forecast.current.weatherCode);
-  syncDaysSwitch(); // aktiver Umschalter-Zustand spiegelt state.forecastDays (auch nach Sprachwechsel/Reload)
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS, state.forecast.current.weatherCode);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -543,6 +460,9 @@ export function selectPlace(place: Place): void {
   // nie persistiert (Datenschutzzusage), die Sofort-Anzeige darf das nicht
   // aufweichen.
   const cached = !isGeoPlace ? readJson<ForecastCache>(FORECAST_CACHE_KEY) : null;
+  if (cached !== null && isForecastCacheTooOld(cached.savedAt)) {
+    localStorage.removeItem(FORECAST_CACHE_KEY);
+  }
   // Sehr alten Cache (älter als MAX_FORECAST_CACHE_AGE_MS) NICHT als Sofort-
   // Anzeige zeigen: eine tagealte Vorhersage als "Stand" wäre irreführend. Bis
   // zur Grenze wird er gezeigt (mit Datums-Label, s. formatStampInZone); darüber
@@ -619,18 +539,17 @@ export function selectPlace(place: Place): void {
 }
 
 export function initApp(): void {
-  // Gemerkte Vorhersage-Länge übernehmen (Default 7, falls nichts/ungültig).
-  state.forecastDays = readForecastDays();
-
   // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
   // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
   pruneGeoFavorites();
   if (readJson<Place>(LAST_PLACE_KEY)?.id === GEO_PLACE_ID) {
     localStorage.removeItem(LAST_PLACE_KEY);
   }
-  if (readJson<ForecastCache>(FORECAST_CACHE_KEY)?.placeId === GEO_PLACE_ID) {
+  const storedForecast = readJson<ForecastCache>(FORECAST_CACHE_KEY);
+  if (storedForecast?.placeId === GEO_PLACE_ID || (storedForecast && isForecastCacheTooOld(storedForecast.savedAt))) {
     localStorage.removeItem(FORECAST_CACHE_KEY);
   }
+  localStorage.removeItem("weather:forecast-days");
 
   initSearchBar(byId("searchBar"), { onSelect: selectPlace });
   renderFavorites();
@@ -643,9 +562,6 @@ export function initApp(): void {
   // Aktualisieren-Button steht statisch im Markup → Listener einmalig hier
   // (nicht in renderContent, sonst würde er bei jedem Render erneut gebunden).
   byId("topRefresh").addEventListener("click", refreshCurrentPlace);
-
-  // 7/10/16-Umschalter ebenfalls statisch → Listener einmalig hier binden.
-  initDaysSwitch();
 
   // Sprachwechsel: dynamische Bereiche mit neuen Labels/Locales neu rendern
   document.addEventListener("weather:langchange", () => {

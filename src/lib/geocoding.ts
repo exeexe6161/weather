@@ -16,13 +16,12 @@ export interface Place {
   admin1?: string;
 }
 
-// Ruft die eigene Server Route auf statt Open-Meteo direkt. Filterung auf
-// echte bewohnte Orte, Ergebnislimit und Query-Kappung laufen serverseitig im
-// Provider (src/server/weather/providers/OpenMeteoProvider.ts). Der Client
+// Ruft die eigene Server Route auf statt WeatherAPI direkt. Ergebnislimit und
+// Query-Kappung laufen serverseitig im Provider. Der Client
 // spart sich nur die Anfrage für zu kurze Eingaben, echte Namen sind länger.
 export async function searchCity(query: string, language = "de"): Promise<Place[]> {
   const q = query.trim();
-  if (q.length < 2) return [];
+  if (q.length < 3) return [];
   const params = new URLSearchParams({ q, lang: language });
   const res = await fetchWithTimeout(apiUrl(`/api/geocoding?${params}`));
   if (!res.ok) throw new Error(`Geocoding request failed: ${res.status}`);

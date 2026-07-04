@@ -18,8 +18,8 @@ const OUTLOOK_FROM = 7;
 export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, currentCode?: number): void {
   const locale = getLocale();
 
-  // Die Forecast-Daten enthalten bis zu 16 Tage; angezeigt werden nur die
-  // ersten `days` (7/10/16). ERST kürzen, dann Skala rechnen und Balken setzen,
+  // Die Forecast-Daten enthalten bis zu sieben Tage. ERST kürzen, dann Skala
+  // rechnen und Balken setzen,
   // damit Wochenskala und CSSOM-Index-Zuordnung auf dieselbe Liste verweisen.
   const visible = daily.slice(0, days);
 

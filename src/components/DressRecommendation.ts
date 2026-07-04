@@ -41,7 +41,7 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
     : [{ stage: stageFor(forecast.current.apparentTemperature), fromHour: 0, toHour: 24 }];
   const rain = usable ? rainWindowFor(hours) : null;
   // Gewitter zählt als Schirm-Grund, auch wenn die Wahrscheinlichkeit unter der
-  // Schwelle bleibt (Open-Meteo setzt Code 95 oft mit Prob < 40). Dasselbe
+  // Schwelle bleibt (Gewittercode kann auch bei Prob < 40 auftreten). Dasselbe
   // Signal wie thunderLater in summary.ts; typeof fängt alte Caches ohne Feld
   // ab. Über den ganzen Resttag, damit jedes von der Summary gemeldete Gewitter
   // hier mit abgedeckt ist und kein "kein Regen mehr" widerspricht.

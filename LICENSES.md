@@ -1,14 +1,17 @@
 # Lizenzen und Attributionen
 
-Stand: 11. Juni 2026
+Stand: 4. Juli 2026
 
-## Wetterdaten — Open-Meteo (CC BY 4.0)
+## Wetterdaten — WeatherAPI.com
 
-- Quelle: https://open-meteo.com/
-- Lizenz: Creative Commons Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
-- Attribution im Footer der App: `Wetterdaten von Open-Meteo.com · CC BY 4.0`
-- Hinweis: Der kostenlose API Zugang gilt nur für nicht kommerzielle Nutzung.
-  Vor einer Monetarisierung (Ads, IAP) ist ein bezahltes API Abo erforderlich.
+- Quelle: https://www.weatherapi.com/
+- Bedingungen: https://www.weatherapi.com/terms.aspx
+- Datenschutz: https://www.weatherapi.com/privacy.aspx
+- Attribution im Footer der App: `Wetterdaten von WeatherAPI.com`
+- Die von WeatherAPI verlangte Endnutzerinformation zur Unsicherheit von
+  Wettervorhersagen steht sichtbar im Footer und ausführlich im Impressum.
+- API Antworten werden entsprechend den Anbieterbedingungen höchstens 60 Minuten
+  für aktuelle Werte und höchstens 24 Stunden für Vorhersagen zwischengespeichert.
 
 ## Schriftart — Inter (SIL OFL 1.1)
 

@@ -1,6 +1,6 @@
 # WeatherPure
 
-Minimalistische Wetter PWA mit Open-Meteo, lokaler Speicherung und ohne Tracking. Live unter www.weatherpure.com.
+Minimalistische Wetter PWA mit WeatherAPI, lokaler Speicherung und ohne Tracking. Live unter www.weatherpure.com.
 
 ## Entwicklung
 
@@ -10,11 +10,11 @@ npm run typecheck
 npm run build
 ```
 
-Der Build erzeugt `dist/` für Vercel. Die App nutzt selbst gehostete Inter Fonts, gebündelte Lucide Icons und Open-Meteo als Wetterdatenquelle.
+Der Build erzeugt `dist/` für Vercel. Die App nutzt selbst gehostete Inter Fonts, gebündelte Lucide Icons und WeatherAPI als Wetterdatenquelle. Der geheime Schlüssel wird serverseitig als `WEATHERAPI_KEY` gesetzt und darf nie im Browsercode oder Repository stehen.
 
 ## Lizenz und Daten
 
-- Wetterdaten: Open-Meteo.com, CC BY 4.0
+- Wetterdaten: WeatherAPI.com gemäß den WeatherAPI Nutzungsbedingungen
 - Icons: Lucide, ISC License
 - Schrift: Inter, SIL OFL 1.1
 

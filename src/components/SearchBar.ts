@@ -10,7 +10,7 @@ export interface SearchBarOptions {
   onSelect(place: Place): void;
 }
 
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 500;
 
 export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   const input = root.querySelector<HTMLInputElement>("#citySearch")!;
@@ -82,7 +82,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   input.addEventListener("input", () => {
     const q = input.value.trim();
     if (timer) clearTimeout(timer);
-    if (q.length < 2) {
+    if (q.length < 3) {
       lastQuery = "";
       closeList();
       showStatus("");

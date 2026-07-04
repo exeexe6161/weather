@@ -10,7 +10,7 @@ Prüfe streng auf:
 - SEO
 - Impressum
 - Datenschutz (DSGVO, TDDDG, Geolocation Einwilligung)
-- Open-Meteo Attribution (CC BY 4.0, Pflicht im Footer)
+- WeatherAPI Attribution und Endnutzerhinweis gemäß Anbieterbedingungen
 - Lizenzkonformität (Inter OFL, Lucide ISC)
 - rechtliche Risiken
 - irreführende Aussagen

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15171A" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Datenschutzerklärung der Wetter App: lokale Speicherung im Browser, Wetterdaten von Open-Meteo, Standortabfrage nur nach Einwilligung, kein Tracking.">
+<meta name="description" content="Datenschutzerklärung der Wetter App: lokale Speicherung im Browser, Wetterdaten von WeatherAPI, Standortabfrage nur nach Einwilligung, kein Tracking.">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -16,7 +16,7 @@
 <link rel="alternate" hreflang="en" href="/datenschutz-en">
 <link rel="alternate" hreflang="tr" href="/datenschutz-tr">
 <link rel="alternate" hreflang="x-default" href="/datenschutz">
-<title>Datenschutz – Lokale Speicherung, Open-Meteo, kein Tracking | WeatherPure</title>
+<title>Datenschutz – Lokale Speicherung, WeatherAPI, kein Tracking | WeatherPure</title>
 <script src="./theme-init.js?v=20260618-134121"></script>
 <link rel="stylesheet" href="./styles-pages.min.css?v=20260618-134121">
 </head>
@@ -37,7 +37,7 @@
   <div class="page-header">
     <div class="page-meta">
       <span class="page-tag">Rechtliche Informationen</span>
-      <span class="page-stand">Stand: 3. Juli 2026</span>
+      <span class="page-stand">Stand: 4. Juli 2026</span>
     </div>
     <h1 class="page-title">Datenschutz</h1>
     <p class="page-subtitle">Datenschutzerklärung nach Art. 13 DSGVO</p>
@@ -59,23 +59,22 @@
 
   <h2 class="sh">Lokale Datenspeicherung (localStorage)</h2>
   <div class="card">
-    <p>Die App speichert folgende Daten ausschließlich lokal im Browser: gespeicherte Favoritenorte, der zuletzt angezeigte Ort, der zuletzt geladene Wetterbericht (für die Offline Anzeige), die gewählte Sprache, das gewählte Farbschema, das je Favorit zwischengespeicherte aktuelle Wetter (Temperatur, Wetterlage, Tag oder Nacht) für die sofortige Anzeige in der Favoritenliste, die Voreinstellung, über wie viele Tage die Vorhersage angezeigt wird (7, 10 oder 16 Tage), sowie einen Merker, nachdem der Installationshinweis weggeklickt oder die Installation bestätigt wurde.</p>
+    <p>Die App speichert folgende Daten ausschließlich lokal im Browser: bis zu fünf Favoritenorte, den zuletzt angezeigten Ort, den zuletzt geladenen Wetterbericht für die Offline Anzeige für höchstens 24 Stunden, die gewählte Sprache, das gewählte Farbschema, das je Favorit zwischengespeicherte aktuelle Wetter für höchstens 15 Minuten sowie einen Merker, nachdem der Installationshinweis geschlossen oder die Installation bestätigt wurde.</p>
     <p>Diese lokalen Speicherungen dienen der Bereitstellung der vom Nutzer gewählten Funktionen (§ 25 Abs. 2 Nr. 2 TDDDG). Der Installations-Merker wird erst nach einer bewussten Nutzeraktion gesetzt. Die lokale Speicherung selbst wird nicht an den Betreiber oder Dritte übertragen. Beim Abruf von Wetter- und Pollendaten werden jedoch die Koordinaten des ausgewählten oder gespeicherten Ortes wie unten beschrieben an die eigene Server-Schnittstelle übermittelt. Die lokal gespeicherten Daten lassen sich jederzeit über die Browserfunktion „Websitedaten löschen" entfernen.</p>
   </div>
 
-  <h2 class="sh">Wetterdaten von Open-Meteo</h2>
+  <h2 class="sh">Wetterdaten von WeatherAPI</h2>
   <div class="card">
-    <p>Wetter und Ortssuche werden über die eigene Server-Schnittstelle von WeatherPure abgerufen, die die Anfrage serverseitig an die Programmierschnittstelle von <strong>Open-Meteo</strong> (open-meteo.com) weiterleitet. Der Browser des Nutzers kontaktiert Open-Meteo dabei nicht mehr direkt; Open-Meteo erhält die IP-Adresse des WeatherPure Servers statt der IP-Adresse des Endgeräts, zusammen mit den Koordinaten beziehungsweise dem Suchbegriff des angefragten Ortes.</p>
-    <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Bereitstellung der angefragten Wetterinformationen). Die Wetterdaten stehen unter der Lizenz CC BY 4.0.</p>
-    <p>Für die Anzeige der Pollenbelastung ruft die eigene Server-Schnittstelle von WeatherPure zusätzlich die Air Quality API von Open-Meteo unter air-quality-api.open-meteo.com auf. Dabei werden die IP-Adresse des WeatherPure Servers und die Koordinaten des gewählten Ortes technisch bedingt an diesen Dienst übermittelt. Open-Meteo kann technische Serverprotokolle mit IP-Adresse, aufgerufener URL und darin enthaltenen Koordinaten zur Wartung, Fehleranalyse und Missbrauchsabwehr bis zu 90 Tage speichern. Laut Open-Meteo werden diese Protokolle nicht mit Nutzeridentitäten verknüpft, nicht an Dritte weitergegeben und nicht für Werbung oder Tracking verwendet. Rechtsgrundlage ist auch hier Art. 6 Abs. 1 lit. f DSGVO.</p>
-    <p>Um wiederholte Anfragen zu beschleunigen und die Zahl der Aufrufe bei Open-Meteo zu reduzieren, speichert die eigene Server-Schnittstelle Ergebnisse kurzzeitig im Arbeitsspeicher der jeweiligen Server-Instanz zwischen: auf zwei Nachkommastellen gerundete Koordinaten für Wetter- und Favoriten-Wetter-Abfragen bis zu 15 Minuten, für Pollenabfragen bis zu 6 Stunden, sowie Suchbegriffe der Ortssuche bis zu 7 Tage. Diese Zwischenspeicherung erfolgt ausschließlich im Arbeitsspeicher der Server-Instanz, ohne Datenbank und ohne dauerhafte Speicherung, und nie zusammen mit der IP-Adresse oder einem Nutzerkonto.</p>
-    <p>Weitere Informationen: <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo Terms &amp; Privacy</a></p>
+    <p>Wetter, Pollenwerte und Ortssuche werden über die eigene Server Schnittstelle von WeatherPure abgerufen. Diese leitet Koordinaten oder Suchbegriffe serverseitig an <strong>WeatherAPI.com</strong>, einen Dienst von Zoomash Ltd im Vereinigten Königreich, weiter. Der Browser kontaktiert WeatherAPI nicht direkt. WeatherAPI erhält daher die IP Adresse des WeatherPure Servers, den API Schlüssel sowie die für die Anfrage erforderlichen Koordinaten oder Suchbegriffe, nicht jedoch die IP Adresse des Endgeräts.</p>
+    <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der Bereitstellung der angefragten Wetterinformationen. WeatherAPI beschreibt in seiner Datenschutzerklärung mögliche Verarbeitungen und internationale Übermittlungen. Die konkrete datenschutzrechtliche Einordnung und etwa erforderliche Vertragsgrundlagen sollten vor dem öffentlichen Start rechtlich geprüft werden.</p>
+    <p>Zur Beschleunigung wiederholter Anfragen und zur Begrenzung der API Aufrufe speichert WeatherPure Ergebnisse nur im Arbeitsspeicher der jeweiligen Server Instanz zwischen: Wetter und Favoritenwetter höchstens 15 Minuten, aktuelle Pollenwerte höchstens 60 Minuten und Ergebnisse der Ortssuche höchstens 24 Stunden. Es gibt dafür keine Datenbank; IP Adressen und Nutzerkonten werden nicht Teil dieses Anwendungscaches.</p>
+    <p>Weitere Informationen: <a href="https://www.weatherapi.com/terms.aspx" rel="noopener noreferrer">WeatherAPI Bedingungen</a> und <a href="https://www.weatherapi.com/privacy.aspx" rel="noopener noreferrer">WeatherAPI Datenschutz</a></p>
   </div>
 
   <h2 class="sh">Standortabfrage (nur nach Einwilligung)</h2>
   <div class="card">
     <p>Die Funktion „Meinen Standort verwenden" ist optional. Die Standortabfrage über den Browser startet erst nach aktivem Klick auf die Schaltfläche und zusätzlicher Freigabe im Browserdialog (Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO, § 25 Abs. 1 TDDDG).</p>
-    <p>Die App und der Betreiber speichern die präzisen Koordinaten nicht dauerhaft. Sie werden ausschließlich für den unmittelbaren Wetter- und Pollenabruf an die eigene Server-Schnittstelle von WeatherPure übertragen, die sie unmittelbar zur Beantwortung der Anfrage an Open-Meteo weiterleitet; dessen technische Protokollierung ist oben beschrieben. Die Einwilligung kann jederzeit über die Browsereinstellungen widerrufen werden; die App funktioniert vollständig auch ohne Standortfreigabe über die Ortssuche.</p>
+    <p>Die App und der Betreiber speichern die präzisen Koordinaten nicht dauerhaft. Sie werden ausschließlich für den unmittelbaren Wetter und Pollenabruf an die eigene Server Schnittstelle von WeatherPure übertragen und von dort an WeatherAPI weitergeleitet. Die Einwilligung kann jederzeit über die Browsereinstellungen widerrufen werden; die App funktioniert auch ohne Standortfreigabe über die Ortssuche.</p>
   </div>
 
   <h2 class="sh">Service Worker / Offline Cache</h2>
@@ -85,7 +84,7 @@
 
   <h2 class="sh">Hosting</h2>
   <div class="card">
-    <p>Diese Website wird bei <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA gehostet. Beim Aufruf verarbeitet Vercel technisch notwendige Verbindungsdaten (IP-Adresse, Zeitpunkt, User-Agent, aufgerufene URL) zur Auslieferung und Absicherung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO). Diese Verbindungsdaten werden nur so lange gespeichert, wie es für Auslieferung und Absicherung erforderlich ist, und anschließend gelöscht. Zusätzlich führt Vercel als Hoster der eigenen Server-Schnittstelle die Wetter-, Pollen- und Ortssuchanfragen serverseitig aus und leitet sie an Open-Meteo weiter. Dabei verarbeitet Vercel die übermittelten Koordinaten beziehungsweise den Suchbegriff für die jeweilige Anfrage und die oben beschriebene kurzzeitige Zwischenspeicherung im Arbeitsspeicher (Art. 6 Abs. 1 lit. f DSGVO).</p>
+    <p>Diese Website wird bei <strong>Vercel Inc.</strong>, 650 California St, San Francisco, CA 94108, USA gehostet. Beim Aufruf verarbeitet Vercel technisch notwendige Verbindungsdaten (IP Adresse, Zeitpunkt, Browserkennung, aufgerufene URL) zur Auslieferung und Absicherung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO). Zusätzlich führt Vercel als Hoster der eigenen Server Schnittstelle Wetter, Pollen und Ortssuchanfragen serverseitig aus und leitet Koordinaten oder Suchbegriffe an WeatherAPI weiter.</p>
     <p>Vercel beschreibt die Datenverarbeitung in seiner <a href="https://vercel.com/legal/privacy-notice" rel="noopener noreferrer">Datenschutzerklärung</a> und seinem <a href="https://vercel.com/legal/dpa" rel="noopener noreferrer">Data Processing Addendum</a>. Für Übermittlungen in die USA nennt Vercel EU-Standardvertragsklauseln sowie seine Zertifizierung unter dem EU-US Data Privacy Framework.</p>
   </div>
 
@@ -122,7 +121,7 @@
       <span>·</span>
       <a href="./datenschutz">Datenschutz</a>
     </div>
-    <p class="footer-note">Wetterdaten von Open-Meteo.com · CC BY 4.0 · Keine Werbung · Kein Tracking</p>
+    <p class="footer-note">Wetterdaten von WeatherAPI.com · Keine Werbung · Kein Tracking</p>
   </footer>
 </div>
 
