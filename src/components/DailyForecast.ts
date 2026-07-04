@@ -15,7 +15,7 @@ export const RAIN_SHOW_THRESHOLD = 30;
 // === 7) wird dieser Index nie erreicht → kein Trenner, keine Dämpfung.
 const OUTLOOK_FROM = 7;
 
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, currentCode?: number): void {
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
   const locale = getLocale();
 
   // Die Forecast-Daten enthalten bis zu sieben Tage. ERST kürzen, dann Skala
@@ -47,7 +47,9 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
   el.innerHTML = visible
     .map((d, i) => {
       const isToday = i === 0;
-      const code = isToday && typeof currentCode === "number" ? currentCode : d.weatherCode;
+      // Der aktuelle Zustand steht bereits in der grossen Karte. In der
+      // Tagesliste soll auch bei "Heute" die Prognose fuer den ganzen Tag stehen.
+      const code = d.weatherCode;
       const icon = pickIcon(code, true);
       const label = weatherLabel(getWmo(code).labelKey, getLang());
       const day = isToday ? t("today") : formatWeekday(d.date, locale);

@@ -1,7 +1,7 @@
 import { fetchWithTimeout } from "../../../lib/http.js";
 import { POLLEN_KINDS, type PollenKind } from "../../../lib/pollen.js";
 import type { BatchPlace, WeatherProvider } from "../WeatherProvider.js";
-import type { DailyEntry, FavWeather, Forecast, Place, PollenLevels } from "../types.js";
+import type { AirQuality, DailyEntry, FavWeather, Forecast, Place, PollenLevels, WeatherAlert } from "../types.js";
 
 const BASE_URL = "https://api.weatherapi.com/v1";
 const RESULT_COUNT = 5;
@@ -90,6 +90,57 @@ function astroIso(date: string, value: unknown): string | null {
   return `${date}T${String(hour).padStart(2, "0")}:${match[2]}`;
 }
 
+// WeatherAPI liefert fuer milde Forecast-Stunden teilweise unplausibel starke
+// Abweichungen im Feld feelslike_c. Die uebliche meteorologische Definition
+// setzt Windchill nur bei Kaelte und Hitzeindex nur bei Hitze ein; im milden
+// Bereich entspricht die gefuehlte Temperatur der Lufttemperatur.
+export function apparentTemperature(tempC: number, humidity: number, windKph: number): number {
+  let result = tempC;
+  if (tempC <= 10 && windKph >= 4.8) {
+    const windFactor = Math.pow(windKph, 0.16);
+    result = 13.12 + 0.6215 * tempC - 11.37 * windFactor + 0.3965 * tempC * windFactor;
+  } else if (tempC >= 27 && humidity >= 40) {
+    const tempF = tempC * 9 / 5 + 32;
+    const heatF =
+      -42.379 + 2.04901523 * tempF + 10.14333127 * humidity
+      - 0.22475541 * tempF * humidity - 0.00683783 * tempF * tempF
+      - 0.05481717 * humidity * humidity + 0.00122874 * tempF * tempF * humidity
+      + 0.00085282 * tempF * humidity * humidity
+      - 0.00000199 * tempF * tempF * humidity * humidity;
+    result = Math.max(tempC, (heatF - 32) * 5 / 9);
+  }
+  return Math.round(result * 10) / 10;
+}
+
+function airQuality(value: unknown): AirQuality | null {
+  const raw = record(value);
+  const usEpaIndex = optionalNumber(raw["us-epa-index"]);
+  const pm25 = optionalNumber(raw.pm2_5);
+  const pm10 = optionalNumber(raw.pm10);
+  if (usEpaIndex === undefined && pm25 === undefined && pm10 === undefined) return null;
+  return {
+    usEpaIndex: usEpaIndex ?? null,
+    pm25: pm25 ?? null,
+    pm10: pm10 ?? null,
+  };
+}
+
+function weatherAlerts(value: unknown): WeatherAlert[] {
+  const alerts = record(value).alert;
+  if (!Array.isArray(alerts)) return [];
+  return alerts.slice(0, 3).flatMap((value) => {
+    const alert = record(value);
+    const event = stringValue(alert.event).trim();
+    const headline = stringValue(alert.headline).trim();
+    if (!event && !headline) return [];
+    return [{
+      event,
+      headline,
+      expires: stringValue(alert.expires).trim() || null,
+    }];
+  });
+}
+
 function isCompleteDay(day: DailyEntry): boolean {
   return Number.isFinite(day.tempMax) && Number.isFinite(day.tempMin) && Number.isFinite(day.weatherCode);
 }
@@ -119,8 +170,8 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
   const data = record(await requestJson("forecast.json", {
     q: `${latitude},${longitude}`,
     days: "7",
-    aqi: "no",
-    alerts: "no",
+    aqi: "yes",
+    alerts: "yes",
   }));
   const location = record(data.location);
   const currentData = record(data.current);
@@ -131,12 +182,17 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
 
   const localtime = localIso(location.localtime);
   if (localtime.length < 16) throw new Error("WeatherAPI response missing location.localtime");
+  const currentTemperature = requiredNumber(currentData.temp_c, "current.temp_c");
+  const currentHumidity = requiredNumber(currentData.humidity, "current.humidity");
+  const currentWind = requiredNumber(currentData.wind_kph, "current.wind_kph");
   const current = {
-    time: localIso(currentData.last_updated) || localtime,
-    temperature: requiredNumber(currentData.temp_c, "current.temp_c"),
-    apparentTemperature: requiredNumber(currentData.feelslike_c, "current.feelslike_c"),
-    humidity: requiredNumber(currentData.humidity, "current.humidity"),
-    windSpeed: requiredNumber(currentData.wind_kph, "current.wind_kph"),
+    // Fuer Tagesgrenzen und das rollende Stundenfenster zaehlt die aktuelle
+    // Ortszeit. last_updated kann kurz nach Mitternacht noch am Vortag liegen.
+    time: localtime,
+    temperature: currentTemperature,
+    apparentTemperature: apparentTemperature(currentTemperature, currentHumidity, currentWind),
+    humidity: currentHumidity,
+    windSpeed: currentWind,
     weatherCode: conditionCode(currentData.condition),
     isDay: finiteNumber(currentData.is_day, 1) === 1,
   };
@@ -149,14 +205,17 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     })
     .map((rawHour) => {
       const hour = record(rawHour);
+      const temperature = requiredNumber(hour.temp_c, "hour.temp_c");
+      const humidity = requiredNumber(hour.humidity, "hour.humidity");
+      const windSpeed = requiredNumber(hour.wind_kph, "hour.wind_kph");
       return {
         time: localIso(hour.time),
-        temperature: requiredNumber(hour.temp_c, "hour.temp_c"),
-        apparentTemperature: requiredNumber(hour.feelslike_c, "hour.feelslike_c"),
+        temperature,
+        apparentTemperature: apparentTemperature(temperature, humidity, windSpeed),
         precipitationProbability: finiteNumber(hour.chance_of_rain),
         weatherCode: conditionCode(hour.condition),
-        windSpeed: optionalNumber(hour.wind_kph),
-        relativeHumidity: optionalNumber(hour.humidity),
+        windSpeed,
+        relativeHumidity: humidity,
         dewPoint: optionalNumber(hour.dewpoint_c),
         precipitation: optionalNumber(hour.precip_mm),
         windDirection: optionalNumber(hour.wind_degree),
@@ -196,6 +255,8 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     hourly,
     daily,
     timezone: stringValue(location.tz_id, "UTC"),
+    airQuality: airQuality(currentData.air_quality),
+    alerts: weatherAlerts(data.alerts),
     yesterdayTempMax: await getYesterdayMax(latitude, longitude, localtime),
   };
 }

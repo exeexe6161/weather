@@ -5,6 +5,8 @@ import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
+import { renderAirQuality } from "./components/AirQuality";
+import { renderWeatherAlerts } from "./components/WeatherAlerts";
 import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t } from "./i18n/ui";
 import { getWmo } from "./lib/wmo";
@@ -40,10 +42,10 @@ interface ForecastCache {
 }
 
 // Forecast-Cache, der älter als dies ist, wird beim Start NICHT mehr als
-// Sofort-Anzeige gezeigt. Nach 24 Stunden wird sie außerdem gelöscht, damit
-// keine überholten Wetterdaten unnötig im Browser bleiben. Gleicher TTL-Stil wie
+// Sofort-Anzeige gezeigt. Nach 60 Minuten wird sie außerdem gelöscht, damit
+// aktuelle Wetterwerte nicht veraltet angezeigt werden. Gleicher TTL-Stil wie
 // isFavWeatherStale (Date.parse + Number.isFinite-Guard).
-const MAX_FORECAST_CACHE_AGE_MS = 24 * 60 * 60 * 1000;
+const MAX_FORECAST_CACHE_AGE_MS = 60 * 60 * 1000;
 function isForecastCacheTooOld(savedAt: string, nowMs = Date.now()): boolean {
   const savedMs = Date.parse(savedAt);
   if (!Number.isFinite(savedMs)) return true;
@@ -194,6 +196,12 @@ function renderPollen(): void {
   renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
 }
 
+function renderStarterData(): void {
+  if (!state.forecast) return;
+  renderAirQuality(byId("airQuality"), byId("airQualityHeading"), state.forecast.airQuality);
+  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone);
+}
+
 // Wochenüberblick-Aussage über der Tagesliste. Immer die nächsten ~7 Tage,
 // UNABHÄNGIG vom 7/10/16-Umschalter (Wochenüberblick, nicht der Ausblick).
 // bestWeatherDayKey liefert null, wenn kein Tag das Mindestniveau erreicht →
@@ -219,10 +227,11 @@ function renderWeekSummary(daily: DailyEntry[]): void {
 // gefühlten Werte der nächsten Stunden. Kurve, Werte und Zeitachse stammen
 // vollständig aus denselben Hourly Einträgen.
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
-  const window = forecast.hourly.slice(0, 25);
+  const future = forecast.hourly.slice(1, 25);
+  const window = [forecast.current.apparentTemperature, ...future.map((h) => h.apparentTemperature)];
   return {
-    feels: window.map((h) => h.apparentTemperature),
-    startHour: forecastStartHour(window[0]?.time),
+    feels: window,
+    startHour: forecastStartHour(forecast.hourly[0]?.time),
     ariaLabel: t("tc_aria"),
   };
 }
@@ -263,6 +272,7 @@ function renderContent(): void {
   updateDocTitle(); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
   updateTopStamp(); // obere Zeitstempel-Caption (Ortswahl, Refresh, Sprachwechsel)
   renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
+  renderStarterData();
   renderCurrentWeather(byId("currentWeather"), {
     place: state.place,
     forecast: state.forecast,
@@ -301,7 +311,7 @@ function renderContent(): void {
   const shownDays = Math.min(state.forecast.daily.length, DEFAULT_FORECAST_DAYS);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
   renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS, state.forecast.current.weatherCode);
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -482,7 +492,7 @@ export function selectPlace(place: Place): void {
     setView("loading");
   }
 
-  // Pollen parallel zum Wetter holen: eigener Endpoint (Air Quality API),
+  // Pollen parallel zum Wetter holen: eigener WeatherAPI Endpoint,
   // dessen Ausfall die Wetteranzeige nicht blockieren darf. fetchPollen wirft
   // nie (Fehler intern → null = Sektion bleibt aus).
   state.pollen = null;
