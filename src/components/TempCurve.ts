@@ -28,7 +28,7 @@ export interface TempCurveInput {
   // Gefuehlte Temperatur fuer jetzt..+24h (idealerweise 25 Werte). Luecken werden
   // linear ueberbrueckt. Mindestens 13 gueltige Werte noetig, sonst versteckt.
   feels: (number | null)[];
-  // Ganzzahlige aktuelle Stunde in STATIONSZEIT (0..23) fuer die Achsenbeschriftung.
+  // Ganzzahlige erste Forecast Stunde (0..23) fuer die Achsenbeschriftung.
   // Ausserhalb 0..23 -> Marken zeigen nur Offsets ab "jetzt" ohne Uhrzeit.
   startHour: number;
   // Hinweis: Die sichtbare Ueberschrift ("GEFÜHLTE TEMPERATUR · 24 STUNDEN") wird
@@ -200,19 +200,10 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Hilfsfunktion fuer app.ts: aktuelle ganzzahlige Stunde in Stationszeit.
-// timezone = forecast.timezone (IANA). Ohne/ungueltig -> -1 (Marken zeigen +Nh).
-export function stationStartHour(timezone: string | undefined): number {
-  if (!timezone) return -1;
-  try {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: timezone, hour: '2-digit', hour12: false,
-    }).formatToParts(new Date());
-    let h = Number(parts.find((p) => p.type === 'hour')?.value);
-    if (!Number.isFinite(h)) return -1;
-    if (h === 24) h = 0;
-    return h;
-  } catch {
-    return -1;
-  }
+// Achsenstart direkt aus forecast.hourly[0].time. So bleiben Labels auch bei
+// Offline Daten und rund um einen Stundenwechsel exakt an den Kurvenwerten.
+export function forecastStartHour(firstForecastTime: string | undefined): number {
+  if (typeof firstForecastTime !== 'string') return -1;
+  const hour = Number(firstForecastTime.slice(11, 13));
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : -1;
 }

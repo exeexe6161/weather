@@ -40,7 +40,6 @@ export interface DailyEntry {
   sunrise: string | null; // ISO Zeit lokaler Stationszeit
   sunset: string | null;
   uvIndexMax: number | null;
-  sunshineDuration?: number; // Sekunden pro Tag (optional wegen alter Caches)
 }
 export interface Forecast {
   current: CurrentWeather;
