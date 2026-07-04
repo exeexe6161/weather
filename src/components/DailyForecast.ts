@@ -58,18 +58,6 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
         (isPrecipCode(d.weatherCode) || d.precipitationProbabilityMax >= RAIN_SHOW_THRESHOLD)
           ? d.precipitationProbabilityMax
           : null;
-      // Sonnenscheindauer (Sekunden → ganze Stunden). Nur ab 1 h zeigen: ein
-      // komplett bedeckter Tag (0) bleibt ohne Angabe — wie Regen/Sicht, nichts
-      // ist ehrlicher als eine nichtssagende 0. Fehlt das Feld (alter Cache) →
-      // null → keine Angabe, kein NaN.
-      const sunH =
-        typeof d.sunshineDuration === "number" && Number.isFinite(d.sunshineDuration)
-          ? Math.round(d.sunshineDuration / 3600)
-          : null;
-      const sun =
-        sunH !== null && sunH >= 1
-          ? `<div class="day-sun" role="img" aria-label="${esc(t("sun_aria").replace("{n}", String(sunH)))}"><i data-lucide="sun" class="day-sun-ico"></i><span aria-hidden="true">${sunH} h</span></div>`
-          : "";
       const outlook = i >= OUTLOOK_FROM;
       // Genau einmal vor dem ersten gedämpften Tag: der "Ausblick"-Trenner. Rein
       // visuell (aria-hidden) und OHNE .day-bar-fill — so bleibt die Zählung der
@@ -87,7 +75,6 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
           <span class="day-max">${formatTemp(d.tempMax)}</span>
           <span class="day-min">${formatTemp(d.tempMin)}</span>
         </div>
-        ${sun}
         <div class="day-bar" aria-hidden="true"><div class="day-bar-fill"></div></div>
       </div>`;
     })

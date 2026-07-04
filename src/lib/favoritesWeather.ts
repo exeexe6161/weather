@@ -5,9 +5,10 @@
 import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";
 
-// Eigener Cache-Key, unabhängig von "weather:favorites" (reine Ortsliste) und
-// "weather:last-forecast" (Einzelort-Vollforecast).
-const FAV_WEATHER_CACHE_KEY = "weather:favorites-weather";
+// Eigener WeatherAPI Cache Key, unabhängig von der reinen Favoriten Ortsliste
+// und dem Einzelort Vollforecast.
+const FAV_WEATHER_CACHE_KEY = "weather:weatherapi:favorites-weather";
+const LEGACY_FAV_WEATHER_CACHE_KEY = "weather:favorites-weather";
 
 // Ab diesem Alter gilt ein Cache-Eintrag als veraltet und wird nachgeladen.
 // current-Werte ändern sich selten schneller; schont zugleich das Rate-Limit.
@@ -52,6 +53,7 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
   const map = new Map<number, FavWeatherEntry>();
   if (typeof localStorage === "undefined") return map;
   try {
+    localStorage.removeItem(LEGACY_FAV_WEATHER_CACHE_KEY);
     const raw = localStorage.getItem(FAV_WEATHER_CACHE_KEY);
     if (!raw) return map;
     const parsed: unknown = JSON.parse(raw);

@@ -16,7 +16,7 @@ import { initSearchBar } from "./components/SearchBar";
 import { renderCurrentWeather } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
-import { renderTempCurve, stationStartHour, type TempCurveInput } from "./components/TempCurve";
+import { renderTempCurve, forecastStartHour, type TempCurveInput } from "./components/TempCurve";
 import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
@@ -26,7 +26,8 @@ import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
-const FORECAST_CACHE_KEY = "weather:last-forecast";
+const FORECAST_CACHE_KEY = "weather:weatherapi:last-forecast";
+const LEGACY_FORECAST_CACHE_KEY = "weather:last-forecast";
 const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
 const DEFAULT_FORECAST_DAYS = 7;
 
@@ -215,15 +216,13 @@ function renderWeekSummary(daily: DailyEntry[]): void {
 
 // Eingabe für den rollenden 24-Stunden-Verlauf (jetzt→+24h). forecast.hourly ist
 // in normalize() bereits ab der aktuellen Stunde geschnitten — also direkt die
-// gefühlten Werte der nächsten Stunden. startHour ist die ganzzahlige aktuelle
-// Stunde in STATIONSZEIT des Orts (für die Achsenbeschriftung), nie Nutzerzeit;
-// stationStartHour liefert -1 ohne/ungültige timezone → Marken zeigen "+Nh".
+// gefühlten Werte der nächsten Stunden. Kurve, Werte und Zeitachse stammen
+// vollständig aus denselben Hourly Einträgen.
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
-  const feels = forecast.hourly.slice(0, 25).map((h) => h.apparentTemperature);
-  if (feels.length > 0) feels[0] = forecast.current.apparentTemperature;
+  const window = forecast.hourly.slice(0, 25);
   return {
-    feels,
-    startHour: stationStartHour(forecast.timezone),
+    feels: window.map((h) => h.apparentTemperature),
+    startHour: forecastStartHour(window[0]?.time),
     ariaLabel: t("tc_aria"),
   };
 }
@@ -239,7 +238,7 @@ function buildRainChartInput(forecast: Forecast): RainChartInput {
   return {
     precip,
     times,
-    startHour: stationStartHour(forecast.timezone),
+    startHour: forecastStartHour(window[0]?.time),
     locale: getLocale(),
     ariaLabel: t("rain_aria"),
   };
@@ -542,6 +541,7 @@ export function initApp(): void {
   // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
   // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
   pruneGeoFavorites();
+  localStorage.removeItem(LEGACY_FORECAST_CACHE_KEY);
   if (readJson<Place>(LAST_PLACE_KEY)?.id === GEO_PLACE_ID) {
     localStorage.removeItem(LAST_PLACE_KEY);
   }
