@@ -263,7 +263,7 @@ function fmtHpa(v: number): string {
 function fmtCm(v: number, locale: string): string {
   return `${v.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} cm`;
 }
-// Sichtweite: Open-Meteo liefert METER. Unter 1 km in ganzen Metern ("800 m"),
+// Sichtweite liegt intern in Metern vor. Unter 1 km in ganzen Metern ("800 m"),
 // ab 1 km in km mit einer Nachkommastelle ("3,2 km"), locale-aware.
 function fmtVisibility(meter: number, locale: string): string {
   if (meter < 1000) return `${Math.round(meter)} m`;

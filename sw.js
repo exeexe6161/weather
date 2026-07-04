@@ -6,10 +6,9 @@
  *   - HTML / navigation         → stale-while-revalidate
  *   - Everything else / cross-origin → pass-through (no SW handling)
  *
- * WETTERDATEN WERDEN HIER NIE GECACHT: Beide Open-Meteo APIs (Forecast und
- * Air Quality) laufen cross-origin und damit am SW komplett vorbei (early
- * return im fetch Handler) — der SW kann also nie veraltete Wetterwerte
- * servieren. Die Sofort-Anzeige beim Start kommt stattdessen aus localStorage
+ * WETTERDATEN WERDEN HIER NIE GECACHT: Die eigenen /api Routen werden im
+ * fetch Handler ausdrücklich nicht gespeichert. Der SW kann daher keine
+ * veralteten Wetterwerte servieren. Die Sofort-Anzeige beim Start kommt aus localStorage
  * (weather:last-forecast, von app.ts verwaltet): sie ist nur die Brücke bis
  * das Netz antwortet, parallel wird immer frisch geholt.
  *
@@ -20,16 +19,16 @@
  * Do not edit the value by hand — build-sw.mjs is the single source.
  */
 
-const CACHE_VERSION  = 'v1782692302508';
+const CACHE_VERSION  = 'v1783182947904';
 const STATIC_CACHE   = 'weather-static-' + CACHE_VERSION;
 const RUNTIME_CACHE  = 'weather-runtime-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
-  '/styles-app.min.css?v=20260629-001822',
-  '/theme-init.js?v=20260629-001822',
-  '/script.min.js?v=20260629-001822',
+  '/styles-app.min.css?v=20260704-163547',
+  '/theme-init.js?v=20260704-163547',
+  '/script.min.js?v=20260704-163547',
   '/fonts/InterVariable.woff2',
   '/fonts/InstrumentSerif-Italic-latin.woff2',
   '/fonts/InstrumentSerif-Italic-latin-ext.woff2',

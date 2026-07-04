@@ -1,11 +1,10 @@
-// Pollenbelastung über die eigene Server Route (dahinter die Open-Meteo Air
-// Quality API, siehe src/server/weather/providers/OpenMeteoProvider.ts).
+// Pollenbelastung über die eigene Server Route und WeatherAPI.
 // Bewusst ein eigenes Modul, getrennt von weather.ts: eigener Endpoint, und
 // sein Ausfall darf die Wetteranzeige nicht blockieren. Alle Fehler werden
 // still zu null — dann erscheint schlicht keine Pollensektion.
 import { fetchWithTimeout, apiUrl } from "./http.js";
 
-export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "olive", "ragweed"] as const;
+export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "hazel", "ragweed"] as const;
 export type PollenKind = (typeof POLLEN_KINDS)[number];
 
 // Aktueller Stundenwert je Art in Körnern pro Kubikmeter; null = keine Daten
@@ -15,26 +14,25 @@ export type PollenLevels = Record<PollenKind, number | null>;
 export type PollenStageKey = "pollen_low" | "pollen_moderate" | "pollen_high";
 
 // Stufengrenzen je Art in Körnern pro Kubikmeter: [gering→mittel, mittel→hoch].
-// Kalibrierbar — die Arten skalieren unterschiedlich (Gräser und Birke schlagen
-// früher aus als Olive, Ambrosia ist schon in kleinen Mengen potent); im
-// Zweifel konservativ angesetzt.
+// WeatherAPI beschreibt die einheitlichen Grenzen 1 bis 20, 20 bis 100 und
+// über 100. Die UI übernimmt diese Skala für alle gelieferten Arten.
 export const POLLEN_THRESHOLDS: Record<PollenKind, [number, number]> = {
-  alder: [10, 70],
-  birch: [10, 90],
-  grass: [6, 30],
-  mugwort: [5, 25],
-  olive: [25, 120],
-  ragweed: [4, 15],
+  alder: [20, 100],
+  birch: [20, 100],
+  grass: [20, 100],
+  mugwort: [20, 100],
+  hazel: [20, 100],
+  ragweed: [20, 100],
 };
 
 // Unterste Anzeigeschwelle je Art (Körner pro Kubikmeter): darunter gilt die
 // Belastung als sehr gering und die Art wird gar nicht gelistet. Kalibrierbar.
 export const POLLEN_MIN_SHOW: Record<PollenKind, number> = {
-  alder: 3,
-  birch: 3,
-  grass: 2,
-  mugwort: 2,
-  olive: 8,
+  alder: 1,
+  birch: 1,
+  grass: 1,
+  mugwort: 1,
+  hazel: 1,
   ragweed: 1,
 };
 

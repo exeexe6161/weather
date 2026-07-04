@@ -30,8 +30,8 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=20260629-001822"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=20260629-001822">
+<script src="./theme-init.js?v=20260704-163547"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=20260704-163547">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -87,7 +87,7 @@
           <i data-lucide="map-pin" class="geo-btn-ico"></i>
           <span data-i18n="geoBtn">Mein Standort</span>
         </button>
-        <p class="geo-caption" data-i18n="geoHint">Nur mit Zustimmung. Nicht dauerhaft gespeichert; an Open-Meteo übertragen.</p>
+        <p class="geo-caption" data-i18n="geoHint">Nur mit Zustimmung. Nicht dauerhaft gespeichert; an WeatherAPI übertragen.</p>
       </div>
       <div class="geo-col">
         <button id="topRefresh" class="geo-btn geo-btn--neutral" type="button" disabled data-i18n-aria="refreshWeather" aria-label="Wetterdaten aktualisieren">
@@ -145,17 +145,7 @@
     <h2 class="sh" id="rainChartHeading" data-i18n="rain_heading" hidden>Niederschlag · 24 Stunden</h2>
     <div id="rainChart" class="list-card rc-card" hidden></div>
 
-    <div class="daily-head">
-      <h2 class="sh" id="dailyHeading">7 Tage Vorhersage</h2>
-      <div class="seg-wrap">
-        <div class="seg" role="radiogroup" id="daysSwitch" data-i18n-aria="daysAria" aria-label="Länge der Vorhersage wählen">
-          <button class="seg-btn" type="button" role="radio" data-days="7" aria-checked="true" tabindex="0">7</button>
-          <button class="seg-btn" type="button" role="radio" data-days="10" aria-checked="false" tabindex="-1">10</button>
-          <button class="seg-btn" type="button" role="radio" data-days="16" aria-checked="false" tabindex="-1">16</button>
-        </div>
-        <span class="seg-unit" id="daysUnit" data-i18n="daysUnit" aria-hidden="true">Tage</span>
-      </div>
-    </div>
+    <h2 class="sh" id="dailyHeading">7 Tage Vorhersage</h2>
     <p id="weekSummary" class="week-summary" hidden></p>
     <div id="dailyForecast" class="list-card daily-list" role="list"></div>
   </div>
@@ -171,12 +161,13 @@
     <a href="./datenschutz" data-i18n="footerDatenschutz">Datenschutz</a>
   </div>
   <p class="footer-note" data-i18n="footerNote">Keine Werbung, kein Tracking. Favoriten bleiben lokal im Browser.</p>
-  <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://open-meteo.com/" rel="noopener noreferrer">Open-Meteo.com</a> · <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener noreferrer">CC BY 4.0</a></p>
+  <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://www.weatherapi.com/" rel="noopener noreferrer">WeatherAPI.com</a></p>
+  <p class="footer-disclaimer" data-i18n="weatherDisclaimer">Wetterdaten sind allgemeine, unsichere Vorhersagen und können örtlich oder zeitlich abweichen. Nicht allein für persönliche Sicherheit, Luftfahrt, Seefahrt oder Notfallplanung verwenden. Beachte amtliche Wetterdienste und Behörden.</p>
 </footer>
 </div>
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=20260629-001822"></script>
+<script src="./script.min.js?v=20260704-163547"></script>
 </body>
 </html>

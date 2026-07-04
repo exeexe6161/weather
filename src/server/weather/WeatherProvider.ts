@@ -1,6 +1,6 @@
 import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 
-export type ProviderId = "OPEN_METEO" | "OPEN_WEATHER" | "TOMORROW" | "METEOMATICS";
+export type ProviderId = "WEATHER_API" | "OPEN_METEO" | "OPEN_WEATHER" | "TOMORROW" | "METEOMATICS";
 
 export interface BatchPlace {
   id: number;
@@ -13,8 +13,7 @@ export interface WeatherProvider {
   getForecast(latitude: number, longitude: number): Promise<Forecast>;
   getPollen(latitude: number, longitude: number): Promise<PollenLevels | null>;
   searchPlaces(query: string, language: string): Promise<Place[]>;
-  // Schlankes aktuelles Wetter für mehrere Orte in einem Upstream Call
-  // (Favoriten Mini Dashboard). Getrennt von getForecast: eigener,
-  // schlankerer Open Meteo Endpoint Aufbau, siehe favoritesWeather.ts.
+  // Schlankes aktuelles Wetter für mehrere Orte im Favoriten Mini Dashboard.
+  // Provider ohne Bulk Endpoint dürfen dafür mehrere Requests bündeln.
   getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWeather>>;
 }

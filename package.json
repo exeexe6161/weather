@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "WeatherPure – minimalistische Wetter App (vanilla TS, esbuild, self-hosted Inter OFL, Lucide ISC, Wetterdaten Open-Meteo CC BY 4.0). www.weatherpure.com",
+  "description": "WeatherPure – minimalistische Wetter App (vanilla TS, esbuild, self-hosted Inter OFL, Lucide ISC, Wetterdaten WeatherAPI.com). www.weatherpure.com",
   "scripts": {
     "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > styles-pages.min.css",
     "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --target=es2020 --outfile=script.min.js",

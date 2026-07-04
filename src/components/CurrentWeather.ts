@@ -14,6 +14,7 @@ export interface CurrentWeatherProps {
   place: Place;
   forecast: Forecast;
   isFav: boolean;
+  canAddFavorite: boolean;
   // "stale": Sofort-Anzeige des letzten Stands, Netzabruf läuft noch ("Stand
   // HH:MM"); "offline": Abruf gescheitert, Offline-Hinweis; "fresh": frisch
   // geladen ("Aktualisiert HH:MM") — die Frische ist durchgehend transparent
@@ -93,7 +94,7 @@ function summaryText(forecast: Forecast): string | null {
 
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   stopLocalTimeTicker();
-  const { place, forecast, isFav, freshness, updatedAt } = props;
+  const { place, forecast, isFav, canAddFavorite, freshness, updatedAt } = props;
   const c = forecast.current;
   const icon = pickIcon(c.weatherCode, c.isDay);
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
@@ -146,7 +147,9 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         </button>
         ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
           aria-pressed="${isFav}"
-          aria-label="${isFav ? t("favRemove") : t("favAdd")}">
+          ${!isFav && !canAddFavorite ? "disabled" : ""}
+          title="${!isFav && !canAddFavorite ? t("favLimit") : isFav ? t("favRemove") : t("favAdd")}"
+          aria-label="${!isFav && !canAddFavorite ? t("favLimit") : isFav ? t("favRemove") : t("favAdd")}">
           <i data-lucide="star" class="fav-toggle-ico${isFav ? " fav-toggle-ico--on" : ""}"></i>
         </button>` : ""}
       </div>

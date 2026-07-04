@@ -1,23 +1,24 @@
 // Zentrale Fassade: Komponenten und spätere API Routes dürfen ausschließlich
-// hierüber gehen, nie einen Provider direkt importieren. Free Mode: einziger
-// registrierter Provider ist OPEN_METEO, andere Slots bleiben null, bis ein
-// Key konfiguriert und ein Provider dafür gebaut ist. Caching (siehe cache.ts)
+// hierüber gehen, nie einen Provider direkt importieren. Der aktive Provider
+// ist WEATHER_API. Der Schlüssel bleibt ausschließlich als
+// Server Environment Variable konfiguriert. Caching (siehe cache.ts)
 // sitzt hier zentral, nicht im Provider: der Cache Key enthält die Provider
 // Id, damit ein späterer Providerwechsel nie einen fremden Cache Eintrag trifft.
 import type { WeatherProvider, ProviderId, BatchPlace } from "./WeatherProvider.js";
-import { openMeteoProvider } from "./providers/OpenMeteoProvider.js";
+import { weatherApiProvider } from "./providers/WeatherApiProvider.js";
 import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache.js";
 
 const PROVIDERS: Record<ProviderId, WeatherProvider | null> = {
-  OPEN_METEO: openMeteoProvider,
+  WEATHER_API: weatherApiProvider,
+  OPEN_METEO: null,
   OPEN_WEATHER: null,
   TOMORROW: null,
   METEOMATICS: null,
 };
 
 function activeProvider(): WeatherProvider {
-  return PROVIDERS.OPEN_METEO!;
+  return PROVIDERS.WEATHER_API!;
 }
 
 export const WeatherService = {
@@ -31,8 +32,8 @@ export const WeatherService = {
     const provider = activeProvider();
     const key = buildCacheKey(provider.id, ["pollen", roundCoord(latitude), roundCoord(longitude)]);
     // getPollen wirft nie, ein Ausfall liefert `null` — das nicht für die volle
-    // TTL einfrieren, sonst bleibt die Pollensektion bei einem kurzen Open
-    // Meteo Ausfall bis zu 6 Stunden leer, obwohl der Dienst längst wieder da ist.
+    // TTL einfrieren, sonst bleibt die Pollensektion bei einem kurzen
+    // WeatherAPI Ausfall bis zum TTL Ende leer, obwohl der Dienst wieder da ist.
     return getOrSet(key, TTL.POLLEN_MS, () => provider.getPollen(latitude, longitude), (v) => v !== null);
   },
 
@@ -49,7 +50,8 @@ export const WeatherService = {
 
   // Pro Ort einzeln cachen (Key über gerundete Koordinaten, nicht über die
   // client-seitige place.id): nur die Orte ohne frischen Cache-Treffer landen
-  // in EINEM gebündelten Upstream Call, der Batching-Vorteil bleibt erhalten.
+  // gemeinsam beim Provider angefragt. WeatherAPI führt dabei pro Ort einen
+  // schlanken Current Request aus; frische Cache Treffer kosten keinen Call.
   async getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWeather>> {
     const provider = activeProvider();
     const result = new Map<number, FavWeather>();

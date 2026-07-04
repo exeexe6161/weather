@@ -1474,6 +1474,14 @@ footer{margin-top:48px;padding:0 16px;}
   color:var(--l4);
 }
 .footer-attribution a{color:var(--l3);}
+.footer-disclaimer{
+  max-width:680px;
+  margin:10px auto 0;
+  color:var(--l4);
+  font-size:11px;
+  line-height:1.55;
+  text-align:center;
+}
 
 @media (max-width:380px){
   .cw-temp{font-size:44px;}
