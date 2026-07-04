@@ -41,11 +41,25 @@ export interface DailyEntry {
   sunset: string | null;
   uvIndexMax: number | null;
 }
+export interface AirQuality {
+  usEpaIndex: number | null;
+  pm25: number | null;
+  pm10: number | null;
+}
+export interface WeatherAlert {
+  event: string;
+  headline: string;
+  expires: string | null;
+}
 export interface Forecast {
   current: CurrentWeather;
   hourly: HourlyEntry[];
   daily: DailyEntry[];
   timezone: string;
+  // Starter-Daten. Optional, damit bereits gespeicherte Forecasts aus der Zeit
+  // vor der Aktivierung weiterhin ohne Migration angezeigt werden koennen.
+  airQuality?: AirQuality | null;
+  alerts?: WeatherAlert[];
   // Gestriger Tageshöchstwert für den Vergleich "wärmer/kühler als gestern".
   // null wenn die API ihn nicht liefert; Forecast-Caches vor diesem Feature
   // haben das Feld gar nicht (undefined) — Konsumenten prüfen per typeof.

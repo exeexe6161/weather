@@ -1033,6 +1033,20 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .pollen-stage--moderate{color:var(--orange);}
 .pollen-stage--high{color:var(--red);}
 
+.environment-card,.alerts-card{padding:var(--sp-4);text-align:left;}
+.environment-lead{display:flex;align-items:center;gap:var(--sp-3);}
+.environment-ico{width:22px;height:22px;color:var(--l3);flex:none;}
+.environment-label{display:block;font-size:var(--fs-xs);color:var(--l3);}
+.environment-value{display:block;margin-top:2px;font-size:var(--fs-md);color:var(--l1);}
+.environment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--sep);}
+.alert-row{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--sep);}
+.alert-row:first-child{padding-top:0;}
+.alert-ico{width:20px;height:20px;color:var(--orange);flex:none;margin-top:2px;}
+.alert-copy{min-width:0;display:grid;gap:3px;}
+.alert-copy strong{font-size:var(--fs-md);overflow-wrap:anywhere;}
+.alert-copy span,.alert-note{font-size:var(--fs-xs);color:var(--l3);overflow-wrap:anywhere;}
+.alert-note{margin:var(--sp-3) 0 0;}
+
 /* ══ Installationshinweis (PWA) ══
    Dezente Karte am unteren Rand, verdeckt nichts Bleibendes, wegklickbar.
    Kein Modal, kein greller Akzent — Knopf in getönter Zenit Fläche wie der

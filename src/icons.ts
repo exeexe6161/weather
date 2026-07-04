@@ -35,6 +35,7 @@ import {
   Share2,
   ChevronUp,
   ChevronDown,
+  TriangleAlert,
 } from "lucide";
 
 const icons = {
@@ -70,6 +71,7 @@ const icons = {
   Share2,
   ChevronUp,
   ChevronDown,
+  TriangleAlert,
 };
 
 export function renderIcons(): void {
