@@ -57,8 +57,13 @@ export interface WeatherAlert {
   headline: string;
   expires: string | null;
   // Optional, damit bereits gespeicherte Alerts aus der Zeit vor diesem Feld
-  // weiterhin ohne Migration angezeigt werden koennen.
+  // weiterhin ohne Migration angezeigt werden koennen. Konsumenten pruefen per
+  // typeof und blenden fehlende Werte einfach aus.
   severity?: string | null; // Roh-Wert aus der API ("Minor" | "Moderate" | "Severe" | "Extreme" | ...)
+  urgency?: string | null; // Roh-Wert aus der API ("Immediate" | "Expected" | "Future" | ...)
+  effective?: string | null; // ISO Zeit, ab wann die Warnung gilt
+  desc?: string | null; // Beschreibungstext der Warnung
+  instruction?: string | null; // Handlungshinweis, falls die API einen liefert
 }
 export interface Forecast {
   current: CurrentWeather;

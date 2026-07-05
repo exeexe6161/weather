@@ -1055,6 +1055,21 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .alert-badge{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.02em;color:var(--l3);}
 .alert-badge--moderate{color:var(--orange);}
 .alert-badge--severe,.alert-badge--extreme{color:var(--red);}
+/* Dringlichkeit ruhig als gedämpfte Zeile, nie farbig hervorgehoben: die
+   Warnstufe bleibt das einzige farbige Signal. */
+.alert-urgency{font-size:var(--fs-xs);color:var(--l3);}
+/* Beschreibung und Handlungshinweis zugeklappt hinter einer ruhigen
+   Zusammenfassung. Eigener CSS-Pfeil (die strenge CSP verbietet kein externes
+   CSS, nur inline styles), Standard-Dreieck entfernt. */
+.alert-more{margin-top:2px;}
+.alert-more-summary{display:inline-flex;align-items:center;gap:5px;min-height:32px;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;list-style:none;}
+.alert-more-summary::-webkit-details-marker{display:none;}
+.alert-more-summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);}
+.alert-more[open] .alert-more-summary::after{transform:rotate(225deg);}
+@media(prefers-reduced-motion:no-preference){.alert-more-summary::after{transition:transform var(--t-base);}}
+.alert-more-summary:hover{color:var(--l2);}
+.alert-more-desc,.alert-more-instruction{margin-top:6px;font-size:var(--fs-xs);color:var(--l3);line-height:1.55;overflow-wrap:anywhere;}
+.alert-more-instruction strong{color:var(--l2);font-weight:600;}
 
 /* ══ Installationshinweis (PWA) ══
    Dezente Karte am unteren Rand, verdeckt nichts Bleibendes, wegklickbar.

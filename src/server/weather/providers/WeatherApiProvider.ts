@@ -138,6 +138,10 @@ function weatherAlerts(value: unknown): WeatherAlert[] {
       headline,
       expires: stringValue(alert.expires).trim() || null,
       severity: stringValue(alert.severity).trim() || null,
+      urgency: stringValue(alert.urgency).trim() || null,
+      effective: stringValue(alert.effective).trim() || null,
+      desc: stringValue(alert.desc).trim() || null,
+      instruction: stringValue(alert.instruction).trim() || null,
     }];
   });
 }
