@@ -130,6 +130,20 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     sunset !== null &&
     !isDaytimeNow(sunrise, sunset, forecast.timezone, c.isDay);
   const locale = getLocale();
+  // Mondauf und Monduntergang als je eigenes cw-sun-item (wie Sonnenauf und
+  // untergang), damit das flex-wrap von .cw-sun sie mobil sauber auf eigene
+  // Zeilen umbricht, statt in einer ueberlangen Zeile abzuschneiden. Nur nachts,
+  // an dasselbe showMoon Gate wie die Phase gebunden. Jeder Zeitpunkt einzeln
+  // geguarded: fehlt das Feld (alte Forecast Caches), ist der Wert kein gueltiges
+  // Datum, oder geht der Mond an dem Tag nicht auf bzw. unter, entfaellt genau
+  // dieses Item, nie eine leere Zeile. formatHour ist derselbe Formatter wie
+  // fuer Sonnenauf und untergang.
+  const moonRiseIso = typeof today?.moonrise === "string" ? today.moonrise : null;
+  const moonSetIso = typeof today?.moonset === "string" ? today.moonset : null;
+  const moonClock = (iso: string | null): string | null =>
+    iso !== null && !Number.isNaN(new Date(iso).getTime()) ? formatHour(iso, locale) : null;
+  const moonRiseText = moonClock(moonRiseIso);
+  const moonSetText = moonClock(moonSetIso);
   // Lokale Ortszeit; null ohne timezone (alte Caches) → Zeile entfällt einfach
   const localTime = formatTimeInZone(forecast.timezone, locale);
   // Tageszusammenfassung; null wenn kein sinnvoller Satz möglich → Zeile entfällt
@@ -226,6 +240,16 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-sun-lbl">${t("moon_label")}</span>
         <span class="cw-sun-val">${esc(moonPhaseText!)}</span>
         ${moonIllumination !== null ? `<span class="cw-uv-hint">${esc(t("moon_illumination").replace("{percent}", String(moonIllumination)))}</span>` : ""}
+      </div>` : ""}
+      ${showMoon && moonRiseText !== null ? `<div class="cw-sun-item">
+        <i data-lucide="moon" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("moon_rise")}</span>
+        <span class="cw-sun-val">${moonRiseText}</span>
+      </div>` : ""}
+      ${showMoon && moonSetText !== null ? `<div class="cw-sun-item">
+        <i data-lucide="moon" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("moon_set")}</span>
+        <span class="cw-sun-val">${moonSetText}</span>
       </div>` : ""}
     </div>` : ""}
     ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}

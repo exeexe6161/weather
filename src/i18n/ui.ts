@@ -65,6 +65,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   sun_set:         { de: "Sonnenuntergang", en: "Sunset", tr: "Gün batımı" },
   uv_label:        { de: "UV Index", en: "UV index", tr: "UV endeksi" },
   moon_label:      { de: "Mondphase", en: "Moon phase", tr: "Ay evresi" },
+  moon_rise:       { de: "Mondaufgang", en: "Moonrise", tr: "Ay doğuşu" },
+  moon_set:        { de: "Monduntergang", en: "Moonset", tr: "Ay batışı" },
   moon_illumination: { de: "{percent} % beleuchtet", en: "{percent} % illuminated", tr: "%{percent} aydınlık" },
   uv_high:         { de: "Hoch, Sonnenschutz ratsam", en: "High, sun protection advisable", tr: "Yüksek, güneş koruması önerilir" },
   uv_very_high:    { de: "Sehr hoch, Mittagssonne meiden", en: "Very high, avoid midday sun", tr: "Çok yüksek, öğle güneşinden kaçın" },
