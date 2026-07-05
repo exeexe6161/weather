@@ -1433,7 +1433,10 @@ button.day-row:hover{background:var(--s2);}
    cw-meta- und cw-sun-Bausteine, nur die oberen Abstände werden kompakter. */
 .day-panel{padding:var(--sp-1) 0 var(--sp-4);}
 .day-panel-meta{margin-top:0;}
-.day-panel-sun{margin-top:var(--sp-3);justify-content:flex-start;}
+/* Sonnen- und Mondzeile im Tagespanel zentral unter den vier Kacheln (nur diese
+   Modifier-Klasse; die Hauptwetterkarte nutzt .cw-sun ohne Modifier und bleibt
+   unberührt). .cw-sun zentriert bereits, hier nur der kompaktere obere Abstand. */
+.day-panel-sun{margin-top:var(--sp-3);}
 .day-name{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
 .day-dow{font-size:var(--fs-md);font-weight:700;}
 .day-date{font-size:var(--fs-xs);font-weight:600;color:var(--l4);}
