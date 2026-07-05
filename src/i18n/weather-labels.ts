@@ -36,6 +36,25 @@ export function weatherLabel(key: string, lang: Lang): string {
   return weatherLabels[key]?.[lang] ?? weatherLabels.wmo_unknown[lang];
 }
 
+// Mondphasen-Rohnamen aus der WeatherAPI Astro Antwort auf feste, uebersetzte
+// Labels abgebildet. Unbekannte oder fehlende Rohwerte liefern null statt
+// eines Platzhaltertexts: die aufrufende Komponente blendet die Zeile dann
+// einfach aus (gleiches Muster wie bei anderen optionalen Feldern).
+const moonPhaseLabels: Record<string, Record<Lang, string>> = {
+  "New Moon":       { de: "Neumond",           en: "New moon",        tr: "Yeni ay" },
+  "Waxing Crescent": { de: "Zunehmende Sichel", en: "Waxing crescent", tr: "Büyüyen hilal" },
+  "First Quarter":  { de: "Erstes Viertel",     en: "First quarter",   tr: "İlk dördün" },
+  "Waxing Gibbous":  { de: "Zunehmender Mond",  en: "Waxing gibbous",  tr: "Büyüyen ay" },
+  "Full Moon":      { de: "Vollmond",           en: "Full moon",       tr: "Dolunay" },
+  "Waning Gibbous":  { de: "Abnehmender Mond",  en: "Waning gibbous",  tr: "Küçülen ay" },
+  "Last Quarter":   { de: "Letztes Viertel",    en: "Last quarter",    tr: "Son dördün" },
+  "Waning Crescent": { de: "Abnehmende Sichel", en: "Waning crescent", tr: "Küçülen hilal" },
+};
+
+export function moonPhaseLabel(raw: string, lang: Lang): string | null {
+  return moonPhaseLabels[raw]?.[lang] ?? null;
+}
+
 // Kurzformen für den Tab-Titel: Tab-Titel werden schmal abgeschnitten, daher
 // Intensitäten und Zusätze weglassen ("Leichter Regen" → "Regen"). Bewusst
 // nach Gruppen statt je Code — die Nuance trägt im Tab keine Information.

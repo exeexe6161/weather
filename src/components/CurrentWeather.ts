@@ -5,7 +5,7 @@ import { summaryFor } from "../lib/summary";
 import { tempCompareKey } from "../lib/tempCompare";
 import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
 import { rainWindowFor, todayHours } from "../lib/clothing";
-import { weatherLabel } from "../i18n/weather-labels";
+import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
 import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
@@ -116,6 +116,19 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     sunrise !== null &&
     sunset !== null &&
     isDaytimeNow(sunrise, sunset, forecast.timezone, c.isDay);
+  // Mondphase: als Gegenstueck zum UV Hinweis nur nachts gezeigt (tagsueber
+  // traegt sie keine Information, die den Nutzer gerade interessiert).
+  const moonPhaseRaw = typeof today?.moonPhase === "string" ? today.moonPhase : null;
+  const moonPhaseText = moonPhaseRaw !== null ? moonPhaseLabel(moonPhaseRaw, getLang()) : null;
+  const moonIllumination =
+    typeof today?.moonIllumination === "number" && Number.isFinite(today.moonIllumination)
+      ? Math.round(today.moonIllumination)
+      : null;
+  const showMoon =
+    moonPhaseText !== null &&
+    sunrise !== null &&
+    sunset !== null &&
+    !isDaytimeNow(sunrise, sunset, forecast.timezone, c.isDay);
   const locale = getLocale();
   // Lokale Ortszeit; null ohne timezone (alte Caches) → Zeile entfällt einfach
   const localTime = formatTimeInZone(forecast.timezone, locale);
@@ -190,7 +203,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-meta-val">${formatPercent(rainProb)}</span>
       </li>` : ""}
     </ul>
-    ${sunrise || sunset || showUv ? `<div class="wp-riss-divider" aria-hidden="true"></div>
+    ${sunrise || sunset || showUv || showMoon ? `<div class="wp-riss-divider" aria-hidden="true"></div>
     <div class="cw-sun">
       ${sunrise ? `<div class="cw-sun-item">
         <i data-lucide="sunrise" class="cw-sun-ico"></i>
@@ -207,6 +220,12 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-sun-lbl">${t("uv_label")}</span>
         <span class="cw-sun-val">${uvRounded}</span>
         <span class="cw-uv-hint">${esc(t(uvKey!))}</span>
+      </div>` : ""}
+      ${showMoon ? `<div class="cw-sun-item">
+        <i data-lucide="moon" class="cw-sun-ico"></i>
+        <span class="cw-sun-lbl">${t("moon_label")}</span>
+        <span class="cw-sun-val">${esc(moonPhaseText!)}</span>
+        ${moonIllumination !== null ? `<span class="cw-uv-hint">${esc(t("moon_illumination").replace("{percent}", String(moonIllumination)))}</span>` : ""}
       </div>` : ""}
     </div>` : ""}
     ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}

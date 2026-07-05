@@ -137,6 +137,7 @@ function weatherAlerts(value: unknown): WeatherAlert[] {
       event,
       headline,
       expires: stringValue(alert.expires).trim() || null,
+      severity: stringValue(alert.severity).trim() || null,
     }];
   });
 }
@@ -246,6 +247,10 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         sunrise: astroIso(date, astro.sunrise),
         sunset: astroIso(date, astro.sunset),
         uvIndexMax: optionalNumber(day.uv) ?? null,
+        moonrise: astroIso(date, astro.moonrise),
+        moonset: astroIso(date, astro.moonset),
+        moonPhase: stringValue(astro.moon_phase).trim() || null,
+        moonIllumination: optionalNumber(astro.moon_illumination) ?? null,
       };
     })
     .filter(isCompleteDay);

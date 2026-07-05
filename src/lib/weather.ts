@@ -40,6 +40,12 @@ export interface DailyEntry {
   sunrise: string | null; // ISO Zeit lokaler Stationszeit
   sunset: string | null;
   uvIndexMax: number | null;
+  // Mondwerte. Optional, damit bereits gespeicherte Forecasts aus der Zeit vor
+  // diesem Feld weiterhin ohne Migration angezeigt werden koennen.
+  moonrise?: string | null; // ISO Zeit lokaler Stationszeit
+  moonset?: string | null;
+  moonPhase?: string | null; // Roh-Name aus der API (z. B. "Full Moon"), Uebersetzung in i18n/weather-labels
+  moonIllumination?: number | null; // % beleuchtete Mondflaeche
 }
 export interface AirQuality {
   usEpaIndex: number | null;
@@ -50,6 +56,9 @@ export interface WeatherAlert {
   event: string;
   headline: string;
   expires: string | null;
+  // Optional, damit bereits gespeicherte Alerts aus der Zeit vor diesem Feld
+  // weiterhin ohne Migration angezeigt werden koennen.
+  severity?: string | null; // Roh-Wert aus der API ("Minor" | "Moderate" | "Severe" | "Extreme" | ...)
 }
 export interface Forecast {
   current: CurrentWeather;

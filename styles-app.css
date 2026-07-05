@@ -1042,10 +1042,19 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .alert-row{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--sep);}
 .alert-row:first-child{padding-top:0;}
 .alert-ico{width:20px;height:20px;color:var(--orange);flex:none;margin-top:2px;}
+/* Severe/Extreme faerben das Symbol rot statt orange: eine echte Warnung soll
+   klarer wirken als ein normaler Hinweis, ohne eigenes neues Farbsystem. */
+.alert-ico--critical{color:var(--red);}
 .alert-copy{min-width:0;display:grid;gap:3px;}
+.alert-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
 .alert-copy strong{font-size:var(--fs-md);overflow-wrap:anywhere;}
 .alert-copy span,.alert-note{font-size:var(--fs-xs);color:var(--l3);overflow-wrap:anywhere;}
 .alert-note{margin:var(--sp-3) 0 0;}
+/* Warnstufe als reines Textlabel, gleiches Prinzip wie .pollen-stage: Farbe
+   statt Pille/Badge Flaeche, damit die Liste ruhig bleibt. */
+.alert-badge{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.02em;color:var(--l3);}
+.alert-badge--moderate{color:var(--orange);}
+.alert-badge--severe,.alert-badge--extreme{color:var(--red);}
 
 /* ══ Installationshinweis (PWA) ══
    Dezente Karte am unteren Rand, verdeckt nichts Bleibendes, wegklickbar.
