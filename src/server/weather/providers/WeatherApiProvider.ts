@@ -125,15 +125,107 @@ function airQuality(value: unknown): AirQuality | null {
   };
 }
 
-function weatherAlerts(value: unknown): WeatherAlert[] {
+// Ortsfilter für Warnungen. WeatherAPI liefert für einen Ort teils Warnungen
+// ganz anderer Regionen mit (z. B. für Mailand in Lombardia auch Basilicata,
+// Puglia, Campania). Wir gleichen alert.areas mit location.region ab und blenden
+// nur dann aus, wenn wir SICHER sind, dass die Warnung fremde Regionen benennt.
+// Im Zweifel bleibt sie sichtbar (bewusst nicht aggressiv). location.region und
+// alert.areas stammen aus derselben WeatherAPI Antwort, daher ist die
+// Schreibweise am ehesten konsistent — deshalb filtern wir hier im Provider.
+const MAX_ALERTS = 10;
+
+// Ländernamen-Synonyme, um in alert.areas das Muster "<Land> <Region>" zu
+// erkennen (z. B. "Italia Basilicata"). Bewusst nur die Kernländer; unbekannte
+// Länder landen im sicheren Zweig (nicht filtern).
+const COUNTRY_SYNONYMS: string[][] = [
+  ["italy", "italia", "italien"],
+  ["germany", "deutschland", "almanya"],
+  ["netherlands", "nederland", "holland", "niederlande", "hollanda"],
+  ["turkey", "turkiye", "turkei"],
+];
+
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // Diakritika entfernen (ü→u, ö→o, ç→c …)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function buildCountryWords(country: string): Set<string> {
+  const norm = normalizeText(country);
+  const words = new Set<string>();
+  if (!norm) return words;
+  const first = norm.split(" ")[0];
+  for (const w of norm.split(" ")) if (w) words.add(w);
+  for (const group of COUNTRY_SYNONYMS) {
+    if (group.includes(norm) || group.includes(first)) {
+      for (const syn of group) words.add(syn);
+    }
+  }
+  return words;
+}
+
+function sharedPrefixLen(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i++;
+  return i;
+}
+
+// Loser Wortabgleich zwischen eigener Region und Gebietsregion. Großzügig
+// gehalten (gemeinsames Wort ODER gemeinsamer Präfix ab 4 Zeichen), damit
+// "Lombardy" und "Lombardia" als Treffer gelten und eine echte Warnung nie
+// fälschlich verschwindet. Treffer = behalten (die sichere Richtung).
+function regionMatches(regionNorm: string, areaRegionNorm: string): boolean {
+  const rw = regionNorm.split(" ").filter((w) => w.length >= 3);
+  const aw = areaRegionNorm.split(" ").filter((w) => w.length >= 3);
+  for (const r of rw) {
+    for (const a of aw) {
+      if (r === a) return true;
+      if (sharedPrefixLen(r, a) >= 4) return true;
+    }
+  }
+  return false;
+}
+
+// true = Warnung für diesen Ort relevant (behalten). false NUR, wenn alle
+// Gebiete dem Muster "<Land> <Region>" folgen, konkrete Regionen benennen und
+// keine davon zur eigenen Region passt. Fehlt areas, ist die Region unbekannt,
+// nennt ein Gebiet nur das Land (landesweit) oder ist das Format unklar (z. B.
+// deutsche Kreisnamen ohne Landpräfix), bleibt die Warnung sichtbar.
+function alertMatchesLocation(areas: string, regionNorm: string, countryWords: Set<string>): boolean {
+  if (!areas || !regionNorm) return true;
+  const entries = areas.split(/[;,\n]/).map(normalizeText).filter(Boolean);
+  if (entries.length === 0) return true;
+  let sawConcreteForeignRegion = false;
+  for (const entry of entries) {
+    const words = entry.split(" ");
+    let start = 0;
+    while (start < words.length && countryWords.has(words[start])) start++;
+    if (start === 0) return true; // kein Landpräfix erkannt → Format unklar → behalten
+    const regionPart = words.slice(start).join(" ");
+    if (!regionPart) return true; // Gebiet nennt nur das Land → landesweit → behalten
+    if (regionMatches(regionNorm, regionPart)) return true; // passt zur eigenen Region → behalten
+    sawConcreteForeignRegion = true;
+  }
+  return !sawConcreteForeignRegion;
+}
+
+function weatherAlerts(value: unknown, region: string, country: string): WeatherAlert[] {
   const alerts = record(value).alert;
   if (!Array.isArray(alerts)) return [];
-  return alerts.slice(0, 3).flatMap((value) => {
-    const alert = record(value);
+  const regionNorm = normalizeText(region);
+  const countryWords = buildCountryWords(country);
+  const out: WeatherAlert[] = [];
+  for (const raw of alerts) {
+    const alert = record(raw);
     const event = stringValue(alert.event).trim();
     const headline = stringValue(alert.headline).trim();
-    if (!event && !headline) return [];
-    return [{
+    if (!event && !headline) continue;
+    if (!alertMatchesLocation(stringValue(alert.areas).trim(), regionNorm, countryWords)) continue;
+    out.push({
       event,
       headline,
       expires: stringValue(alert.expires).trim() || null,
@@ -142,8 +234,10 @@ function weatherAlerts(value: unknown): WeatherAlert[] {
       effective: stringValue(alert.effective).trim() || null,
       desc: stringValue(alert.desc).trim() || null,
       instruction: stringValue(alert.instruction).trim() || null,
-    }];
-  });
+    });
+    if (out.length >= MAX_ALERTS) break;
+  }
+  return out;
 }
 
 function isCompleteDay(day: DailyEntry): boolean {
@@ -265,7 +359,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     daily,
     timezone: stringValue(location.tz_id, "UTC"),
     airQuality: airQuality(currentData.air_quality),
-    alerts: weatherAlerts(data.alerts),
+    alerts: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.country)),
     yesterdayTempMax: await getYesterdayMax(latitude, longitude, localtime),
   };
 }

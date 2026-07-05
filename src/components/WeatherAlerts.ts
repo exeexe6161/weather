@@ -42,8 +42,21 @@ function formatAlertTime(value: string | null | undefined, timezone: string): st
   }
 }
 
+// Ausklappblock für Originalmeldung bzw. Hinweis: eigenes Label plus Text, nur
+// wenn wirklich Text vorhanden ist (kein leerer Block).
+function moreBlock(labelKey: string, text: string): string {
+  if (!text) return "";
+  return `<div class="alert-more-block"><span class="alert-more-lbl">${esc(t(labelKey))}</span><p class="alert-more-desc">${esc(text)}</p></div>`;
+}
+
+// Maximal drei Warnungen zeigen; die eigentliche Ortsfilterung passiert schon im
+// Provider (WeatherApiProvider.weatherAlerts). Sind nach der Filterung mehr als
+// drei relevant, folgt ein ruhiger Sammelhinweis statt eines langen Blocks.
+const MAX_VISIBLE = 3;
+
 export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string): void {
-  const visible = Array.isArray(alerts) ? alerts.slice(0, 3) : [];
+  const all = Array.isArray(alerts) ? alerts : [];
+  const visible = all.slice(0, MAX_VISIBLE);
   const show = visible.length > 0;
   heading.hidden = !show;
   el.hidden = !show;
@@ -51,7 +64,7 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
     el.replaceChildren();
     return;
   }
-  el.innerHTML = visible.map((alert) => {
+  const rows = visible.map((alert) => {
     const from = formatAlertTime(alert.effective, timezone);
     const until = formatAlertTime(alert.expires, timezone);
     const title = alert.event || alert.headline;
@@ -62,14 +75,15 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
     // orangefarbenes Symbol, zusätzlich die ausgeschriebene Stufe als Badge.
     const critical = severity === "severe" || severity === "extreme";
     const badge = severity ? `<span class="alert-badge alert-badge--${severity}">${esc(t(`severity_${severity}`))}</span>` : "";
-    // Beschreibung und Handlungshinweis nur, wenn wirklich Text da ist. Fehlt
-    // beides, gibt es gar kein details-Element (kein leerer Aufklappbereich).
+    // Originalmeldung und Hinweis stehen IMMER zugeklappt (kein open-Attribut).
+    // Nur wenn wirklich Text da ist, gibt es das details-Element (kein leerer
+    // Aufklappbereich). Das Summary-Label wechselt rein per CSS über [open].
     const desc = typeof alert.desc === "string" ? alert.desc.trim() : "";
     const instruction = typeof alert.instruction === "string" ? alert.instruction.trim() : "";
     const more = desc || instruction ? `<details class="alert-more">
-      <summary class="alert-more-summary">${esc(t("alert_details"))}</summary>
-      ${desc ? `<p class="alert-more-desc">${esc(desc)}</p>` : ""}
-      ${instruction ? `<p class="alert-more-instruction"><strong>${esc(t("alert_instruction"))}</strong> ${esc(instruction)}</p>` : ""}
+      <summary class="alert-more-summary"><span class="alert-more-show">${esc(t("alert_details"))}</span><span class="alert-more-hide">${esc(t("alert_details_hide"))}</span></summary>
+      ${moreBlock("alert_desc", desc)}
+      ${moreBlock("alert_instruction", instruction)}
     </details>` : "";
     return `<div class="alert-row">
       <i data-lucide="triangle-alert" class="alert-ico${critical ? " alert-ico--critical" : ""}"></i>
@@ -82,5 +96,9 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
         ${more}
       </div>
     </div>`;
-  }).join("") + `<p class="alert-note">${esc(t("alert_note"))}</p>`;
+  }).join("");
+  const moreCount = all.length > visible.length
+    ? `<p class="alert-more-count">${esc(t("alert_more_count"))}</p>`
+    : "";
+  el.innerHTML = rows + moreCount + `<p class="alert-note">${esc(t("alert_note"))}</p>`;
 }

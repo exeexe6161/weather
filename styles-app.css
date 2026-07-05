@@ -1068,8 +1068,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .alert-more[open] .alert-more-summary::after{transform:rotate(225deg);}
 @media(prefers-reduced-motion:no-preference){.alert-more-summary::after{transition:transform var(--t-base);}}
 .alert-more-summary:hover{color:var(--l2);}
-.alert-more-desc,.alert-more-instruction{margin-top:6px;font-size:var(--fs-xs);color:var(--l3);line-height:1.55;overflow-wrap:anywhere;}
-.alert-more-instruction strong{color:var(--l2);font-weight:600;}
+/* Label-Wechsel Details anzeigen / ausblenden rein per CSS über den open-Zustand,
+   ohne JavaScript. */
+.alert-more-hide{display:none;}
+.alert-more[open] .alert-more-show{display:none;}
+.alert-more[open] .alert-more-hide{display:inline;}
+.alert-more-block{margin-top:8px;}
+.alert-more-block:first-of-type{margin-top:6px;}
+.alert-more-lbl{display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--l4);}
+.alert-more-desc{margin-top:3px;font-size:var(--fs-xs);color:var(--l3);line-height:1.55;overflow-wrap:anywhere;}
+/* Ruhiger Sammelhinweis, wenn mehr als drei relevante Warnungen vorliegen. */
+.alert-more-count{margin-top:var(--sp-3);font-size:var(--fs-xs);color:var(--l4);}
 
 /* ══ Installationshinweis (PWA) ══
    Dezente Karte am unteren Rand, verdeckt nichts Bleibendes, wegklickbar.
