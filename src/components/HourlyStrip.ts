@@ -79,9 +79,15 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
   // entwaffnen, sonst öffnet kein späterer Render mehr).
   let didAutoOpen = false;
   if (autoOpen && forecast.hourly.length > 0) {
-    // Aktuelle Stunde = erster Eintrag mit Zeit >= jetzt (dieselbe Prädikat-Logik
-    // wie normalize()); Fallback Index 0 bei keinem Treffer.
-    const autoIdx = Math.max(0, forecast.hourly.findIndex((h) => h.time >= forecast.current.time));
+    // Aktuelle Stunde = die Stunde, die "jetzt" enthält (z. B. 03:12 → 03:00),
+    // nicht die nächste volle Stunde. Verglichen wird der Stundenstempel
+    // YYYY-MM-DDTHH. Der Provider filtert hourly ohnehin ab der laufenden Stunde,
+    // daher ist das im Normalfall Index 0; der Stempelvergleich bleibt robust
+    // gegen alte Caches. Kein Treffer → erster verfügbarer Eintrag (Index 0).
+    const nowHourStamp = forecast.current.time.slice(0, 13);
+    let autoIdx = forecast.hourly.findIndex((h) => h.time.slice(0, 13) === nowHourStamp);
+    if (autoIdx < 0) autoIdx = forecast.hourly.findIndex((h) => h.time >= forecast.current.time);
+    if (autoIdx < 0) autoIdx = 0;
     const autoHour = forecast.hourly[autoIdx];
     const autoBtn = el.querySelector<HTMLButtonElement>(`.hour-cell[data-hour-index="${autoIdx}"]`);
     if (autoBtn) {

@@ -69,12 +69,15 @@ interface State {
 
 const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "" };
 
-// Auto-Open des Stundendetail-Panels: NUR beim initialen Laden, über den Cache→
-// Netz-Doppelrender desselben Orts hinweg "armed". Sobald der erste Ladeversuch
-// aufgelöst ist (freshness wird "fresh"/"offline", nicht mehr "stale"), wird
-// entwaffnet — Stadtwechsel, Refresh, Sprach- und Tageswechsel öffnen dann NICHT
-// automatisch. Der Strip selbst kann Startup nicht von Nutzeraktion unterscheiden,
-// daher liegt das Flag hier.
+// Auto-Open des Stundendetail-Panels: bei JEDEM neuen Wetterdatenladen (neuer Ort
+// via selectPlace ODER Refresh via refreshCurrentPlace) wird neu "armed", sodass
+// der Detailkasten die aktuelle Stunde zeigt. Über den Cache→Netz-Doppelrender
+// desselben Orts hinweg bleibt es armed, bis der erste aufgelöste Render
+// (freshness "fresh"/"offline", nicht mehr "stale") wirklich geöffnet hat; danach
+// entwaffnet. So springt der Kasten nach manuellem Schließen NICHT bei bloßen
+// Re-Rendern (Sprach- oder Tageswechsel) wieder auf, solange dieselben Daten aktiv
+// sind. Der Strip selbst kann Neuladen nicht von einer Nutzeraktion unterscheiden,
+// daher liegt das Flag hier. Startwert true = Auto-Open beim ersten Laden.
 let hourlyAutoOpenArmed = true;
 
 function readJson<T>(key: string): T | null {
@@ -389,6 +392,9 @@ function refreshCurrentPlace(): void {
   const place = state.place;
   if (!place || refreshing) return;
   refreshing = true;
+  // Refresh = frische Wetterdaten: Auto-Open wieder scharf schalten, sodass die
+  // aktuelle Stunde nach dem Nachladen erneut direkt aufgeklappt erscheint.
+  hourlyAutoOpenArmed = true;
   const mySeq = ++loadSeq;
   const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
@@ -452,6 +458,9 @@ function syncCityParam(place: Place): void {
 }
 
 export function selectPlace(place: Place): void {
+  // Neuer Ort = neue Wetterdaten: Auto-Open des Stundendetails wieder scharf
+  // schalten, damit die aktuelle Stunde direkt aufgeklappt erscheint.
+  hourlyAutoOpenArmed = true;
   // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
   // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
   const isGeoPlace = place.id === GEO_PLACE_ID;
