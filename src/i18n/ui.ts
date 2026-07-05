@@ -180,7 +180,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   close:           { de: "Schließen", en: "Close", tr: "Kapat" },
   temperature:     { de: "Temperatur", en: "Temperature", tr: "Sıcaklık" },
   precipProbability: { de: "Niederschlag", en: "Precipitation", tr: "Yağış" },
-  precipAmount:    { de: "Menge in dieser Stunde", en: "Amount this hour", tr: "Bu saatteki miktar" },
+  precipAmount:    { de: "Regenmenge", en: "Rain amount", tr: "Yağmur miktarı" },
   windDirection:   { de: "Windrichtung", en: "Wind direction", tr: "Rüzgar yönü" },
   windGusts:       { de: "Böen", en: "Gusts", tr: "Rüzgar hamleleri" },
   dewPoint:        { de: "Taupunkt", en: "Dew point", tr: "Çiy noktası" },

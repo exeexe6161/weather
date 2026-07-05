@@ -230,8 +230,12 @@ function renderWeekSummary(daily: DailyEntry[]): void {
 // gefühlten Werte der nächsten Stunden. Kurve, Werte und Zeitachse stammen
 // vollständig aus denselben Hourly Einträgen.
 function buildTempCurveInput(forecast: Forecast): TempCurveInput {
-  const future = forecast.hourly.slice(1, 25);
-  const window = [forecast.current.apparentTemperature, ...future.map((h) => h.apparentTemperature)];
+  // jetzt-Punkt (Index 0) ist hourly[0], genau wie RainChart, die Stundenleiste
+  // und das Stundendetail der aktuellen Stunde. Kein Mischen mehr mit current
+  // (das ist die Momentbeobachtung der aktuellen Wetterkarte, ein eigener
+  // Zeitpunkt); so bleibt der Wert deckungsgleich mit der aus hourly[0].time
+  // gebildeten Zeitachse und mit dem Stundenpanel.
+  const window = forecast.hourly.slice(0, 25).map((h) => h.apparentTemperature);
   return {
     feels: window,
     startHour: forecastStartHour(forecast.hourly[0]?.time),
