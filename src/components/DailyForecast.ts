@@ -52,9 +52,13 @@ function bindDayPanels(el: HTMLElement): void {
   });
 }
 
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
+// autoOpenToday: klappt beim Rendern den Tag "Heute" (Index 0) direkt auf, sofern
+// er Detailwerte hat. Rückgabe: ob wirklich auto-geöffnet wurde (der Aufrufer in
+// app.ts entwaffnet sein Flag nur dann, analog zum Stundenpanel).
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, autoOpenToday = false): boolean {
   bindDayPanels(el); // einmalig; delegiert das Auf- und Zuklappen
   const locale = getLocale();
+  let didAutoOpen = false;
 
   // Die Forecast-Daten enthalten bis zu sieben Tage. ERST kürzen, dann Skala
   // rechnen und Balken setzen,
@@ -144,12 +148,17 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
       if (!hasDetail) {
         return `${divider}<div class="day-item" role="listitem"><div class="day-row${outlook ? " day-row--outlook" : ""}">${rowInner}</div></div>`;
       }
-      const panel = `<div class="day-panel" id="dayPanel-${i}" hidden>
+      // Auto-Open nur für Heute (Index 0) und nur wenn der Aufrufer es scharf
+      // gestellt hat (neue Wetterdaten). So erkennt der Nutzer sofort, dass die
+      // Tageszeilen antippbar sind. Alle anderen Tage bleiben geschlossen.
+      const openToday = autoOpenToday && i === 0;
+      if (openToday) didAutoOpen = true;
+      const panel = `<div class="day-panel" id="dayPanel-${i}"${openToday ? "" : " hidden"}>
         ${tiles.length ? `<ul class="cw-meta day-panel-meta">${tiles.join("")}</ul>` : ""}
         ${sunItems.length ? `<div class="cw-sun day-panel-sun">${sunItems.join("")}</div>` : ""}
       </div>`;
       return `${divider}<div class="day-item" role="listitem">
-        <button type="button" class="day-row${outlook ? " day-row--outlook" : ""}" data-day-index="${i}" aria-expanded="false" aria-controls="dayPanel-${i}">${rowInner}</button>
+        <button type="button" class="day-row${outlook ? " day-row--outlook" : ""}" data-day-index="${i}" aria-expanded="${openToday ? "true" : "false"}" aria-controls="dayPanel-${i}">${rowInner}</button>
         ${panel}
       </div>`;
     })
@@ -169,4 +178,5 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
     fill.style.left = `${left.toFixed(2)}%`;
     fill.style.width = `${width.toFixed(2)}%`;
   });
+  return didAutoOpen;
 }

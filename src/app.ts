@@ -80,6 +80,12 @@ const state: State = { place: null, forecast: null, pollen: null, freshness: "fr
 // daher liegt das Flag hier. Startwert true = Auto-Open beim ersten Laden.
 let hourlyAutoOpenArmed = true;
 
+// Auto-Open des Tages-Detailpanels der 7-Tage-Liste: dieselbe Mechanik wie beim
+// Stundenpanel. Bei jedem neuen Wetterdatenladen wird "Heute" (Index 0) einmal
+// automatisch aufgeklappt, danach entwaffnet — Sprach- oder Re-Render öffnen nicht
+// erneut, ein manuelles Schließen bleibt also respektiert.
+let dailyAutoOpenArmed = true;
+
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -314,7 +320,11 @@ function renderContent(): void {
   const shownDays = Math.min(state.forecast.daily.length, DEFAULT_FORECAST_DAYS);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
   renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS);
+  const didAutoOpenDaily = renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS, dailyAutoOpenArmed);
+  // Gleiche Entwaffnungslogik wie beim Stundenpanel: erst nach dem aufgelösten
+  // Render (nicht "stale") und nur wenn wirklich geöffnet wurde. Hat Heute keine
+  // Detailwerte (kein Panel), bleibt das Flag scharf (didAutoOpenDaily false).
+  if (dailyAutoOpenArmed && state.freshness !== "stale" && didAutoOpenDaily) dailyAutoOpenArmed = false;
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -393,8 +403,9 @@ function refreshCurrentPlace(): void {
   if (!place || refreshing) return;
   refreshing = true;
   // Refresh = frische Wetterdaten: Auto-Open wieder scharf schalten, sodass die
-  // aktuelle Stunde nach dem Nachladen erneut direkt aufgeklappt erscheint.
+  // aktuelle Stunde und Heute nach dem Nachladen erneut direkt aufgeklappt sind.
   hourlyAutoOpenArmed = true;
+  dailyAutoOpenArmed = true;
   const mySeq = ++loadSeq;
   const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
@@ -458,9 +469,10 @@ function syncCityParam(place: Place): void {
 }
 
 export function selectPlace(place: Place): void {
-  // Neuer Ort = neue Wetterdaten: Auto-Open des Stundendetails wieder scharf
-  // schalten, damit die aktuelle Stunde direkt aufgeklappt erscheint.
+  // Neuer Ort = neue Wetterdaten: Auto-Open von Stundendetail und Tages-Detail
+  // (Heute) wieder scharf schalten, damit beide direkt aufgeklappt erscheinen.
   hourlyAutoOpenArmed = true;
+  dailyAutoOpenArmed = true;
   // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
   // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
   const isGeoPlace = place.id === GEO_PLACE_ID;
