@@ -3,8 +3,7 @@ import type { Forecast } from "../lib/weather";
 import { uvHintKey } from "../lib/uv";
 import { summaryFor } from "../lib/summary";
 import { tempCompareKey } from "../lib/tempCompare";
-import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
-import { rainWindowFor, todayHours } from "../lib/clothing";
+import { pickIcon, getWmo } from "../lib/wmo";
 import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
 import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone, compassPointFor } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
@@ -157,10 +156,6 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     compareKey && typeof today?.tempMax === "number" && typeof forecast.yesterdayTempMax === "number"
       ? Math.round(Math.abs(today.tempMax - forecast.yesterdayTempMax))
       : null;
-  // Regenwarnung aus der vorhandenen rainWindowFor-Logik (erstes Fenster heute).
-  // NICHT zeigen, wenn es jetzt schon regnet (analog summary.ts) — "ab" wäre falsch.
-  const rainNow = isPrecipCode(c.weatherCode);
-  const rainStart = rainNow ? null : (rainWindowFor(todayHours(forecast.hourly, c.time))?.fromHour ?? null);
   // Windrichtung ist im Current-Modell nicht enthalten; sie wird nur defensiv aus
   // der aktuellen Hourly-Stunde abgeleitet (gleiche Ortsstunde wie c.time, sonst
   // die erste Hourly-Stunde) und als dezentes Kompass-Kürzel an die Geschwindigkeit
@@ -205,10 +200,6 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     ${compareKey ? `<div class="cw-compare">
       <i data-lucide="${compareKey.includes("warmer") ? "trending-up" : "trending-down"}" class="cw-compare-ico"></i>
       <span>${t(compareKey).replace("{diff}", String(compareDiff))}</span>
-    </div>` : ""}
-    ${rainStart !== null ? `<div class="cw-compare">
-      <i data-lucide="cloud-rain" class="cw-compare-ico"></i>
-      <span>${t("rain_from").replace("{hour}", String(rainStart))}</span>
     </div>` : ""}
     <ul class="cw-meta" aria-label="${esc(label)}">
       <li class="cw-meta-item">
