@@ -225,26 +225,27 @@ function collectAreaRegions(areas: string, headline: string, countryWords: Set<s
 }
 
 // true = Warnung für diesen Ort relevant (behalten). false NUR, wenn klare
-// Kandidat-Regionen erkannt wurden und keine zur eigenen Region ODER zum
-// Ortsnamen passt. Ohne Kandidaten, bei landesweiten Warnungen oder wenn weder
-// Region noch Ortsname bekannt sind, bleibt die Warnung sichtbar (nie aggressiv).
-function alertMatchesLocation(areas: string, headline: string, regionNorm: string, nameNorm: string, countryWords: Set<string>): boolean {
+// Kandidat-Regionen erkannt wurden und keine zur eigenen Region passt. Ohne
+// Kandidaten, bei landesweiten Warnungen oder wenn die eigene Region unbekannt
+// ist, bleibt die Warnung sichtbar (nie aggressiv). Bewusst NUR gegen die Region
+// abgeglichen, nicht gegen den Ortsnamen: ein Ortsname kann zufällig mit einer
+// fremden Region beginnen (z. B. "Puglianello" in Campania mit der Region
+// "Puglia"), was sonst eine ortsfremde Warnung fälschlich sichtbar hält.
+function alertMatchesLocation(areas: string, headline: string, regionNorm: string, countryWords: Set<string>): boolean {
   const { candidates, nationwide } = collectAreaRegions(areas, headline, countryWords);
   if (nationwide) return true;
   if (candidates.length === 0) return true;
-  if (!regionNorm && !nameNorm) return true;
+  if (!regionNorm) return true;
   for (const cand of candidates) {
-    if (regionNorm && regionMatches(regionNorm, cand)) return true;
-    if (nameNorm && regionMatches(nameNorm, cand)) return true;
+    if (regionMatches(regionNorm, cand)) return true;
   }
   return false;
 }
 
-function weatherAlerts(value: unknown, region: string, name: string, country: string): WeatherAlert[] {
+function weatherAlerts(value: unknown, region: string, country: string): WeatherAlert[] {
   const alerts = record(value).alert;
   if (!Array.isArray(alerts)) return [];
   const regionNorm = normalizeText(region);
-  const nameNorm = normalizeText(name);
   const countryWords = buildCountryWords(country);
   const out: WeatherAlert[] = [];
   for (const raw of alerts) {
@@ -252,7 +253,7 @@ function weatherAlerts(value: unknown, region: string, name: string, country: st
     const event = stringValue(alert.event).trim();
     const headline = stringValue(alert.headline).trim();
     if (!event && !headline) continue;
-    if (!alertMatchesLocation(stringValue(alert.areas).trim(), headline, regionNorm, nameNorm, countryWords)) continue;
+    if (!alertMatchesLocation(stringValue(alert.areas).trim(), headline, regionNorm, countryWords)) continue;
     out.push({
       event,
       headline,
@@ -387,7 +388,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     daily,
     timezone: stringValue(location.tz_id, "UTC"),
     airQuality: airQuality(currentData.air_quality),
-    alerts: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.name), stringValue(location.country)),
+    alerts: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.country)),
     yesterdayTempMax: await getYesterdayMax(latitude, longitude, localtime),
   };
 }
