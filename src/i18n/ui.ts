@@ -75,6 +75,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   pollen_grass:    { de: "Gräser", en: "Grass", tr: "Çimen" },
   pollen_mugwort:  { de: "Beifuß", en: "Mugwort", tr: "Pelin otu" },
   pollen_hazel:    { de: "Hasel", en: "Hazel", tr: "Fındık" },
+  pollen_oak:      { de: "Eiche", en: "Oak", tr: "Meşe" },
   pollen_ragweed:  { de: "Ambrosia", en: "Ragweed", tr: "Ambrosya" },
   pollen_low:      { de: "Gering", en: "Low", tr: "Düşük" },
   pollen_moderate: { de: "Mittel", en: "Moderate", tr: "Orta" },

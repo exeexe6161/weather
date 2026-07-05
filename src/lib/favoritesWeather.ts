@@ -1,6 +1,6 @@
 // Favoriten-Wetter: schlanke Datenschicht für das Favoriten-Mini-Dashboard.
 // STRIKT getrennt von fetchWeather/normalize (weather.ts) und favorites.ts:
-// eigener Endpoint-Aufbau (nur current=temperature_2m,weather_code, kein
+// eigener, schlanker Endpoint (nur aktuelle Temperatur und Wettercode, kein
 // hourly/daily/past_days), eigener localStorage-Cache mit eigener TTL.
 import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";

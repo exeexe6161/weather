@@ -1,6 +1,6 @@
 import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 
-export type ProviderId = "WEATHER_API" | "OPEN_METEO" | "OPEN_WEATHER" | "TOMORROW" | "METEOMATICS";
+export type ProviderId = "WEATHER_API";
 
 export interface BatchPlace {
   id: number;

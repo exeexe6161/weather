@@ -1,3 +1,9 @@
+> Historisch: Dieses Briefing stammt aus der ursprünglichen Konzeptphase mit
+> Open Meteo als Wetterquelle. WeatherPure ist seit der WeatherAPI Migration
+> ausschließlich mit WeatherAPI.com als Datenquelle im Einsatz (siehe
+> LICENSES.md, README.md). Die Open Meteo Details unten sind überholt und
+> dienen nur noch der Nachvollziehbarkeit früherer Entscheidungen.
+
 # Weather App — Build Brief (Handoff für Claude Code)
 
 Minimalistische Wetter App, lizenzfrei. Web PWA mit Astro 6 auf Vercel zuerst, iOS via Capacitor erst bei Traktion (Phase B Muster wie EVSpend). Kein eigenes Backend, local first, zero tracking, DE/EN/TR.

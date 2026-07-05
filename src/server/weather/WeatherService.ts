@@ -9,16 +9,12 @@ import { weatherApiProvider } from "./providers/WeatherApiProvider.js";
 import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache.js";
 
-const PROVIDERS: Record<ProviderId, WeatherProvider | null> = {
+const PROVIDERS: Record<ProviderId, WeatherProvider> = {
   WEATHER_API: weatherApiProvider,
-  OPEN_METEO: null,
-  OPEN_WEATHER: null,
-  TOMORROW: null,
-  METEOMATICS: null,
 };
 
 function activeProvider(): WeatherProvider {
-  return PROVIDERS.WEATHER_API!;
+  return PROVIDERS.WEATHER_API;
 }
 
 export const WeatherService = {

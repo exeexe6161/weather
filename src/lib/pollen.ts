@@ -4,7 +4,7 @@
 // still zu null — dann erscheint schlicht keine Pollensektion.
 import { fetchWithTimeout, apiUrl } from "./http.js";
 
-export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "hazel", "ragweed"] as const;
+export const POLLEN_KINDS = ["alder", "birch", "grass", "mugwort", "hazel", "oak", "ragweed"] as const;
 export type PollenKind = (typeof POLLEN_KINDS)[number];
 
 // Aktueller Stundenwert je Art in Körnern pro Kubikmeter; null = keine Daten
@@ -22,6 +22,7 @@ export const POLLEN_THRESHOLDS: Record<PollenKind, [number, number]> = {
   grass: [20, 100],
   mugwort: [20, 100],
   hazel: [20, 100],
+  oak: [20, 100],
   ragweed: [20, 100],
 };
 
@@ -33,6 +34,7 @@ export const POLLEN_MIN_SHOW: Record<PollenKind, number> = {
   grass: 1,
   mugwort: 1,
   hazel: 1,
+  oak: 1,
   ragweed: 1,
 };
 
