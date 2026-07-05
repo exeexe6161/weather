@@ -196,6 +196,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   dailyHeading:    { de: "7 Tage Vorhersage", en: "7 day forecast", tr: "7 günlük tahmin" },
   dailyHeadingDays:{ de: "{n} Tage Vorhersage", en: "{n} day forecast", tr: "{n} günlük tahmin" },
   outlookLabel:    { de: "Ausblick", en: "Outlook", tr: "Genel bakış" },
+  day_wind_max:    { de: "Wind max", en: "Max wind", tr: "En yüksek rüzgar" },
+  day_precip_total:{ de: "Regenmenge", en: "Rain total", tr: "Toplam yağış" },
   week_best_day:   { de: "Der schönste Tag wird {day}.", en: "{day} looks like the nicest day.", tr: "En güzel gün {day} olacak." },
   week_best_today: { de: "Heute wird der schönste Tag.", en: "Today looks like the nicest day.", tr: "En güzel gün bugün olacak." },
   today:           { de: "Heute", en: "Today", tr: "Bugün" },

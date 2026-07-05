@@ -46,6 +46,11 @@ export interface DailyEntry {
   moonset?: string | null;
   moonPhase?: string | null; // Roh-Name aus der API (z. B. "Full Moon"), Uebersetzung in i18n/weather-labels
   moonIllumination?: number | null; // % beleuchtete Mondflaeche
+  // Tages-Detailwerte fuers Tagespanel der 7-Tage-Liste. Optional: alte
+  // Forecast-Caches kennen die Felder nicht (dann undefined, Panel laesst sie aus).
+  windMax?: number; // km/h (day.maxwind_kph)
+  precipTotal?: number; // mm (day.totalprecip_mm)
+  humidityAvg?: number; // % (day.avghumidity)
 }
 export interface AirQuality {
   usEpaIndex: number | null;

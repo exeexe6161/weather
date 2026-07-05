@@ -1410,6 +1410,10 @@ html:not([data-theme="dark"]) .day-row--outlook .day-min{color:var(--l4);}
 html:not([data-theme="dark"]) .day-row--outlook .day-rain,
 html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
 /* Dark: volle Theme-Farben reichen fuer 4.5:1, kein Farb-Override */
+/* Trennlinie liegt jetzt am .day-item (Wrapper aus Zeile + optionalem Panel),
+   nicht mehr an der Zeile selbst, damit die Linie unter dem offenen Panel sitzt. */
+.day-item{border-bottom:1px solid var(--sep);}
+.day-item:last-child{border-bottom:none;}
 .day-row{
   display:grid;
   /* feste Regenspalte: bleibt als leerer Slot stehen, damit die Temperaturen
@@ -1418,9 +1422,18 @@ html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
   align-items:center;
   gap:var(--sp-3);
   padding:var(--sp-4) 0; /* großzügigerer, token-reiner Zeilen-Rhythmus (war 11px) */
-  border-bottom:1px solid var(--sep);
 }
-.day-row:last-child{border-bottom:none;}
+/* Die Zeile ist jetzt ein Button (Tages-Detailpanel). Button-Reset, Grid und
+   Padding bleiben; die volle Zeile ist eine gute Touch-Fläche. focus-visible
+   liefert der globale Ring. */
+button.day-row{appearance:none;-webkit-appearance:none;background:transparent;border:0;font:inherit;color:inherit;width:100%;text-align:left;cursor:pointer;}
+button.day-row:hover{background:var(--s2);}
+@media(prefers-reduced-motion:no-preference){button.day-row{transition:background var(--t-base);}}
+/* Kompaktes Tages-Detailpanel unter der gewählten Zeile. Nutzt die bestehenden
+   cw-meta- und cw-sun-Bausteine, nur die oberen Abstände werden kompakter. */
+.day-panel{padding:var(--sp-1) 0 var(--sp-4);}
+.day-panel-meta{margin-top:0;}
+.day-panel-sun{margin-top:var(--sp-3);justify-content:flex-start;}
 .day-name{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
 .day-dow{font-size:var(--fs-md);font-weight:700;}
 .day-date{font-size:var(--fs-xs);font-weight:600;color:var(--l4);}

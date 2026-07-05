@@ -378,6 +378,12 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         moonset: astroIso(date, astro.moonset),
         moonPhase: stringValue(astro.moon_phase).trim() || null,
         moonIllumination: optionalNumber(astro.moon_illumination) ?? null,
+        // Tages-Detailwerte fuers Tagespanel: liegen bereits im day-Objekt der
+        // forecast.json Antwort, kein zusaetzlicher Call. optionalNumber -> undefined
+        // wenn die API sie nicht liefert (dann blendet das Panel sie aus).
+        windMax: optionalNumber(day.maxwind_kph),
+        precipTotal: optionalNumber(day.totalprecip_mm),
+        humidityAvg: optionalNumber(day.avghumidity),
       };
     })
     .filter(isCompleteDay);

@@ -1,7 +1,7 @@
 import type { DailyEntry } from "../lib/weather";
 import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
-import { weatherLabel } from "../i18n/weather-labels";
-import { formatWeekday, formatDayMonth, formatTemp, formatPercent } from "../lib/format";
+import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
+import { formatWeekday, formatDayMonth, formatTemp, formatPercent, formatWind, formatHour, fmtMm } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -15,7 +15,45 @@ export const RAIN_SHOW_THRESHOLD = 30;
 // === 7) wird dieser Index nie erreicht → kein Trenner, keine Dämpfung.
 const OUTLOOK_FROM = 7;
 
+function isNum(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+// Zahlenkachel im bestehenden cw-meta-Stil (gleiches Aussehen wie die aktuelle
+// Wetterkarte und das Stundenpanel, Komponenten-Konsistenz).
+function metaTile(icon: string, lbl: string, val: string): string {
+  return `<li class="cw-meta-item"><i data-lucide="${icon}" class="cw-meta-ico"></i><span class="cw-meta-lbl">${esc(lbl)}</span><span class="cw-meta-val">${esc(val)}</span></li>`;
+}
+// Sonnen-/Mond-Item im bestehenden cw-sun-Stil.
+function sunItem(icon: string, lbl: string, val: string, hint = ""): string {
+  return `<div class="cw-sun-item"><i data-lucide="${icon}" class="cw-sun-ico"></i><span class="cw-sun-lbl">${esc(lbl)}</span><span class="cw-sun-val">${esc(val)}</span>${hint}</div>`;
+}
+
+// Delegierter Klick-Listener fürs Auf- und Zuklappen der Tagespanels, EINMAL pro
+// Container gebunden (#dailyForecast ist statisch und überlebt jeden innerHTML-
+// Neuaufbau). Nur ein Panel gleichzeitig offen; erneuter Tipp auf denselben Tag
+// schließt. Kein natives <details> (WebKit bricht dessen Umschalten bei
+// Flex-summary), stattdessen Button plus verstecktes Panel mit voller Kontrolle.
+const boundDayContainers = new WeakSet<HTMLElement>();
+function bindDayPanels(el: HTMLElement): void {
+  if (boundDayContainers.has(el)) return;
+  boundDayContainers.add(el);
+  el.addEventListener("click", (e) => {
+    const btn = e.target instanceof Element ? e.target.closest<HTMLButtonElement>(".day-row[data-day-index]") : null;
+    if (!btn || !el.contains(btn)) return;
+    const panel = btn.parentElement?.querySelector<HTMLElement>(".day-panel");
+    if (!panel) return;
+    const willOpen = panel.hidden; // aktuell versteckt → jetzt öffnen
+    // Alle anderen schließen (nur einer offen).
+    el.querySelectorAll<HTMLElement>(".day-panel").forEach((p) => { if (p !== panel) p.hidden = true; });
+    el.querySelectorAll<HTMLButtonElement>(".day-row[data-day-index]").forEach((b) => { if (b !== btn) b.setAttribute("aria-expanded", "false"); });
+    panel.hidden = !willOpen;
+    btn.setAttribute("aria-expanded", String(willOpen));
+  });
+}
+
 export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
+  bindDayPanels(el); // einmalig; delegiert das Auf- und Zuklappen
   const locale = getLocale();
 
   // Die Forecast-Daten enthalten bis zu sieben Tage. ERST kürzen, dann Skala
@@ -68,8 +106,8 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
         i === OUTLOOK_FROM
           ? `<div class="daily-divider" aria-hidden="true"><span>${esc(t("outlookLabel"))}</span></div>`
           : "";
-      return `${divider}<div class="day-row${outlook ? " day-row--outlook" : ""}" role="listitem">
-        <div class="day-name"><span class="day-dow">${day}</span><span class="day-date">${dateLabel}</span></div>
+
+      const rowInner = `<div class="day-name"><span class="day-dow">${day}</span><span class="day-date">${dateLabel}</span></div>
         <i data-lucide="${icon}" class="day-ico" role="img" aria-label="${esc(label)}"></i>
         <div class="day-label">${esc(label)}</div>
         <div class="day-rain">${rain !== null ? `<i data-lucide="droplets" class="day-rain-ico"></i><span>${formatPercent(rain)}</span>` : ""}</div>
@@ -77,7 +115,42 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
           <span class="day-max">${formatTemp(d.tempMax)}</span>
           <span class="day-min">${formatTemp(d.tempMin)}</span>
         </div>
-        <div class="day-bar" aria-hidden="true"><div class="day-bar-fill"></div></div>
+        <div class="day-bar" aria-hidden="true"><div class="day-bar-fill"></div></div>`;
+
+      // Tages-Detailwerte, NUR echte Werte (kein Fake, kein 0-mm-Rauschen). Alle
+      // Felder optional → alte Caches ohne die neuen Werte lassen die Kacheln aus.
+      const tiles: string[] = [];
+      if (isNum(d.windMax)) tiles.push(metaTile("wind", t("day_wind_max"), formatWind(d.windMax)));
+      if (isNum(d.precipTotal) && d.precipTotal > 0) tiles.push(metaTile("cloud-rain", t("day_precip_total"), fmtMm(d.precipTotal, locale)));
+      if (isNum(d.humidityAvg)) tiles.push(metaTile("droplets", t("humidity"), formatPercent(d.humidityAvg)));
+      if (isNum(d.uvIndexMax) && Math.round(d.uvIndexMax) >= 1) tiles.push(metaTile("sun", t("uv_label"), String(Math.round(d.uvIndexMax))));
+
+      const sunItems: string[] = [];
+      const sunrise = typeof d.sunrise === "string" ? d.sunrise : null;
+      const sunset = typeof d.sunset === "string" ? d.sunset : null;
+      if (sunrise) sunItems.push(sunItem("sunrise", t("sun_rise"), formatHour(sunrise, locale)));
+      if (sunset) sunItems.push(sunItem("sunset", t("sun_set"), formatHour(sunset, locale)));
+      const moonPhaseText = typeof d.moonPhase === "string" ? moonPhaseLabel(d.moonPhase, getLang()) : null;
+      if (moonPhaseText) {
+        const hint = isNum(d.moonIllumination)
+          ? `<span class="cw-uv-hint">${esc(t("moon_illumination").replace("{percent}", String(Math.round(d.moonIllumination))))}</span>`
+          : "";
+        sunItems.push(sunItem("moon", t("moon_label"), moonPhaseText, hint));
+      }
+
+      const hasDetail = tiles.length + sunItems.length > 0;
+      // Ohne echte Detailwerte kein Panel und kein Button (kein leerer Kasten):
+      // die Zeile bleibt eine reine Anzeige wie bisher.
+      if (!hasDetail) {
+        return `${divider}<div class="day-item" role="listitem"><div class="day-row${outlook ? " day-row--outlook" : ""}">${rowInner}</div></div>`;
+      }
+      const panel = `<div class="day-panel" id="dayPanel-${i}" hidden>
+        ${tiles.length ? `<ul class="cw-meta day-panel-meta">${tiles.join("")}</ul>` : ""}
+        ${sunItems.length ? `<div class="cw-sun day-panel-sun">${sunItems.join("")}</div>` : ""}
+      </div>`;
+      return `${divider}<div class="day-item" role="listitem">
+        <button type="button" class="day-row${outlook ? " day-row--outlook" : ""}" data-day-index="${i}" aria-expanded="false" aria-controls="dayPanel-${i}">${rowInner}</button>
+        ${panel}
       </div>`;
     })
     .join("");
@@ -86,7 +159,8 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
   // Markup): die strenge CSP (style-src 'self', kein unsafe-inline) blockt
   // inline style="" Attribute — einzelne style-Properties setzt CSP nicht.
   // Reihenfolge der Füllungen == visible-Reihenfolge (1 Balken je Zeile). Der
-  // Ausblick-Trenner trägt KEIN .day-bar-fill, stört die Zählung also nicht.
+  // Ausblick-Trenner und die Tagespanels tragen KEIN .day-bar-fill, stören die
+  // Zählung also nicht.
   const fills = el.querySelectorAll<HTMLElement>(".day-bar-fill");
   visible.forEach((d, i) => {
     const fill = fills[i];
