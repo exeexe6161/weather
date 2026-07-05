@@ -20,7 +20,7 @@ import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderTempCurve, forecastStartHour, type TempCurveInput } from "./components/TempCurve";
 import { renderRainChart, type RainChartInput } from "./components/RainChart";
-import { renderDailyForecast } from "./components/DailyForecast";
+import { renderDailyForecast, resetDailyPanelToToday } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
 import { bestWeatherDayKey } from "./lib/weekSummary";
@@ -79,12 +79,6 @@ const state: State = { place: null, forecast: null, pollen: null, freshness: "fr
 // sind. Der Strip selbst kann Neuladen nicht von einer Nutzeraktion unterscheiden,
 // daher liegt das Flag hier. Startwert true = Auto-Open beim ersten Laden.
 let hourlyAutoOpenArmed = true;
-
-// Auto-Open des Tages-Detailpanels der 7-Tage-Liste: dieselbe Mechanik wie beim
-// Stundenpanel. Bei jedem neuen Wetterdatenladen wird "Heute" (Index 0) einmal
-// automatisch aufgeklappt, danach entwaffnet — Sprach- oder Re-Render öffnen nicht
-// erneut, ein manuelles Schließen bleibt also respektiert.
-let dailyAutoOpenArmed = true;
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === "undefined") return null;
@@ -320,11 +314,10 @@ function renderContent(): void {
   const shownDays = Math.min(state.forecast.daily.length, DEFAULT_FORECAST_DAYS);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
   renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
-  const didAutoOpenDaily = renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS, dailyAutoOpenArmed);
-  // Gleiche Entwaffnungslogik wie beim Stundenpanel: erst nach dem aufgelösten
-  // Render (nicht "stale") und nur wenn wirklich geöffnet wurde. Hat Heute keine
-  // Detailwerte (kein Panel), bleibt das Flag scharf (didAutoOpenDaily false).
-  if (dailyAutoOpenArmed && state.freshness !== "stale" && didAutoOpenDaily) dailyAutoOpenArmed = false;
+  // Das Tagespanel merkt sich den offenen Tag selbst (openDayIndex in der
+  // Komponente). Neue Wetterdaten setzen ihn per resetDailyPanelToToday() (in
+  // selectPlace/refreshCurrentPlace) auf Heute; ein Re-Render bewahrt die Auswahl.
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -402,10 +395,10 @@ function refreshCurrentPlace(): void {
   const place = state.place;
   if (!place || refreshing) return;
   refreshing = true;
-  // Refresh = frische Wetterdaten: Auto-Open wieder scharf schalten, sodass die
-  // aktuelle Stunde und Heute nach dem Nachladen erneut direkt aufgeklappt sind.
+  // Refresh = frische Wetterdaten: Stundendetail wieder scharf schalten und das
+  // Tages-Detail auf Heute zurücksetzen, sodass beide nach dem Nachladen offen sind.
   hourlyAutoOpenArmed = true;
-  dailyAutoOpenArmed = true;
+  resetDailyPanelToToday();
   const mySeq = ++loadSeq;
   const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
@@ -469,10 +462,10 @@ function syncCityParam(place: Place): void {
 }
 
 export function selectPlace(place: Place): void {
-  // Neuer Ort = neue Wetterdaten: Auto-Open von Stundendetail und Tages-Detail
-  // (Heute) wieder scharf schalten, damit beide direkt aufgeklappt erscheinen.
+  // Neuer Ort = neue Wetterdaten: Stundendetail wieder scharf schalten und das
+  // Tages-Detail auf Heute zurücksetzen, damit beide direkt aufgeklappt erscheinen.
   hourlyAutoOpenArmed = true;
-  dailyAutoOpenArmed = true;
+  resetDailyPanelToToday();
   // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
   // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
   const isGeoPlace = place.id === GEO_PLACE_ID;

@@ -29,6 +29,20 @@ function sunItem(icon: string, lbl: string, val: string, hint = ""): string {
   return `<div class="cw-sun-item"><i data-lucide="${icon}" class="cw-sun-ico"></i><span class="cw-sun-lbl">${esc(lbl)}</span><span class="cw-sun-val">${esc(val)}</span>${hint}</div>`;
 }
 
+// Welcher Tag ist offen (Index in der sichtbaren Liste), null = keiner. Modulweit,
+// damit der Zustand jeden innerHTML-Neuaufbau überlebt: ein manuell geschlossener
+// Tag bleibt geschlossen, ein geöffneter Tag bleibt offen (Sprachwechsel,
+// Favoriten-Toggle rendern neu, ändern die Auswahl aber nicht). Neue Wetterdaten
+// setzen den Zustand über resetDailyPanelToToday() zurück auf Heute (Index 0).
+// Robuster als ein Auto-Open-Flag: kein Timing zwischen Cache- und Netz-Render.
+let openDayIndex: number | null = null;
+
+// Vom Aufrufer (app.ts) bei jedem neuen Wetterdatenladen (neuer Ort ODER Refresh)
+// aufgerufen: Heute soll wieder automatisch offen sein.
+export function resetDailyPanelToToday(): void {
+  openDayIndex = 0;
+}
+
 // Delegierter Klick-Listener fürs Auf- und Zuklappen der Tagespanels, EINMAL pro
 // Container gebunden (#dailyForecast ist statisch und überlebt jeden innerHTML-
 // Neuaufbau). Nur ein Panel gleichzeitig offen; erneuter Tipp auf denselben Tag
@@ -41,9 +55,13 @@ function bindDayPanels(el: HTMLElement): void {
   el.addEventListener("click", (e) => {
     const btn = e.target instanceof Element ? e.target.closest<HTMLButtonElement>(".day-row[data-day-index]") : null;
     if (!btn || !el.contains(btn)) return;
+    const idx = Number(btn.dataset.dayIndex);
+    if (!Number.isInteger(idx)) return;
     const panel = btn.parentElement?.querySelector<HTMLElement>(".day-panel");
     if (!panel) return;
     const willOpen = panel.hidden; // aktuell versteckt → jetzt öffnen
+    // Zustand merken (überlebt Re-Render): geöffneter Index oder null beim Schließen.
+    openDayIndex = willOpen ? idx : null;
     // Alle anderen schließen (nur einer offen).
     el.querySelectorAll<HTMLElement>(".day-panel").forEach((p) => { if (p !== panel) p.hidden = true; });
     el.querySelectorAll<HTMLButtonElement>(".day-row[data-day-index]").forEach((b) => { if (b !== btn) b.setAttribute("aria-expanded", "false"); });
@@ -52,13 +70,12 @@ function bindDayPanels(el: HTMLElement): void {
   });
 }
 
-// autoOpenToday: klappt beim Rendern den Tag "Heute" (Index 0) direkt auf, sofern
-// er Detailwerte hat. Rückgabe: ob wirklich auto-geöffnet wurde (der Aufrufer in
-// app.ts entwaffnet sein Flag nur dann, analog zum Stundenpanel).
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, autoOpenToday = false): boolean {
+// Öffnet beim Rendern den in openDayIndex gemerkten Tag (Standard nach neuen
+// Wetterdaten: Heute, Index 0), sofern er Detailwerte hat. Der Zustand liegt
+// modulweit, daher braucht der Aufrufer kein Flag und keine Rückgabe.
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
   bindDayPanels(el); // einmalig; delegiert das Auf- und Zuklappen
   const locale = getLocale();
-  let didAutoOpen = false;
 
   // Die Forecast-Daten enthalten bis zu sieben Tage. ERST kürzen, dann Skala
   // rechnen und Balken setzen,
@@ -148,17 +165,16 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
       if (!hasDetail) {
         return `${divider}<div class="day-item" role="listitem"><div class="day-row${outlook ? " day-row--outlook" : ""}">${rowInner}</div></div>`;
       }
-      // Auto-Open nur für Heute (Index 0) und nur wenn der Aufrufer es scharf
-      // gestellt hat (neue Wetterdaten). So erkennt der Nutzer sofort, dass die
-      // Tageszeilen antippbar sind. Alle anderen Tage bleiben geschlossen.
-      const openToday = autoOpenToday && i === 0;
-      if (openToday) didAutoOpen = true;
-      const panel = `<div class="day-panel" id="dayPanel-${i}"${openToday ? "" : " hidden"}>
+      // Offen ist der gemerkte Tag (openDayIndex). Nach neuen Wetterdaten ist das
+      // Heute (Index 0); ein Re-Render bewahrt die zuletzt gewählte Auswahl. So
+      // erkennt der Nutzer beim Laden sofort, dass die Tageszeilen antippbar sind.
+      const isOpen = i === openDayIndex;
+      const panel = `<div class="day-panel" id="dayPanel-${i}"${isOpen ? "" : " hidden"}>
         ${tiles.length ? `<ul class="cw-meta day-panel-meta">${tiles.join("")}</ul>` : ""}
         ${sunItems.length ? `<div class="cw-sun day-panel-sun">${sunItems.join("")}</div>` : ""}
       </div>`;
       return `${divider}<div class="day-item" role="listitem">
-        <button type="button" class="day-row${outlook ? " day-row--outlook" : ""}" data-day-index="${i}" aria-expanded="${openToday ? "true" : "false"}" aria-controls="dayPanel-${i}">${rowInner}</button>
+        <button type="button" class="day-row${outlook ? " day-row--outlook" : ""}" data-day-index="${i}" aria-expanded="${isOpen ? "true" : "false"}" aria-controls="dayPanel-${i}">${rowInner}</button>
         ${panel}
       </div>`;
     })
@@ -178,5 +194,4 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
     fill.style.left = `${left.toFixed(2)}%`;
     fill.style.width = `${width.toFixed(2)}%`;
   });
-  return didAutoOpen;
 }
