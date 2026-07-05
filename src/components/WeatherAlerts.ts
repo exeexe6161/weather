@@ -54,7 +54,29 @@ function moreBlock(labelKey: string, text: string): string {
 // drei relevant, folgt ein ruhiger Sammelhinweis statt eines langen Blocks.
 const MAX_VISIBLE = 3;
 
+// Delegierter Klick-Listener für das Auf- und Zuklappen, genau EINMAL pro
+// Container gebunden (der Container #weatherAlerts ist statisch und überlebt
+// jeden innerHTML-Neuaufbau, der Listener bleibt also gültig). Kein natives
+// <details>, daher volle Kontrolle über den Startzustand (immer geschlossen).
+const boundAlertContainers = new WeakSet<HTMLElement>();
+function bindAlertMore(el: HTMLElement): void {
+  if (boundAlertContainers.has(el)) return;
+  boundAlertContainers.add(el);
+  el.addEventListener("click", (e) => {
+    const btn = e.target instanceof Element ? e.target.closest<HTMLButtonElement>(".alert-more-toggle") : null;
+    if (!btn || !el.contains(btn)) return;
+    const body = btn.nextElementSibling;
+    if (!(body instanceof HTMLElement) || !body.classList.contains("alert-more-body")) return;
+    const willOpen = body.hidden; // aktuell versteckt → jetzt öffnen
+    body.hidden = !willOpen;
+    btn.setAttribute("aria-expanded", String(willOpen));
+    const label = willOpen ? btn.dataset.hide : btn.dataset.show;
+    if (label) btn.textContent = label;
+  });
+}
+
 export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string): void {
+  bindAlertMore(el); // einmalig; delegiert das Auf- und Zuklappen
   const all = Array.isArray(alerts) ? alerts : [];
   const visible = all.slice(0, MAX_VISIBLE);
   const show = visible.length > 0;
@@ -75,16 +97,22 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
     // orangefarbenes Symbol, zusätzlich die ausgeschriebene Stufe als Badge.
     const critical = severity === "severe" || severity === "extreme";
     const badge = severity ? `<span class="alert-badge alert-badge--${severity}">${esc(t(`severity_${severity}`))}</span>` : "";
-    // Originalmeldung und Hinweis stehen IMMER zugeklappt (kein open-Attribut).
-    // Nur wenn wirklich Text da ist, gibt es das details-Element (kein leerer
-    // Aufklappbereich). Das Summary-Label wechselt rein per CSS über [open].
+    // Originalmeldung und Hinweis stehen IMMER zugeklappt: eigener Button plus
+    // verstecktes Body-div statt nativem <details>. Grund: Safari/WebKit bricht
+    // das native <details> Umschalten, sobald das <summary> ein display wie
+    // inline-flex bekommt (Panel erschien dauerhaft offen). Der Button startet
+    // mit aria-expanded="false" und Label "Details anzeigen"; erst ein Klick
+    // (toggleAlertMore) öffnet. Nur wenn wirklich Text da ist, gibt es den
+    // Aufklappbereich (kein leerer Block).
     const desc = typeof alert.desc === "string" ? alert.desc.trim() : "";
     const instruction = typeof alert.instruction === "string" ? alert.instruction.trim() : "";
-    const more = desc || instruction ? `<details class="alert-more">
-      <summary class="alert-more-summary"><span class="alert-more-show">${esc(t("alert_details"))}</span><span class="alert-more-hide">${esc(t("alert_details_hide"))}</span></summary>
-      ${moreBlock("alert_desc", desc)}
-      ${moreBlock("alert_instruction", instruction)}
-    </details>` : "";
+    const more = desc || instruction ? `<div class="alert-more">
+      <button type="button" class="alert-more-toggle" aria-expanded="false" data-show="${esc(t("alert_details"))}" data-hide="${esc(t("alert_details_hide"))}">${esc(t("alert_details"))}</button>
+      <div class="alert-more-body" hidden>
+        ${moreBlock("alert_desc", desc)}
+        ${moreBlock("alert_instruction", instruction)}
+      </div>
+    </div>` : "";
     return `<div class="alert-row">
       <i data-lucide="triangle-alert" class="alert-ico${critical ? " alert-ico--critical" : ""}"></i>
       <div class="alert-copy">

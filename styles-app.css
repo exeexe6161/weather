@@ -1062,19 +1062,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    Zusammenfassung. Eigener CSS-Pfeil (die strenge CSP verbietet kein externes
    CSS, nur inline styles), Standard-Dreieck entfernt. */
 .alert-more{margin-top:2px;}
-.alert-more-summary{display:inline-flex;align-items:center;gap:5px;min-height:32px;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;list-style:none;}
-.alert-more-summary::-webkit-details-marker{display:none;}
-.alert-more-summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);}
-.alert-more[open] .alert-more-summary::after{transform:rotate(225deg);}
-@media(prefers-reduced-motion:no-preference){.alert-more-summary::after{transition:transform var(--t-base);}}
-.alert-more-summary:hover{color:var(--l2);}
-/* Label-Wechsel Details anzeigen / ausblenden rein per CSS über den open-Zustand,
-   ohne JavaScript. */
-.alert-more-hide{display:none;}
-.alert-more[open] .alert-more-show{display:none;}
-.alert-more[open] .alert-more-hide{display:inline;}
+/* Eigener Button statt nativem <details>/<summary>: WebKit bricht das native
+   Umschalten, sobald das summary ein Flex-display bekommt. Der Button steuert
+   Sichtbarkeit und Label über JS (toggleAlertMore). */
+.alert-more-toggle{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0;background:none;border:0;font-family:inherit;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;}
+.alert-more-toggle::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);}
+.alert-more-toggle[aria-expanded="true"]::after{transform:rotate(225deg);}
+@media(prefers-reduced-motion:no-preference){.alert-more-toggle::after{transition:transform var(--t-base);}}
+.alert-more-toggle:hover{color:var(--l2);}
+.alert-more-body{margin-top:2px;}
 .alert-more-block{margin-top:8px;}
-.alert-more-block:first-of-type{margin-top:6px;}
+.alert-more-block:first-child{margin-top:6px;}
 .alert-more-lbl{display:block;font-size:var(--fs-xs);font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--l4);}
 .alert-more-desc{margin-top:3px;font-size:var(--fs-xs);color:var(--l3);line-height:1.55;overflow-wrap:anywhere;}
 /* Ruhiger Sammelhinweis, wenn mehr als drei relevante Warnungen vorliegen. */
