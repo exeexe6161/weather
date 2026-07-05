@@ -33,6 +33,14 @@ export function formatTemp(value: number | null | undefined): string {
 export function formatWind(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value)} km/h` : MISSING;
 }
+// 8-Punkt Kompass Kürzel aus einem Gradwert. Die Kürzel kommen aus dem i18n Wert
+// compassPoints (sprachabhängig, vom Aufrufer übergeben, damit dieses Modul
+// i18n-frei bleibt). Ungültiger Grad oder leerer/kaputter compassPoints → "".
+export function compassPointFor(deg: number, compassPoints: string): string {
+  if (!Number.isFinite(deg)) return "";
+  const pts = compassPoints.split(",");
+  return pts[Math.round(deg / 45) % 8] ?? "";
+}
 // Niederschlagsmenge in mm, locale-aware, immer eine Nachkommastelle. Eine Quelle
 // für alle Aufrufer (Stundenpanel und Regen-Diagramm), damit "1,2 mm" / "1.2 mm"
 // überall identisch formatiert sind.

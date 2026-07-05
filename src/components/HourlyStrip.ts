@@ -2,7 +2,7 @@ import type { Forecast, HourlyEntry } from "../lib/weather";
 import { pickIcon, getWmo } from "../lib/wmo";
 import { nightSpans, isNightAt } from "../lib/daylight";
 import { weatherLabel } from "../i18n/weather-labels";
-import { formatHour, formatTemp, formatPercent, formatWind, fmtMm } from "../lib/format";
+import { formatHour, formatTemp, formatPercent, formatWind, fmtMm, compassPointFor } from "../lib/format";
 import { getLang, getLocale, t } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
@@ -276,8 +276,7 @@ function fmtVisibility(meter: number, locale: string): string {
   return `${(meter / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
 }
 function fmtDir(deg: number): string {
-  const pts = t("compassPoints").split(",");
-  const dir = pts[Math.round(deg / 45) % 8] ?? "";
+  const dir = compassPointFor(deg, t("compassPoints"));
   return dir ? `${dir} ${Math.round(deg)}°` : `${Math.round(deg)}°`;
 }
 

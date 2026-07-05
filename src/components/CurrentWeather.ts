@@ -6,7 +6,7 @@ import { tempCompareKey } from "../lib/tempCompare";
 import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
 import { rainWindowFor, todayHours } from "../lib/clothing";
 import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
-import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone } from "../lib/format";
+import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone, compassPointFor } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -161,6 +161,21 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   // NICHT zeigen, wenn es jetzt schon regnet (analog summary.ts) — "ab" wäre falsch.
   const rainNow = isPrecipCode(c.weatherCode);
   const rainStart = rainNow ? null : (rainWindowFor(todayHours(forecast.hourly, c.time))?.fromHour ?? null);
+  // Windrichtung ist im Current-Modell nicht enthalten; sie wird nur defensiv aus
+  // der aktuellen Hourly-Stunde abgeleitet (gleiche Ortsstunde wie c.time, sonst
+  // die erste Hourly-Stunde) und als dezentes Kompass-Kürzel an die Geschwindigkeit
+  // angehängt. Kein separater Live-Wert. Fehlt oder ungültig (alte Caches, keine
+  // Hourly-Daten) → es bleibt exakt bei der reinen Windgeschwindigkeit.
+  const nowHourKey = typeof c.time === "string" ? c.time.slice(0, 13) : "";
+  const windDirHour =
+    forecast.hourly.find((h) => typeof h.time === "string" && h.time.slice(0, 13) === nowHourKey) ??
+    forecast.hourly[0];
+  const windDir =
+    windDirHour && typeof windDirHour.windDirection === "number" && Number.isFinite(windDirHour.windDirection)
+      ? windDirHour.windDirection
+      : null;
+  const windPoint = windDir !== null ? compassPointFor(windDir, t("compassPoints")) : "";
+  const windText = windPoint ? `${formatWind(c.windSpeed)} ${windPoint}` : formatWind(c.windSpeed);
 
   el.innerHTML = `
     <div class="cw-head">
@@ -209,7 +224,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
       <li class="cw-meta-item">
         <i data-lucide="wind" class="cw-meta-ico"></i>
         <span class="cw-meta-lbl">${t("wind")}</span>
-        <span class="cw-meta-val">${formatWind(c.windSpeed)}</span>
+        <span class="cw-meta-val">${windText}</span>
       </li>
       ${rainProb !== null ? `<li class="cw-meta-item">
         <i data-lucide="cloud-rain" class="cw-meta-ico"></i>
