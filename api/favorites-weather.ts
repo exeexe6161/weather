@@ -1,6 +1,6 @@
 import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
-import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
+import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
 
 // Der Starter Tarif hat keinen Bulk Endpoint. Fünf Orte halten Kosten und
 // Antwortzeit berechenbar und entsprechen der sichtbaren Favoritengrenze.
@@ -35,6 +35,7 @@ function parsePlaces(raw: string): BatchPlace[] | null {
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!corsGuard(req, res)) return;
   if (!methodGuard(req, res)) return;
+  if (!rateLimitGuard(req, res)) return;
 
   const raw = queryParam(req, "places");
   if (raw === null) {

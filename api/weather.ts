@@ -4,6 +4,7 @@ import {
   type ApiResponse,
   corsGuard,
   methodGuard,
+  rateLimitGuard,
   queryNumber,
   isValidLatitude,
   isValidLongitude,
@@ -13,6 +14,7 @@ import {
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!corsGuard(req, res)) return;
   if (!methodGuard(req, res)) return;
+  if (!rateLimitGuard(req, res)) return;
 
   const latitude = queryNumber(req, "lat");
   const longitude = queryNumber(req, "lon");

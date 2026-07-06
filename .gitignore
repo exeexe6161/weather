@@ -1,6 +1,8 @@
 .DS_Store
 .claude/
 .vercel/
+.env*
+!.env.example
 node_modules/
 dist/
 npm-debug.log*

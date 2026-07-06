@@ -4,7 +4,7 @@ import { initLang, setLang, getLang, t, LANGS, type Lang } from "./i18n/ui";
 import { initApp } from "./app";
 import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
-import { isNativeApp, isStandalone } from "./lib/platform";
+import { isNativeApp } from "./lib/platform";
 
 function initLangMenu(): void {
   const btn = document.getElementById("langSwitch") as HTMLButtonElement | null;
@@ -70,28 +70,6 @@ function initThemeLabel(): void {
   document.addEventListener("weather:langchange", apply);
 }
 
-// Pinch-Zoom nur in der vom Home-Bildschirm gestarteten PWA unterbinden. Im
-// normalen Browser bleibt Zoom erlaubt (Barrierefreiheit). Nur gesturestart,
-// kein Doppeltipp und kein touchmove, damit Scrollen unberührt bleibt.
-function preventPinchZoomInStandalone(): void {
-  if (!isStandalone()) return;
-  document.addEventListener("gesturestart", (e) => e.preventDefault());
-}
-
-// Den viewport zur Laufzeit hart auf scale 1.0 festnageln (maximum-scale=1.0) —
-// in Browser UND installierter PWA. Unterbindet den iOS Fokus-Zoom beim Antippen
-// von Eingabefeldern (das Suchfeld zoomte sonst im Browser herein) und verhindert,
-// dass die App herausgezoomt startet oder bleibt. Bewusste Entscheidung: damit ist
-// auch der Lese-/Pinch-Zoom im Browser deaktiviert (in der PWA war er es bereits).
-function lockStandaloneScale(): void {
-  const vp = document.querySelector('meta[name="viewport"]');
-  if (!vp) return;
-  vp.setAttribute(
-    "content",
-    "width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
-  );
-}
-
 // iOS Safari kann den visuellen Viewport nach Tastatur/Fokus oder nach einem
 // horizontalen Wisch bei normalem Zoom seitlich versetzt stehen lassen. Echte
 // Vergrößerung bleibt erlaubt; nur bei Scale 1 wird die Seite zurückgesetzt.
@@ -145,8 +123,6 @@ function boot(): void {
   initLangMenu();
   initThemeLabel();
   initApp();
-  lockStandaloneScale();
-  preventPinchZoomInStandalone();
   stabilizeHorizontalViewport();
   const installHint = document.getElementById("installHint");
   if (installHint) initInstallHint(installHint);
