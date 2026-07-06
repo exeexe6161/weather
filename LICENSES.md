@@ -1,6 +1,6 @@
 # Lizenzen und Attributionen
 
-Stand: 4. Juli 2026
+Stand: 6. Juli 2026
 
 ## Wetterdaten — WeatherAPI.com
 
@@ -25,14 +25,21 @@ Stand: 4. Juli 2026
 - Quelle: https://github.com/Instrument/instrument-serif
 - Lizenz: SIL Open Font License 1.1, Volltext unter `/licenses/instrument-serif-OFL.txt`
 - © 2022 The Instrument Serif Project Authors
-- Nicht als Webfont eingebunden: Die WeatherPure Wortmarke und das Icon liegen als
-  reine SVG Vektorpfade vor (laut Brand Guidelines unterliegen die Pfade selbst nicht der OFL).
+- Selbst gehostet als Webfont für einzelne redaktionelle Akzente. Die WeatherPure
+  Wortmarke und das Icon liegen zusätzlich als reine SVG Vektorpfade vor.
 
 ## Icons — Lucide (ISC)
 
 - Quelle: https://lucide.dev/ (npm Paket `lucide`, gebündelt via esbuild, kein CDN)
 - Lizenz: ISC License, © Lucide Contributors
-- Volltext: https://github.com/lucide-icons/lucide/blob/main/LICENSE
+- Volltext lokal unter `/licenses/lucide-ISC.txt`
+
+## Native App Runtime — Capacitor und Cordova (MIT)
+
+- Quelle: https://github.com/ionic-team/capacitor
+- Version: 8.4.0, eingebunden über Swift Package Manager
+- Lizenz: MIT License, © 2017-present Drifty Co.
+- Volltext lokal unter `/licenses/capacitor-MIT.txt`
 
 ## Build Tooling
 

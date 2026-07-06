@@ -1065,7 +1065,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 /* Eigener Button statt nativem <details>/<summary>: WebKit bricht das native
    Umschalten, sobald das summary ein Flex-display bekommt. Der Button steuert
    Sichtbarkeit und Label über JS (toggleAlertMore). */
-.alert-more-toggle{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0;background:none;border:0;font-family:inherit;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;}
+.alert-more-toggle{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 2px;background:none;border:0;font-family:inherit;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;}
 .alert-more-toggle::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);}
 .alert-more-toggle[aria-expanded="true"]::after{transform:rotate(225deg);}
 @media(prefers-reduced-motion:no-preference){.alert-more-toggle::after{transition:transform var(--t-base);}}
@@ -1237,7 +1237,7 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .hour-panel-htext{flex:1 1 auto;min-width:0;}
 .hour-panel-time{font-size:var(--fs-md);font-weight:700;}
 .hour-panel-cond{font-size:var(--fs-xs);color:var(--l4);}
-.hour-panel-close{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:var(--s2);border:0;border-radius:var(--r-sm);color:var(--l2);cursor:pointer;}
+.hour-panel-close{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;background:var(--s2);border:0;border-radius:var(--r-sm);color:var(--l2);cursor:pointer;}
 .hour-panel-close:hover{background:var(--accent-soft);color:var(--accent-text);}
 .hour-panel-close-ico{width:18px;height:18px;}
 .hour-panel-meta{margin-top:var(--sp-3);}
@@ -1503,7 +1503,7 @@ footer{margin-top:48px;padding:0 16px;}
   gap:8px;
   font-size:var(--fs-sm);
 }
-.footer-links a{color:var(--l3);text-decoration:none;padding:6px 4px;border-radius:6px;}
+.footer-links a{display:inline-flex;align-items:center;min-height:44px;color:var(--l3);text-decoration:none;padding:6px 4px;border-radius:6px;}
 .footer-links a:hover{color:var(--l1);text-decoration:underline;}
 .footer-links span{color:var(--l4);}
 .footer-note{
@@ -1516,7 +1516,7 @@ footer{margin-top:48px;padding:0 16px;}
   font-size:var(--fs-xs);
   color:var(--l4);
 }
-.footer-attribution a{color:var(--l3);}
+.footer-attribution a{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;color:var(--l3);}
 .footer-disclaimer{
   max-width:680px;
   margin:10px auto 0;
