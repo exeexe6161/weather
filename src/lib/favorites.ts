@@ -47,6 +47,19 @@ export function removeFavorite(id: number): Place[] {
   return next;
 }
 
+// Fügt einen Favoriten an einer bestimmten Position wieder ein (Rückgängig nach
+// Entfernen: die alte Reihenfolge bleibt erhalten). Gleiche Guards wie
+// addFavorite: Geo-Ort nie, Limit respektieren; Index defensiv klemmen.
+export function insertFavorite(place: Place, index: number): Place[] {
+  if (place.id === GEO_PLACE_ID) return getFavorites();
+  const current = getFavorites().filter((p) => p.id !== place.id);
+  if (current.length >= MAX_FAVORITES) return current;
+  const i = Math.max(0, Math.min(index, current.length));
+  const next = [...current.slice(0, i), place, ...current.slice(i)];
+  persist(next);
+  return next;
+}
+
 // Verschiebt einen Favoriten um eine Position (Tausch mit dem Nachbarn). Die
 // Reihenfolge IST die Array-Reihenfolge, daher genügt ein Swap + persist. Liest
 // frisch (mehrfache schnelle Klicks bleiben konsistent). Defensive: id unbekannt

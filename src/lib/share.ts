@@ -3,6 +3,7 @@
 // Zwischenablage. AbortError = Nutzer hat den Dialog abgebrochen, das ist KEIN
 // Fehler und wird still verschluckt. Etappe 1 teilt nur Text (kein Bild).
 import { t } from "../i18n/ui";
+import { showToast } from "./toast";
 
 export interface SharePayload {
   title: string;
@@ -69,30 +70,4 @@ function downloadBlob(blob: Blob, name: string): void {
   a.click();
   a.remove();
   URL.revokeObjectURL(objUrl);
-}
-
-// Schlanke, transiente Rückmeldung für den Clipboard-Fallback. Genau ein Toast-
-// Knoten modulweit, role=status/aria-live für Screenreader, automatisch nach
-// kurzer Zeit wieder ausgeblendet.
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
-
-function showToast(message: string): void {
-  let el = document.getElementById("wpToast");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "wpToast";
-    el.className = "wp-toast";
-    el.setAttribute("role", "status");
-    el.setAttribute("aria-live", "polite");
-    document.body.appendChild(el);
-  }
-  el.textContent = message;
-  // Reflow erzwingen, damit die Einblend-Transition auch bei schnellem
-  // Nacheinander-Anzeigen erneut greift.
-  void el.offsetWidth;
-  el.classList.add("wp-toast--show");
-  if (toastTimer !== undefined) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el?.classList.remove("wp-toast--show");
-  }, 2400);
 }

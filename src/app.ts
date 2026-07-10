@@ -7,8 +7,9 @@ import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { renderAirQuality } from "./components/AirQuality";
 import { renderWeatherAlerts } from "./components/WeatherAlerts";
-import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
-import { getLang, getLocale, t } from "./i18n/ui";
+import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, insertFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
+import { getLang, getLocale, t, type Lang } from "./i18n/ui";
+import { showToast } from "./lib/toast";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
 import { shareText, shareImage } from "./lib/share";
@@ -160,12 +161,30 @@ function renderFavorites(): void {
   renderFavoritesList(byId("favoritesList"), getFavorites(), state.place?.id ?? null, {
     onSelect: (place) => selectPlace(place),
     onRemove: (place) => {
+      // Position VOR dem Entfernen merken: Rückgängig stellt die alte
+      // Reihenfolge wieder her, nicht nur den Eintrag.
+      const idx = getFavorites().findIndex((p) => p.id === place.id);
       removeFavorite(place.id);
       // P1: Wetter-Eintrag des entfernten Favoriten sofort mit aufräumen.
       pruneFavWeatherCache(getFavorites().map((p) => p.id));
       renderFavorites();
       renderContent();
       renderIcons();
+      // Undo statt Bestätigungsdialog (UX Playbook): das Entfernen bleibt ein
+      // Tipp, der Toast bietet den Rückweg. Kein Ortsname-Escaping nötig,
+      // textContent im Toast.
+      showToast(t("favRemovedToast").replace("{place}", place.name), {
+        label: t("undo"),
+        onAction: () => {
+          insertFavorite(place, idx);
+          renderFavorites();
+          renderContent();
+          renderIcons();
+          // Der Wetter-Cache-Eintrag wurde beim Entfernen gepruned; der
+          // batched Call holt ihn für den wiederhergestellten Ort zurück.
+          loadFavoritesWeather();
+        },
+      });
     },
     onMove: (place, dir) => {
       // Nur die Reihenfolge ändert sich; aktive Stadt und Wetterinhalt bleiben.
@@ -193,6 +212,39 @@ function loadFavoritesWeather(): void {
       renderIcons();     // neue data-lucide Wetter-Icons hydrieren
     })
     .catch(() => { /* leise: Chips bleiben bei alten/keinen Werten */ });
+}
+
+// Schnellstart-Chips im Empty State: ein klarer nächster Schritt beim ersten
+// Besuch (UX Playbook zustaende.md), sprachabhängig kuratierte Städte. Klick
+// löst denselben Weg aus wie der ?stadt= Deep-Link: Geocoding-Suche, erster
+// Treffer. Kein Treffer/Fehler → still zurück zum Empty State (gleiches
+// stilles Fallback-Muster wie der URL-Start in initApp).
+const QUICK_CITIES: Record<Lang, string[]> = {
+  de: ["Berlin", "Hamburg", "München", "Wien"],
+  en: ["London", "New York", "Berlin", "Sydney"],
+  tr: ["İstanbul", "Ankara", "İzmir", "Antalya"],
+};
+
+function renderEmptyCities(): void {
+  const wrap = document.getElementById("emptyCities");
+  if (!wrap) return;
+  wrap.textContent = "";
+  for (const name of QUICK_CITIES[getLang()]) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "city-chip";
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      setView("loading");
+      searchCity(name, getLang())
+        .then((places) => {
+          if (places.length) selectPlace(places[0]);
+          else setView("empty");
+        })
+        .catch(() => setView("empty"));
+    });
+    wrap.appendChild(btn);
+  }
 }
 
 function renderPollen(): void {
@@ -581,6 +633,7 @@ export function initApp(): void {
 
   initSearchBar(byId("searchBar"), { onSelect: selectPlace });
   renderFavorites();
+  renderEmptyCities();
   renderIcons();
 
   byId("retryBtn").addEventListener("click", () => {
@@ -594,6 +647,7 @@ export function initApp(): void {
   // Sprachwechsel: dynamische Bereiche mit neuen Labels/Locales neu rendern
   document.addEventListener("weather:langchange", () => {
     renderFavorites();
+    renderEmptyCities(); // sprachabhängige Städteliste neu aufbauen
     if (state.place && state.forecast) renderContent();
     renderIcons();
   });

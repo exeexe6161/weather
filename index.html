@@ -37,8 +37,13 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=5acc49867ea9"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=5acc49867ea9">
+<<<<<<< HEAD
+<script src="./theme-init.js?v=b39ed2c13797"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=b39ed2c13797">
+=======
+<script src="./theme-init.js?v=b39ed2c13797"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=b39ed2c13797">
+>>>>>>> dd0d69b (update)
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -84,6 +89,9 @@
            role="combobox" aria-expanded="false" aria-controls="searchResults" aria-autocomplete="list"
            data-i18n-aria="searchLabel" aria-label="Stadt suchen"
            data-i18n-placeholder="searchPlaceholder" placeholder="Stadt suchen, z. B. Berlin">
+    <button id="searchClear" class="search-clear" type="button" hidden data-i18n-aria="searchClear" aria-label="Suche leeren">
+      <i data-lucide="x" class="search-clear-ico"></i>
+    </button>
   </div>
   <ul id="searchResults" class="search-results" role="listbox" data-i18n-aria="resultsAria" aria-label="Suchergebnisse" hidden></ul>
   <div id="searchStatus" class="search-status" role="status" aria-live="polite" hidden></div>
@@ -118,6 +126,7 @@
     <i data-lucide="cloud-sun" class="state-ico"></i>
     <div class="state-title" data-i18n="emptyTitle">Suche eine Stadt für die Vorhersage</div>
     <div class="state-sub" data-i18n="emptySub">Oder nutze deinen Standort über die Schaltfläche oben.</div>
+    <div class="state-cities" id="emptyCities"></div>
   </div>
 
   <div id="weatherLoading" class="state-card" hidden>
@@ -181,6 +190,10 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=5acc49867ea9"></script>
+<<<<<<< HEAD
+<script src="./script.min.js?v=b39ed2c13797"></script>
+=======
+<script src="./script.min.js?v=b39ed2c13797"></script>
+>>>>>>> dd0d69b (update)
 </body>
 </html>

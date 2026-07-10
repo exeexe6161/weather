@@ -75,6 +75,9 @@ button.hour-cell,
 .fav-row-move-btn,
 .fav-row-x,
 .rc-hit,
+.search-clear,
+.city-chip,
+.wp-toast-undo,
 .day-row{touch-action:manipulation;}
 
 button.hour-cell,
@@ -88,6 +91,9 @@ button.hour-cell,
 .top-menu-item,
 .theme-btn,
 .search-result,
+.search-clear,
+.city-chip,
+.wp-toast-undo,
 .hour-time,
 .hour-temp{-webkit-user-select:none;user-select:none;}
 
@@ -520,7 +526,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .search-input{
   width:100%;
   height:48px;
-  padding:0 14px 0 42px;
+  padding:0 44px 0 42px; /* rechts Raum für den Leeren-Knopf */
   background:var(--s1);
   border:none;
   border-radius:var(--r-input);
@@ -571,6 +577,25 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   from{opacity:1;background-position:170% 0;}
   to{opacity:1;background-position:-70% 0;}
 }
+/* Leeren-Knopf im Suchfeld: erscheint nur mit Eingabetext ([hidden] sonst),
+   volles 44px Tippziel, ruhiger Stahl-Ton, kein eigener Hintergrund — das Feld
+   bleibt optisch eine Fläche. */
+.search-clear{
+  position:absolute;
+  right:2px;
+  width:44px;
+  height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:none;
+  border:none;
+  border-radius:var(--r-pill);
+  color:var(--l4);
+  cursor:pointer;
+}
+.search-clear:hover{color:var(--l1);}
+.search-clear-ico{width:16px;height:16px;}
 .search-results{
   position:absolute;
   top:54px;
@@ -812,6 +837,46 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .state-ico{width:36px;height:36px;color:var(--l4);}
 .state-title{font-size:var(--fs-lg);font-weight:700;}
 .state-sub{font-size:var(--fs-base);color:var(--l3);}
+/* Schnellstart-Chips im Empty State: ein Tipp statt Tippen — klarer nächster
+   Schritt nach UX Playbook (zustaende.md). Pillen im Hausstil auf --s2 (die
+   Karte selbst ist --s1), 40px Optik mit 44px Hitbox per ::after (Muster
+   .seg-btn). Befüllt aus app.ts (renderEmptyCities), sprachabhängig. */
+.state-cities{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:var(--sp-2);
+  margin-top:var(--sp-2);
+}
+.city-chip{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  height:40px;
+  padding:0 var(--sp-4);
+  background:var(--s2);
+  border:none;
+  border-radius:var(--r-pill);
+  font-family:inherit;
+  font-size:var(--fs-base);
+  font-weight:600;
+  color:var(--l2);
+  cursor:pointer;
+}
+.city-chip::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:100%;
+  height:44px;
+  transform:translate(-50%,-50%);
+}
+.city-chip:hover{background:var(--s3);color:var(--l1);}
+.city-chip:active{transform:scale(var(--press-scale));}
+@media (prefers-reduced-motion:no-preference){
+  .city-chip{transition:transform var(--t-base),background var(--t-base),color var(--t-base);}
+}
 .spinner{
   width:28px;
   height:28px;
@@ -1260,15 +1325,17 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
    Unter der Linie ein sehr blasser Wärme-Hauch (kühl→warm, RELATIV zur Spanne)
    — als Inline-Gradient im SVG mit vertikaler Ausblend-Maske, nicht in CSS.
    Ring-/Punkt-Kern nutzt --s1 (Kartenhintergrund, theme-aware). Die zwei
-   Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) und die zwei
-   Festtöne (#33506f Werte, #8a939d Uhrzeiten) sind für hellen Grund gedacht —
-   im Dark Mode separat zu prüfen. */
+   Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) sind für hellen
+   Grund gedacht; im Dark Mode dämpft die Gruppen-Opacity unten. Werte und
+   Uhrzeiten laufen über die Text-Tokens (--l2/--l4) und sind damit in beiden
+   Themes AA-lesbar (die früheren Festtöne #33506f/#8a939d waren auf Karbon
+   nahezu unleserlich). */
 .tc-card{padding:var(--sp-3) var(--sp-4);}
 .tc-svg{width:100%;height:auto;display:block;}
 .tc-line{stroke:var(--wp-zenit);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .tc-guide{stroke:var(--wp-zenit);stroke-opacity:.10;stroke-width:1;}
-.tc-val{font:600 12px Inter,sans-serif;fill:#33506f;font-variant-numeric:tabular-nums;}
-.tc-axis{font:400 9px Inter,sans-serif;fill:#8a939d;}
+.tc-val{font:600 12px Inter,sans-serif;fill:var(--l2);font-variant-numeric:tabular-nums;}
+.tc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
 .tc-ring{fill:var(--s1);stroke:var(--wp-zenit);stroke-width:1.7;} /* Kern = Kartenhintergrund, theme-aware */
 .tc-now{fill:var(--wp-zenit);}
 .tc-now-halo{fill:var(--wp-zenit);fill-opacity:.13;}
@@ -1602,4 +1669,30 @@ footer{margin-top:48px;padding:0 16px;}
 .wp-toast--show{opacity:1;transform:translate(-50%,0);}
 @media (prefers-reduced-motion:reduce){
   .wp-toast{transition:opacity var(--t-base);transform:translate(-50%,0);}
+}
+/* Toast mit Aktion (z. B. Rückgängig nach Favorit entfernen): nur dann wird der
+   Toast klickbar (Grundzustand bleibt pointer-events:none, damit ein unsicht-
+   barer Toast nie Tipps abfängt). Der Aktionsknopf ist ein ruhiger Textbutton
+   im Akzentton mit 44px Hitbox per ::after (Muster .seg-btn). */
+.wp-toast--interactive{pointer-events:auto;}
+.wp-toast-undo{
+  position:relative;
+  margin-left:var(--sp-3);
+  padding:0;
+  background:none;
+  border:none;
+  font-family:inherit;
+  font-size:var(--fs-sm);
+  font-weight:700;
+  color:var(--accent-text);
+  cursor:pointer;
+}
+.wp-toast-undo::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:44px;
+  height:44px;
+  transform:translate(-50%,-50%);
 }

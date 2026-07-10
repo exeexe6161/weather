@@ -17,14 +17,33 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   const list = root.querySelector<HTMLUListElement>("#searchResults")!;
   const geoBtn = root.querySelector<HTMLButtonElement>("#geoBtn")!;
   const status = root.querySelector<HTMLElement>("#searchStatus")!;
+  const clearBtn = root.querySelector<HTMLButtonElement>("#searchClear")!;
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastQuery = "";
+  // Enter vor Eintreffen der Ergebnisse: die nächste Antwort wählt direkt den
+  // ersten Treffer (Tippen-und-Enter-Flow), statt nur die Liste zu zeigen.
+  let selectFirstOnResults = false;
 
   function closeList(): void {
     list.hidden = true;
     list.innerHTML = "";
     input.setAttribute("aria-expanded", "false");
+  }
+
+  // Leeren-Knopf nur zeigen, wenn Text im Feld steht ([hidden] sonst).
+  function syncClear(): void {
+    clearBtn.hidden = input.value === "";
+  }
+
+  // Gemeinsamer Abschluss der Auswahl (Klick aufs Ergebnis, Enter):
+  // Feld leeren, Tastatur einklappen (blur), Liste zu, Ort melden.
+  function select(place: Place): void {
+    input.value = "";
+    syncClear();
+    input.blur();
+    closeList();
+    opts.onSelect(place);
   }
 
   function showStatus(msg: string): void {
@@ -34,8 +53,16 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
 
   function renderResults(places: Place[]): void {
     if (!places.length) {
+      selectFirstOnResults = false;
       closeList();
       showStatus(t("searchNoResults"));
+      return;
+    }
+    // Enter war schneller als die Antwort: ersten Treffer direkt übernehmen,
+    // keine Liste mehr zeigen.
+    if (selectFirstOnResults) {
+      selectFirstOnResults = false;
+      select(places[0]);
       return;
     }
     showStatus("");
@@ -55,13 +82,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     input.setAttribute("aria-expanded", "true");
     renderIcons();
     list.querySelectorAll<HTMLButtonElement>(".search-result").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const place = places[Number(btn.dataset.idx)];
-        input.value = "";
-        input.blur();
-        closeList();
-        opts.onSelect(place);
-      });
+      btn.addEventListener("click", () => select(places[Number(btn.dataset.idx)]));
     });
   }
 
@@ -81,6 +102,8 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
 
   input.addEventListener("input", () => {
     const q = input.value.trim();
+    syncClear();
+    selectFirstOnResults = false; // neues Tippen hebt eine wartende Enter-Wahl auf
     if (timer) clearTimeout(timer);
     if (q.length < 3) {
       lastQuery = "";
@@ -98,7 +121,32 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     } else if (e.key === "ArrowDown" && !list.hidden) {
       e.preventDefault();
       list.querySelector<HTMLButtonElement>(".search-result")?.focus();
+    } else if (e.key === "Enter") {
+      // Tippen-und-Enter: sichtbares erstes Ergebnis direkt übernehmen; läuft
+      // die Suche noch (Debounce), sofort suchen und die Antwort wählt selbst.
+      e.preventDefault();
+      const first = list.querySelector<HTMLButtonElement>(".search-result");
+      if (!list.hidden && first) {
+        first.click();
+        return;
+      }
+      const q = input.value.trim();
+      if (q.length < 3) return;
+      if (timer) clearTimeout(timer);
+      selectFirstOnResults = true;
+      runSearch(q);
     }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    input.value = "";
+    lastQuery = "";
+    selectFirstOnResults = false;
+    if (timer) clearTimeout(timer);
+    closeList();
+    showStatus("");
+    syncClear();
+    input.focus(); // direkt weitertippen können
   });
 
   list.addEventListener("keydown", (e) => {
