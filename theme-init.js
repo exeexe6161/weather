@@ -116,10 +116,18 @@
       btn.addEventListener("click", function () {
         // Zyklus: hell → dunkel → system → hell.
         var next = currentMode === "light" ? "dark" : currentMode === "dark" ? "system" : "light";
-        applyMode(next);
+        var run = function () {
+          applyMode(next);
+          glyph();
+          document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: html.getAttribute("data-theme"), mode: next } }));
+        };
         try { localStorage.setItem("theme", next); } catch (_) {}
-        glyph();
-        document.dispatchEvent(new CustomEvent("themechange", { detail: { theme: html.getAttribute("data-theme"), mode: next } }));
+        // Weicher Crossfade über View Transitions (Dauer in styles-app.css).
+        // Ohne Browser-Support oder bei reduzierter Bewegung harter Wechsel —
+        // die Funktion hängt nie an der Animation.
+        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (document.startViewTransition && !reduce) document.startViewTransition(run);
+        else run();
       });
     }
 

@@ -37,8 +37,8 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=b39ed2c13797"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=b39ed2c13797">
+<script src="./theme-init.js?v=094d88677a36"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=094d88677a36">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -124,14 +124,40 @@
     <div class="state-cities" id="emptyCities"></div>
   </div>
 
-  <div id="weatherLoading" class="state-card" hidden>
-    <div class="spinner" aria-hidden="true"></div>
-    <div class="state-title" data-i18n="loading">Lade Wetterdaten…</div>
+  <!-- Skeleton statt Spinner (nur Erstladen ohne Cache): layouttreue Platzhalter
+       für die aktuelle Wetterkarte und die Anzieh-Karte — weniger gefühlte
+       Wartezeit, kein Sprung beim Erscheinen. Rein dekorativ (aria-hidden);
+       der Ladehinweis bleibt für Screenreader als sr-only Text (die Sektion
+       ist bereits aria-live). -->
+  <div id="weatherLoading" hidden>
+    <div class="skel-card list-card" aria-hidden="true">
+      <div class="skel-row skel-row--head">
+        <span class="skel skel-line skel-line--place"></span>
+        <span class="skel skel-circle"></span>
+      </div>
+      <div class="skel-row skel-row--main">
+        <span class="skel skel-ico"></span>
+        <span class="skel skel-temp"></span>
+      </div>
+      <span class="skel skel-line skel-line--label"></span>
+      <span class="skel skel-line skel-line--summary"></span>
+      <div class="skel-grid">
+        <span class="skel skel-tile"></span>
+        <span class="skel skel-tile"></span>
+        <span class="skel skel-tile"></span>
+        <span class="skel skel-tile"></span>
+      </div>
+    </div>
+    <div class="skel-card list-card" aria-hidden="true">
+      <span class="skel skel-line skel-line--label skel-line--first"></span>
+      <span class="skel skel-line skel-line--summary"></span>
+    </div>
+    <p class="sr-only" data-i18n="loading">Lade Wetterdaten…</p>
   </div>
 
   <div id="weatherError" class="state-card" hidden>
     <i data-lucide="cloud-fog" class="state-ico"></i>
-    <div class="state-title" data-i18n="loadError">Wetterdaten konnten nicht geladen werden</div>
+    <div class="state-title" id="errorTitle" data-i18n="loadError">Wetterdaten konnten nicht geladen werden</div>
     <button id="retryBtn" class="retry-btn" type="button">
       <i data-lucide="refresh-cw" class="retry-btn-ico"></i>
       <span data-i18n="retry">Erneut versuchen</span>
@@ -185,6 +211,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=b39ed2c13797"></script>
+<script src="./script.min.js?v=094d88677a36"></script>
 </body>
 </html>

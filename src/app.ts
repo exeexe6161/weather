@@ -611,7 +611,16 @@ export function selectPlace(place: Place): void {
         renderContent();
         renderIcons();
       } else {
-        // Nichts anzeigbar (kein Stand für diesen Ort): ehrliche Fehlermeldung
+        // Nichts anzeigbar (kein Stand für diesen Ort): ehrliche Fehlermeldung.
+        // Offline von echtem Fehler unterscheiden (UX Playbook: sagen, was
+        // passiert ist): der data-i18n-Key wird mitgetauscht, damit ein
+        // Sprachwechsel im Fehlerzustand den richtigen Text behält.
+        const titleEl = document.getElementById("errorTitle");
+        if (titleEl) {
+          const key = navigator.onLine === false ? "errorOffline" : "loadError";
+          titleEl.setAttribute("data-i18n", key);
+          titleEl.textContent = t(key);
+        }
         setView("error");
       }
     });

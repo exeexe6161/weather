@@ -245,6 +245,13 @@ html{
   text-size-adjust:100%;
 }
 
+/* Weicher Crossfade beim manuellen Theme-Wechsel (theme-init.js ruft
+   startViewTransition; ohne Browser-Support oder bei reduzierter Bewegung
+   schaltet JS hart um — Funktion hängt nie an der Animation). 300ms im
+   Mikro-Interaktions-Rahmen. */
+::view-transition-old(root),
+::view-transition-new(root){animation-duration:.3s;}
+
 body{
   font-family:"Inter",system-ui,sans-serif;
   background:var(--bg);
@@ -877,19 +884,34 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 @media (prefers-reduced-motion:no-preference){
   .city-chip{transition:transform var(--t-base),background var(--t-base),color var(--t-base);}
 }
-.spinner{
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  border:3px solid var(--s3);
-  border-top-color:var(--accent);
-  animation:spin .8s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg);}}
 @media (prefers-reduced-motion:reduce){
-  .spinner{animation-duration:2.4s;}
   html{scroll-behavior:auto;}
 }
+/* ══ Skeleton (Erstladen ohne Cache) ══
+   Layouttreue Platzhalter statt Spinner (UX Playbook zustaende.md): Flächen in
+   --s2 auf der --s1 Karte, Formen entsprechen grob der aktuellen Wetterkarte
+   (Kopfzeile, Temperatur, Satz, vier Kacheln) plus einer kleinen Zweitkarte.
+   Puls nur über opacity (GPU-freundlich) und nur bei no-preference; bei
+   reduzierter Bewegung stehen die Flächen ruhig. */
+#weatherLoading .skel-card + .skel-card{margin-top:var(--sp-4);}
+.skel-card{text-align:left;}
+.skel{display:block;background:var(--s2);border-radius:var(--r-sm);}
+.skel-row{display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.skel-row--main{justify-content:flex-start;margin-top:var(--sp-4);}
+.skel-circle{width:44px;height:44px;border-radius:var(--r-pill);flex:none;}
+.skel-ico{width:56px;height:56px;border-radius:var(--r-pill);flex:none;}
+.skel-temp{width:110px;height:52px;}
+.skel-line{height:14px;}
+.skel-line--place{width:45%;height:18px;}
+.skel-line--label{width:35%;margin-top:var(--sp-3);}
+.skel-line--first{margin-top:0;}
+.skel-line--summary{width:70%;margin-top:var(--sp-3);}
+.skel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:var(--sp-4);}
+.skel-tile{height:64px;border-radius:var(--r-md);}
+@media (prefers-reduced-motion:no-preference){
+  .skel{animation:skel-pulse 1.6s ease-in-out infinite;}
+}
+@keyframes skel-pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
 .retry-btn{
   display:inline-flex;
   align-items:center;
@@ -1241,6 +1263,11 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
   overscroll-behavior-inline:contain;
   scrollbar-width:thin;
   -webkit-overflow-scrolling:touch;
+  /* Sanftes Einrasten auf Stundengrenzen beim Wischen. proximity statt
+     mandatory: freies Durchscrollen bleibt möglich, nur nahe einer Zelle
+     rastet es ein. scroll-padding gleicht das Track-Padding aus. */
+  scroll-snap-type:x proximity;
+  scroll-padding-left:var(--sp-3);
   padding:0; /* geerbtes .list-card padding:var(--sp-4) neutralisieren; Innenabstand liegt im .hourly-track */
 }
 .hourly-track{
@@ -1278,7 +1305,7 @@ html[data-theme="dark"] .install-hint-x{background:rgba(255,255,255,0.08);}
    gilt unverändert auf dem Button (gleiche Optik); hier nur der Button-Reset.
    .hour-cell-li ist die schlanke role="listitem"-Hülle, damit die Listen-
    semantik (list > listitem > button) erhalten bleibt. */
-.hour-cell-li{display:flex;}
+.hour-cell-li{display:flex;scroll-snap-align:start;}
 button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;}
 /* Tap auf ein Kind (Icon-SVG samt Pfaden, Uhrzeit, Gradzahl, sr-only) zählt als
    Tap auf den Button: ohne dies wird beim Tippen auf das Lucide-<svg> das Event-

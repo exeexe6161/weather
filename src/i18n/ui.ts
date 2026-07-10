@@ -47,6 +47,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   emptySub:        { de: "Oder nutze deinen Standort über die Schaltfläche oben.", en: "Or use your location via the button above.", tr: "Veya yukarıdaki düğmeyle konumunu kullan." },
   loading:         { de: "Lade Wetterdaten…", en: "Loading weather data…", tr: "Hava verileri yükleniyor…" },
   loadError:       { de: "Wetterdaten konnten nicht geladen werden", en: "Weather data could not be loaded", tr: "Hava verileri yüklenemedi" },
+  errorOffline:    { de: "Du bist offline. Stelle eine Verbindung her.", en: "You are offline. Please reconnect.", tr: "Çevrimdışısın. Bağlantı kur." },
   retry:           { de: "Erneut versuchen", en: "Try again", tr: "Tekrar dene" },
   offlineNote:     { de: "Keine Verbindung. Gespeicherte Daten werden angezeigt.", en: "No connection. Showing saved data.", tr: "Bağlantı yok. Kayıtlı veriler gösteriliyor." },
   staleNote:       { de: "Stand {time}", en: "As of {time}", tr: "{time} itibarıyla" },
