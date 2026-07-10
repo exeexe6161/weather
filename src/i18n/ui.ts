@@ -183,6 +183,8 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   hourDetailAria:  { de: "Details für {time}, {condition}, {temp}", en: "Details for {time}, {condition}, {temp}", tr: "{time} için ayrıntılar, {condition}, {temp}" },
   // ── Stundendetail-Panel (Etappe 3)
   hourPanelTitle:  { de: "Stundendetails", en: "Hourly details", tr: "Saatlik ayrıntılar" },
+  hourMoreShow:    { de: "Weitere Werte", en: "More values", tr: "Daha fazla değer" },
+  hourMoreHide:    { de: "Weniger Werte", en: "Fewer values", tr: "Daha az değer" },
   close:           { de: "Schließen", en: "Close", tr: "Kapat" },
   temperature:     { de: "Temperatur", en: "Temperature", tr: "Sıcaklık" },
   precipProbability: { de: "Niederschlag", en: "Precipitation", tr: "Yağış" },

@@ -3,7 +3,7 @@
  *
  * Source of truth, in order of precedence:
  *   1. process.env.VERCEL_GIT_COMMIT_SHA  (first 12 chars) — stable per deploy
- *   2. Date.now()                          — fallback for local/offline builds
+ *   2. Hash der gebauten Kern-Assets       — stabil bei identischem Inhalt
  *
  * Deliberately never shells out to `git`: VERCEL_GIT_COMMIT_SHA may be unset
  * and a git invocation can fail inside the Vercel build sandbox. This script
@@ -12,10 +12,13 @@
  * Runs against the root sw.js BEFORE build:dist copies it into dist/.
  */
 import { readFile, writeFile } from 'node:fs/promises';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const sha = process.env.VERCEL_GIT_COMMIT_SHA;
-const token = sha ? sha.slice(0, 12) : String(Date.now());
+const assetFiles = ['styles-app.min.css', 'theme-init.js', 'script.min.js'];
+const assetContents = await Promise.all(assetFiles.map((name) => readFile(new URL(`./${name}`, import.meta.url))));
+const contentToken = createHash('sha256').update(Buffer.concat(assetContents)).digest('hex').slice(0, 12);
+const token = sha ? sha.slice(0, 12) : contentToken;
 const version = 'v' + token;
 
 const file = new URL('./sw.js', import.meta.url);
@@ -29,12 +32,14 @@ if (!re.test(src)) {
   process.exit(1);
 }
 
-await writeFile(file, src.replace(re, `$1'${version}'`));
-console.log(`build-sw: CACHE_VERSION = ${version} (${sha ? 'commit sha' : 'timestamp fallback'})`);
+const nextSw = src.replace(re, `$1'${version}'`);
+if (nextSw !== src) await writeFile(file, nextSw);
+console.log(`build-sw: CACHE_VERSION = ${version} (${sha ? 'commit sha' : 'content hash'})`);
 
-const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "").replace(/(\d{8})(\d{6})/, "$1-$2");
-const verRe = /\?v=(?:BUILD|\d{8}-\d+)/g;
+const verRe = /\?v=(?:BUILD|[A-Za-z0-9._-]+)/g;
 for (const f of ["index.html", "sw.js"]) {
   const p = new URL(f, import.meta.url);
-  writeFileSync(p, readFileSync(p, "utf8").replace(verRe, `?v=${stamp}`));
+  const current = await readFile(p, "utf8");
+  const next = current.replace(verRe, `?v=${token}`);
+  if (next !== current) await writeFile(p, next);
 }

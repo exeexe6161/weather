@@ -221,6 +221,16 @@ function openHourDetail(hour: HourlyEntry, index: number, button: HTMLButtonElem
     .querySelector<HTMLButtonElement>(".hour-panel-close")
     ?.addEventListener("click", () => closeHourDetail(true));
 
+  const moreToggle = panel.querySelector<HTMLButtonElement>(".hour-panel-more-toggle");
+  const advancedValues = panel.querySelector<HTMLElement>("#hourPanelAdvanced");
+  moreToggle?.addEventListener("click", () => {
+    if (!advancedValues) return;
+    const willExpand = advancedValues.hidden;
+    advancedValues.hidden = !willExpand;
+    moreToggle.setAttribute("aria-expanded", String(willExpand));
+    moreToggle.textContent = willExpand ? moreToggle.dataset.hide ?? "" : moreToggle.dataset.show ?? "";
+  });
+
   // Outside-Klick-Listener erst nach dem aktuellen Event scharf schalten, damit
   // der öffnende Klick (z.B. Favoriten-Chip → Cache-Auto-Open) ihn nicht selbst
   // auslöst (Befund 1).
@@ -287,30 +297,40 @@ function fmtDir(deg: number): string {
 const SICHT_GRENZE = 5000; // Meter
 
 function buildPanelHtml(hour: HourlyEntry, icon: string, time: string, label: string, locale: string): string {
-  const rows: string[] = [];
+  const primaryRows: string[] = [];
+  const advancedRows: string[] = [];
   // Basis: Temperatur, Gefühlt und Niederschlagswahrscheinlichkeit liegen immer
   // vor (Pflichtfelder bzw. Default 0).
-  rows.push(metaRow(t("temperature"), formatTemp(hour.temperature)));
-  rows.push(metaRow(t("feelsLike"), formatTemp(hour.apparentTemperature)));
-  rows.push(metaRow(t("precipProbability"), formatPercent(hour.precipitationProbability)));
+  primaryRows.push(metaRow(t("temperature"), formatTemp(hour.temperature)));
+  primaryRows.push(metaRow(t("feelsLike"), formatTemp(hour.apparentTemperature)));
+  primaryRows.push(metaRow(t("precipProbability"), formatPercent(hour.precipitationProbability)));
   // Optionale Felder: Zeile NUR bei echtem Zahlenwert, sonst weglassen (kein NaN,
   // kein "undefined"; alte Caches ohne diese Felder zeigen nur die Basis).
-  if (isNum(hour.precipitation) && hour.precipitation > 0) rows.push(metaRow(t("precipAmount"), fmtMm(hour.precipitation, locale)));
+  if (isNum(hour.precipitation) && hour.precipitation > 0) primaryRows.push(metaRow(t("precipAmount"), fmtMm(hour.precipitation, locale)));
   // Schnee nahe dem Niederschlag: nur wenn in dieser Stunde wirklich Schnee fällt
   // (Sommer/snowfall 0 → Zeile entfällt, genau so gewollt).
-  if (isNum(hour.snowfall) && hour.snowfall > 0) rows.push(metaRow(t("snow"), fmtCm(hour.snowfall, locale)));
-  if (isNum(hour.windSpeed)) rows.push(metaRow(t("wind"), formatWind(hour.windSpeed)));
-  if (isNum(hour.windDirection)) rows.push(metaRow(t("windDirection"), fmtDir(hour.windDirection)));
-  if (isNum(hour.windGusts)) rows.push(metaRow(t("windGusts"), formatWind(hour.windGusts)));
-  if (isNum(hour.relativeHumidity)) rows.push(metaRow(t("humidity"), formatPercent(hour.relativeHumidity)));
-  if (isNum(hour.dewPoint)) rows.push(metaRow(t("dewPoint"), formatTemp(hour.dewPoint)));
-  if (isNum(hour.cloudCover)) rows.push(metaRow(t("cloudCover"), formatPercent(hour.cloudCover)));
+  if (isNum(hour.snowfall) && hour.snowfall > 0) primaryRows.push(metaRow(t("snow"), fmtCm(hour.snowfall, locale)));
+  if (isNum(hour.windSpeed)) primaryRows.push(metaRow(t("wind"), formatWind(hour.windSpeed)));
+  if (isNum(hour.relativeHumidity)) primaryRows.push(metaRow(t("humidity"), formatPercent(hour.relativeHumidity)));
+  if (isNum(hour.windDirection)) advancedRows.push(metaRow(t("windDirection"), fmtDir(hour.windDirection)));
+  if (isNum(hour.windGusts)) advancedRows.push(metaRow(t("windGusts"), formatWind(hour.windGusts)));
+  if (isNum(hour.dewPoint)) advancedRows.push(metaRow(t("dewPoint"), formatTemp(hour.dewPoint)));
+  if (isNum(hour.cloudCover)) advancedRows.push(metaRow(t("cloudCover"), formatPercent(hour.cloudCover)));
   // Sichtweite bei den atmosphärischen Werten, aber NUR bei niedriger Sicht
   // (Dunst/Nebel < SICHT_GRENZE); klare Sicht trägt nichts bei → Zeile entfällt.
-  if (isNum(hour.visibility) && hour.visibility < SICHT_GRENZE) rows.push(metaRow(t("visibility"), fmtVisibility(hour.visibility, locale)));
-  if (isNum(hour.pressure)) rows.push(metaRow(t("pressure"), fmtHpa(hour.pressure)));
+  if (isNum(hour.visibility) && hour.visibility < SICHT_GRENZE) primaryRows.push(metaRow(t("visibility"), fmtVisibility(hour.visibility, locale)));
+  if (isNum(hour.pressure)) advancedRows.push(metaRow(t("pressure"), fmtHpa(hour.pressure)));
   // UV nur ab gerundet 1 zeigen: nachts/0 ist uninformativ.
-  if (isNum(hour.uvIndex) && Math.round(hour.uvIndex) >= 1) rows.push(metaRow(t("uv_label"), String(Math.round(hour.uvIndex))));
+  if (isNum(hour.uvIndex) && Math.round(hour.uvIndex) >= 1) primaryRows.push(metaRow(t("uv_label"), String(Math.round(hour.uvIndex))));
+
+  const showMore = t("hourMoreShow");
+  const showLess = t("hourMoreHide");
+  const advancedHtml = advancedRows.length > 0
+    ? `<div class="hour-panel-more">
+      <button type="button" class="hour-panel-more-toggle" aria-expanded="false" aria-controls="hourPanelAdvanced" data-show="${esc(showMore)}" data-hide="${esc(showLess)}">${esc(showMore)}</button>
+      <ul id="hourPanelAdvanced" class="cw-meta hour-panel-meta hour-panel-meta--advanced" hidden>${advancedRows.join("")}</ul>
+    </div>`
+    : "";
 
   return `<div class="hour-panel-head">
     <i data-lucide="${icon}" class="hour-panel-ico"></i>
@@ -322,5 +342,6 @@ function buildPanelHtml(hour: HourlyEntry, icon: string, time: string, label: st
       <i data-lucide="x" class="hour-panel-close-ico"></i>
     </button>
   </div>
-  <ul class="cw-meta hour-panel-meta">${rows.join("")}</ul>`;
+  <ul class="cw-meta hour-panel-meta">${primaryRows.join("")}</ul>
+  ${advancedHtml}`;
 }

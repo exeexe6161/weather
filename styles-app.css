@@ -488,11 +488,14 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 @media (prefers-reduced-motion:no-preference){
   #weatherContent.cards-revealing .list-card{animation:card-rise .4s ease-out both;}
   #weatherContent.cards-revealing #currentWeather{animation-delay:0ms;}
-  #weatherContent.cards-revealing #dressToday{animation-delay:50ms;}
-  #weatherContent.cards-revealing #pollenList{animation-delay:100ms;}
-  #weatherContent.cards-revealing #hourlyStrip{animation-delay:150ms;}
-  #weatherContent.cards-revealing #tempCurve{animation-delay:200ms;}
+  #weatherContent.cards-revealing #weatherAlerts{animation-delay:50ms;}
+  #weatherContent.cards-revealing #hourlyStrip{animation-delay:100ms;}
+  #weatherContent.cards-revealing #tempCurve{animation-delay:150ms;}
+  #weatherContent.cards-revealing #rainChart{animation-delay:200ms;}
   #weatherContent.cards-revealing #dailyForecast{animation-delay:250ms;}
+  #weatherContent.cards-revealing #dressToday{animation-delay:300ms;}
+  #weatherContent.cards-revealing #pollenList{animation-delay:350ms;}
+  #weatherContent.cards-revealing #airQuality{animation-delay:400ms;}
 }
 @keyframes card-rise{
   from{opacity:0;transform:translateY(8px);}
@@ -1241,6 +1244,13 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .hour-panel-close:hover{background:var(--accent-soft);color:var(--accent-text);}
 .hour-panel-close-ico{width:18px;height:18px;}
 .hour-panel-meta{margin-top:var(--sp-3);}
+.hour-panel-more{margin-top:var(--sp-2);}
+.hour-panel-more-toggle{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 2px;background:none;border:0;font-family:inherit;font-size:var(--fs-xs);font-weight:600;color:var(--l4);cursor:pointer;}
+.hour-panel-more-toggle::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);}
+.hour-panel-more-toggle[aria-expanded="true"]::after{transform:rotate(225deg);}
+@media(prefers-reduced-motion:no-preference){.hour-panel-more-toggle::after{transition:transform var(--t-base);}}
+.hour-panel-more-toggle:hover{color:var(--l2);}
+.hour-panel-meta--advanced{margin-top:var(--sp-2);}
 
 /* ══ Temperaturverlauf (rollende 24 Stunden ab jetzt) ══
    Der Kartentitel steht als äußere .sh-Eyebrow im HTML (gleiches Muster wie

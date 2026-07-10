@@ -141,6 +141,7 @@ const COUNTRY_SYNONYMS: string[][] = [
   ["italy", "italia", "italien"],
   ["germany", "deutschland", "almanya"],
   ["netherlands", "nederland", "holland", "niederlande", "hollanda"],
+  ["belgium", "belgie", "belgien", "belgique", "belcika"],
   ["turkey", "turkiye", "turkei"],
 ];
 
@@ -165,6 +166,17 @@ function buildCountryWords(country: string): Set<string> {
     }
   }
   return words;
+}
+
+// Nennt eine Meldung eindeutig ein anderes bekanntes Land, darf sie nicht als
+// ortsbezogene Warnung durch den konservativen Fallback rutschen. Der Abgleich
+// erfolgt wortweise, damit kurze Ländernamen nicht zufällig Teil anderer Wörter
+// treffen. Meldungen, die das aktuelle Land ebenfalls nennen, werden weiterhin
+// durch den bestehenden Regionenabgleich beurteilt.
+function mentionsKnownForeignCountry(text: string, countryWords: Set<string>): boolean {
+  const words = new Set(normalizeText(text).split(" ").filter(Boolean));
+  if ([...countryWords].some((word) => words.has(word))) return false;
+  return COUNTRY_SYNONYMS.some((group) => group.some((word) => words.has(word)));
 }
 
 function sharedPrefixLen(a: string, b: string): number {
@@ -232,6 +244,7 @@ function collectAreaRegions(areas: string, headline: string, countryWords: Set<s
 // fremden Region beginnen (z. B. "Puglianello" in Campania mit der Region
 // "Puglia"), was sonst eine ortsfremde Warnung fälschlich sichtbar hält.
 function alertMatchesLocation(areas: string, headline: string, regionNorm: string, countryWords: Set<string>): boolean {
+  if (mentionsKnownForeignCountry(`${areas} ${headline}`, countryWords)) return false;
   const { candidates, nationwide } = collectAreaRegions(areas, headline, countryWords);
   if (nationwide) return true;
   if (candidates.length === 0) return true;
