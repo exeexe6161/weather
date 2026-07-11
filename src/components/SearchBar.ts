@@ -12,12 +12,43 @@ export interface SearchBarOptions {
 
 const DEBOUNCE_MS = 500;
 
+function preventIosSafariFocusZoom(input: HTMLInputElement): void {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  const isIos = /iPad|iPhone|iPod/.test(nav.userAgent) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+  const isSafari = /WebKit/.test(nav.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(nav.userAgent);
+  const isStandalone = nav.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  if (!isIos || !isSafari || isStandalone) return;
+
+  const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  if (!viewport) return;
+  const original = viewport.content;
+  let restoreTimer: number | undefined;
+
+  const lock = (): void => {
+    if (restoreTimer !== undefined) window.clearTimeout(restoreTimer);
+    if (!/maximum-scale\s*=/.test(viewport.content)) viewport.content = `${original}, maximum-scale=1`;
+  };
+  const restore = (): void => {
+    restoreTimer = window.setTimeout(() => {
+      viewport.content = original;
+      restoreTimer = undefined;
+    }, 350);
+  };
+
+  // touchstart läuft vor Safaris Fokusentscheidung und verhindert dadurch den
+  // automatischen Zoom. focus deckt externe Tastaturen und VoiceOver ab.
+  input.addEventListener("touchstart", lock, { passive: true, capture: true });
+  input.addEventListener("focus", lock);
+  input.addEventListener("blur", restore);
+}
+
 export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   const input = root.querySelector<HTMLInputElement>("#citySearch")!;
   const list = root.querySelector<HTMLUListElement>("#searchResults")!;
   const geoBtn = root.querySelector<HTMLButtonElement>("#geoBtn")!;
   const status = root.querySelector<HTMLElement>("#searchStatus")!;
   const clearBtn = root.querySelector<HTMLButtonElement>("#searchClear")!;
+  preventIosSafariFocusZoom(input);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastQuery = "";
