@@ -24,11 +24,17 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   // Enter vor Eintreffen der Ergebnisse: die nächste Antwort wählt direkt den
   // ersten Treffer (Tippen-und-Enter-Flow), statt nur die Liste zu zeigen.
   let selectFirstOnResults = false;
+  let activeIndex = -1;
+  let currentPlaces: Place[] = [];
 
   function closeList(): void {
     list.hidden = true;
     list.innerHTML = "";
+    currentPlaces = [];
+    activeIndex = -1;
     input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    input.removeAttribute("aria-busy");
   }
 
   // Leeren-Knopf nur zeigen, wenn Text im Feld steht ([hidden] sonst).
@@ -52,6 +58,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   }
 
   function renderResults(places: Place[]): void {
+    input.removeAttribute("aria-busy");
     if (!places.length) {
       selectFirstOnResults = false;
       closeList();
@@ -65,12 +72,14 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       select(places[0]);
       return;
     }
+    currentPlaces = places;
+    activeIndex = -1;
     showStatus("");
     list.innerHTML = places
       .map((p, i) => {
         const region = [p.admin1, p.country].filter(Boolean).join(", ");
-        return `<li role="option" id="searchOpt${i}" aria-selected="false">
-          <button type="button" class="search-result" data-idx="${i}">
+        return `<li role="presentation">
+          <button type="button" role="option" id="searchOpt${i}" aria-selected="false" class="search-result" data-idx="${i}" tabindex="-1">
             <i data-lucide="map-pin" class="search-result-ico"></i>
             <span class="search-result-name">${esc(p.name)}</span>
             <span class="search-result-region">${esc(region)}</span>
@@ -82,12 +91,30 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     input.setAttribute("aria-expanded", "true");
     renderIcons();
     list.querySelectorAll<HTMLButtonElement>(".search-result").forEach((btn) => {
-      btn.addEventListener("click", () => select(places[Number(btn.dataset.idx)]));
+      btn.addEventListener("click", () => selectPlace(Number(btn.dataset.idx)));
+      btn.addEventListener("pointermove", () => setActive(Number(btn.dataset.idx)));
     });
+  }
+
+  function selectPlace(index: number): void {
+    const place = currentPlaces[index];
+    if (!place) return;
+    select(place);
+  }
+
+  function setActive(index: number): void {
+    const options = Array.from(list.querySelectorAll<HTMLElement>("[role=option]"));
+    if (!options.length) return;
+    activeIndex = Math.max(0, Math.min(options.length - 1, index));
+    options.forEach((option, i) => option.setAttribute("aria-selected", String(i === activeIndex)));
+    input.setAttribute("aria-activedescendant", options[activeIndex].id);
+    options[activeIndex].scrollIntoView({ block: "nearest" });
   }
 
   function runSearch(query: string): void {
     lastQuery = query;
+    input.setAttribute("aria-busy", "true");
+    showStatus(t("searchLoading"));
     searchCity(query, getLang())
       .then((places) => {
         if (query !== lastQuery) return; // veraltete Antwort verwerfen
@@ -111,6 +138,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       showStatus("");
       return;
     }
+    showStatus(t("searchLoading"));
     timer = setTimeout(() => runSearch(q), DEBOUNCE_MS);
   });
 
@@ -118,16 +146,16 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     if (e.key === "Escape") {
       closeList();
       showStatus("");
-    } else if (e.key === "ArrowDown" && !list.hidden) {
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !list.hidden) {
       e.preventDefault();
-      list.querySelector<HTMLButtonElement>(".search-result")?.focus();
+      const next = activeIndex < 0 ? (e.key === "ArrowDown" ? 0 : currentPlaces.length - 1) : activeIndex + (e.key === "ArrowDown" ? 1 : -1);
+      setActive(next);
     } else if (e.key === "Enter") {
       // Tippen-und-Enter: sichtbares erstes Ergebnis direkt übernehmen; läuft
       // die Suche noch (Debounce), sofort suchen und die Antwort wählt selbst.
       e.preventDefault();
-      const first = list.querySelector<HTMLButtonElement>(".search-result");
-      if (!list.hidden && first) {
-        first.click();
+      if (!list.hidden && currentPlaces.length > 0) {
+        selectPlace(activeIndex >= 0 ? activeIndex : 0);
         return;
       }
       const q = input.value.trim();
@@ -147,22 +175,6 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     showStatus("");
     syncClear();
     input.focus(); // direkt weitertippen können
-  });
-
-  list.addEventListener("keydown", (e) => {
-    const items = Array.from(list.querySelectorAll<HTMLButtonElement>(".search-result"));
-    const idx = items.indexOf(document.activeElement as HTMLButtonElement);
-    if (e.key === "ArrowDown" && idx < items.length - 1) {
-      e.preventDefault();
-      items[idx + 1].focus();
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (idx > 0) items[idx - 1].focus();
-      else input.focus();
-    } else if (e.key === "Escape") {
-      closeList();
-      input.focus();
-    }
   });
 
   document.addEventListener("click", (e) => {

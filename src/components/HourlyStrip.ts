@@ -60,7 +60,7 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
       // Enter/Space auslösbar, der globale :focus-visible-Ring greift.
       // aria-controls/aria-expanded beschreiben das gesteuerte Detail-Panel.
       return `<div class="hour-cell-li" role="listitem">
-        <button type="button" class="hour-cell" data-hour-index="${i}" aria-controls="hourPanel" aria-expanded="false" aria-label="${esc(aria)}">
+        <button type="button" class="hour-cell" data-hour-index="${i}" tabindex="${i === 0 ? "0" : "-1"}" aria-controls="hourPanel" aria-expanded="false" aria-label="${esc(aria)}">
           <div class="hour-time">${time}</div>
           <i data-lucide="${icon}" class="hour-ico"></i><span class="sr-only">${esc(label)}</span>
           <div class="hour-temp">${temp}</div>
@@ -127,6 +127,20 @@ function bindHourlyStrip(el: HTMLElement): void {
     const spans = nightSpans(forecast.daily);
     const icon = pickIcon(hour.weatherCode, hourIsDay(hour.time, spans));
     openHourDetail(hour, index, node as HTMLButtonElement, icon);
+  });
+
+  el.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    const current = e.target instanceof Element ? e.target.closest<HTMLButtonElement>(".hour-cell[data-hour-index]") : null;
+    if (!current || !el.contains(current)) return;
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>(".hour-cell[data-hour-index]"));
+    const index = buttons.indexOf(current);
+    if (index < 0) return;
+    e.preventDefault();
+    const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, index + (e.key === "ArrowRight" ? 1 : -1)));
+    current.tabIndex = -1;
+    buttons[next].tabIndex = 0;
+    buttons[next].focus();
   });
 
   // Escape schließt und gibt den Fokus zur Zelle zurück (das Sprachmenü macht den

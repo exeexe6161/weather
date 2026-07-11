@@ -23,8 +23,8 @@
 // (Balkenbreite + Gap), damit auf dem Handy nicht der schmale Balken getroffen
 // werden muss. Hover (Desktop) und Tap (Touch) zeigen einen ruhigen Tooltip mit
 // "Uhrzeit · Menge" (formatHour + fmtMm, gleiche Quelle wie Strip/Panel). Touch
-// und Hover feuern nie doppelt (pointerType-Gate). Tastatur: Tab zwischen
-// Stunden, Enter/Space zeigt, Escape schliesst; Fokus zeigt den Tooltip.
+// und Hover feuern nie doppelt (pointerType-Gate). Tastatur: ein Tab-Stopp,
+// Pfeiltasten wechseln die Stunde, Enter/Space zeigt, Escape schliesst.
 //
 // SICHTBARKEIT: Das Diagramm zeigt sich NUR, wenn im Fenster nennenswerter Regen
 // vorkommt (peak >= VISIBLE_MIN_MM). Sonst versteckt es sich selbst
@@ -145,7 +145,7 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   for (let k = 0; k < MARKS; k++) {
     const idx = Math.round((k / (MARKS - 1)) * hoursSpan);
     const label = k === 0
-      ? "jetzt"
+      ? t("nowShort")
       : startOk
         ? `${String((input.startHour + idx) % 24).padStart(2, "0")}:00`
         : `+${idx}h`;
@@ -170,7 +170,7 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
     const right = Math.min(W, xAt(i) + hitW / 2);
     const w = right - x;
     const aria = `${formatHour(input.times[i] ?? "", input.locale)}, ${amountText(v, input.locale)}`;
-    return `<rect x="${x.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${baseY.toFixed(2)}" class="rc-hit" data-rc-index="${i}" tabindex="0" role="button" aria-label="${esc(aria)}"/>`;
+    return `<rect x="${x.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${baseY.toFixed(2)}" class="rc-hit" data-rc-index="${i}" tabindex="${i === 0 ? "0" : "-1"}" role="button" aria-label="${esc(aria)}"/>`;
   }).join("");
 
   const svg =
@@ -240,9 +240,21 @@ function bindRainChart(container: HTMLElement): void {
     else showTip(container, i);
   });
 
-  // Tastatur: Enter/Space toggelt die fokussierte Spalte, Escape schliesst.
+  // Tastatur: ein Tab-Stopp für das Diagramm, Pfeiltasten wechseln die Stunde.
   container.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
+      const current = indexFrom(e);
+      const state = rcData.get(container);
+      if (current < 0 || !state) return;
+      e.preventDefault();
+      const last = state.vals.length - 1;
+      const next = e.key === "Home" ? 0 : e.key === "End" ? last : Math.max(0, Math.min(last, current + (e.key === "ArrowRight" ? 1 : -1)));
+      const currentNode = container.querySelector<SVGElement>(`.rc-hit[data-rc-index="${current}"]`);
+      const nextNode = container.querySelector<SVGElement>(`.rc-hit[data-rc-index="${next}"]`);
+      currentNode?.setAttribute("tabindex", "-1");
+      nextNode?.setAttribute("tabindex", "0");
+      nextNode?.focus();
+    } else if (e.key === "Enter" || e.key === " ") {
       const i = indexFrom(e);
       if (i < 0) return;
       e.preventDefault();

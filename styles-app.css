@@ -121,6 +121,8 @@ button.hour-cell,
 
   --red:var(--wp-fehler);
   --orange:var(--wp-warnung);
+  --error-text:#B4231E;
+  --warning-text:#825000;
   --accent:var(--wp-zenit);
   --accent-soft:rgba(46,127,224,.12);
   --accent-text:#1D62B4;    /* dunklere Zenit Stufe, AA tauglich auf Pur */
@@ -131,9 +133,6 @@ button.hour-cell,
   --accent-soft-hover:rgba(46,127,224,.18);  /* getönte Zenit Flächen (Geo Button) */
   --accent-soft-active:rgba(46,127,224,.24);
   --accent-border:rgba(46,127,224,.35);      /* zarter Zenit Rand */
-  --shimmer:rgba(46,127,224,.26); /* einmaliger Fokus-Schimmer im Suchfeld */
-  --pulse-line:rgba(46,127,224,.45); /* Atem-Spitze der Suchfeld Linie */
-  --pulse-glow:rgba(46,127,224,.08); /* dazugehöriges leises Glühen */
 
   /* ── Surfaces / text ── */
   --bg:var(--wp-bg);
@@ -194,6 +193,8 @@ html[data-theme="dark"]{
 
   --red:#E4736D;            /* hellere Fehler Stufe auf Karbon */
   --orange:#E2A94D;         /* hellere Warnung Stufe auf Karbon */
+  --error-text:var(--red);
+  --warning-text:var(--orange);
   --accent-soft:rgba(46,127,224,.20);
   --accent-text:#7FB1F0;    /* hellere Zenit Stufe auf Karbon */
   --star:#7FB1F0;
@@ -201,9 +202,6 @@ html[data-theme="dark"]{
   --accent-soft-hover:rgba(46,127,224,.30);
   --accent-soft-active:rgba(46,127,224,.38);
   --accent-border:rgba(127,177,240,.40);
-  --shimmer:rgba(127,177,240,.32);
-  --pulse-line:rgba(127,177,240,.50);
-  --pulse-glow:rgba(127,177,240,.10);
   --s2:#262B30;
   --s3:#2F353B;
   --l2:#D4D9DE;
@@ -353,7 +351,7 @@ html[data-theme="dark"].js #splash{background:var(--wp-karbon);} /* = Seiten-Hin
 .top-controls{
   position:fixed;
   top:calc(14px + var(--safe-top));
-  right:calc(14px + var(--safe-r));
+  right:max(calc(14px + var(--safe-r)),calc((100vw - var(--wp-content-max))/2 + 14px));
   z-index:200;
   display:flex;
   align-items:center;
@@ -547,42 +545,6 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .search-input:focus-visible{
   outline:none;
   box-shadow:0 0 0 2px var(--accent),0 0 0 6px var(--accent-soft);
-}
-/* Ruhezustand: die Feldlinie atmet langsam in heller Zenit Tönung — bewusst
-   träge (8s) und niedrig gedeckt, ein leises Glühen, kein Blinklicht. Fokus
-   stoppt das Atmen (:not(:focus)), dann übernimmt der Fokusring oben. Bei
-   reduzierter Bewegung steht der Rand ruhig in dezenter Zenit Tönung. */
-@media (prefers-reduced-motion:no-preference){
-  .search-input:not(:focus){animation:search-breathe 8s ease-in-out infinite;}
-}
-@media (prefers-reduced-motion:reduce){
-  .search-input:not(:focus){box-shadow:0 0 0 1px var(--accent-border);}
-}
-@keyframes search-breathe{
-  0%,100%{box-shadow:0 0 0 1px var(--sep),0 0 0 3px transparent;}
-  50%{box-shadow:0 0 0 1px var(--pulse-line),0 0 0 3px var(--pulse-glow);}
-}
-/* Einmaliger Schimmer bei Fokus: das Overlay clippt über den eigenen Radius,
-   das Band läuft per background-position genau einmal durch und ruht dann
-   (fill-mode both friert den Endzustand außerhalb des Sichtbereichs ein). */
-.search-field::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius:var(--r-input);
-  background:linear-gradient(105deg,transparent 36%,var(--shimmer) 50%,transparent 64%) no-repeat;
-  background-size:250% 100%;
-  opacity:0;
-  pointer-events:none;
-}
-@media (prefers-reduced-motion:no-preference){
-  .search-field:focus-within::after{
-    animation:search-shimmer .9s ease-out 1 both;
-  }
-}
-@keyframes search-shimmer{
-  from{opacity:1;background-position:170% 0;}
-  to{opacity:1;background-position:-70% 0;}
 }
 /* Leeren-Knopf im Suchfeld: erscheint nur mit Eingabetext ([hidden] sonst),
    volles 44px Tippziel, ruhiger Stahl-Ton, kein eigener Hintergrund — das Feld
@@ -1040,7 +1002,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   padding:10px 6px;
 }
 .cw-meta-ico{width:16px;height:16px;color:var(--l4);}
-.cw-meta-lbl{font-size:var(--fs-xs);color:var(--l4);}
+.cw-meta-lbl{font-size:var(--fs-xs);color:var(--l3);}
 .cw-meta-val{font-size:var(--fs-md);font-weight:700;}
 /* Der Riss als Naht über die volle Kartenbreite (negative Ränder heben das
    Kartenpadding auf); einziger Riss Einsatz in der App */
@@ -1120,8 +1082,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .pollen-name{font-size:var(--fs-md);font-weight:600;}
 .pollen-stage{font-size:var(--fs-sm);font-weight:600;}
 .pollen-stage--low{color:var(--l3);}
-.pollen-stage--moderate{color:var(--orange);}
-.pollen-stage--high{color:var(--red);}
+.pollen-stage--moderate{color:var(--warning-text);}
+.pollen-stage--high{color:var(--error-text);}
 
 .environment-card,.alerts-card{padding:var(--sp-4);text-align:left;}
 .environment-lead{display:flex;align-items:center;gap:var(--sp-3);}
@@ -1131,10 +1093,10 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .environment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid var(--sep);}
 .alert-row{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--sep);}
 .alert-row:first-child{padding-top:0;}
-.alert-ico{width:20px;height:20px;color:var(--orange);flex:none;margin-top:2px;}
+.alert-ico{width:20px;height:20px;color:var(--warning-text);flex:none;margin-top:2px;}
 /* Severe/Extreme faerben das Symbol rot statt orange: eine echte Warnung soll
    klarer wirken als ein normaler Hinweis, ohne eigenes neues Farbsystem. */
-.alert-ico--critical{color:var(--red);}
+.alert-ico--critical{color:var(--error-text);}
 .alert-copy{min-width:0;display:grid;gap:3px;}
 .alert-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
 .alert-copy strong{font-size:var(--fs-md);overflow-wrap:anywhere;}
@@ -1143,8 +1105,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 /* Warnstufe als reines Textlabel, gleiches Prinzip wie .pollen-stage: Farbe
    statt Pille/Badge Flaeche, damit die Liste ruhig bleibt. */
 .alert-badge{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.02em;color:var(--l3);}
-.alert-badge--moderate{color:var(--orange);}
-.alert-badge--severe,.alert-badge--extreme{color:var(--red);}
+.alert-badge--moderate{color:var(--warning-text);}
+.alert-badge--severe,.alert-badge--extreme{color:var(--error-text);}
 /* Dringlichkeit ruhig als gedämpfte Zeile, nie farbig hervorgehoben: die
    Warnstufe bleibt das einzige farbige Signal. */
 .alert-urgency{font-size:var(--fs-xs);color:var(--l3);}
@@ -1318,7 +1280,7 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
 .hour-temp{font-size:var(--fs-base);font-weight:700;}
 /* Aktive Stunde, deren Detail-Panel offen ist: dezent getönt wie aria-current
    im Sprachmenü und im Tage-Umschalter (--accent-soft). */
-.hour-cell--active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--l4);}
+.hour-cell--active{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent-text);}
 /* Leiser Hinweis unter der Stundenleisten-Überschrift, dass die Zellen antippbar
    sind (Farbe --l4, kein Kasten, keine Animation). */
 .hourly-hint{font-size:var(--fs-xs);color:var(--l4);margin:0 0 var(--sp-3);}
@@ -1352,17 +1314,14 @@ button.hour-cell{appearance:none;-webkit-appearance:none;border:0;background:tra
    Unter der Linie ein sehr blasser Wärme-Hauch (kühl→warm, RELATIV zur Spanne)
    — als Inline-Gradient im SVG mit vertikaler Ausblend-Maske, nicht in CSS.
    Ring-/Punkt-Kern nutzt --s1 (Kartenhintergrund, theme-aware). Die zwei
-   Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) sind für hellen
-   Grund gedacht; im Dark Mode dämpft die Gruppen-Opacity unten. Werte und
-   Uhrzeiten laufen über die Text-Tokens (--l2/--l4) und sind damit in beiden
-   Themes AA-lesbar (die früheren Festtöne #33506f/#8a939d waren auf Karbon
-   nahezu unleserlich). */
+   Hauch-Farben (rgb(207,224,240) kühl, rgb(243,217,196) warm) bleiben dekorativ;
+   Werte und Achse nutzen die theme-adaptiven Text-Tokens. */
 .tc-card{padding:var(--sp-3) var(--sp-4);}
 .tc-svg{width:100%;height:auto;display:block;}
 .tc-line{stroke:var(--wp-zenit);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .tc-guide{stroke:var(--wp-zenit);stroke-opacity:.10;stroke-width:1;}
 .tc-val{font:600 12px Inter,sans-serif;fill:var(--l2);font-variant-numeric:tabular-nums;}
-.tc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
+.tc-axis{font:400 11px Inter,sans-serif;fill:var(--l3);}
 .tc-ring{fill:var(--s1);stroke:var(--wp-zenit);stroke-width:1.7;} /* Kern = Kartenhintergrund, theme-aware */
 .tc-now{fill:var(--wp-zenit);}
 .tc-now-halo{fill:var(--wp-zenit);fill-opacity:.13;}
@@ -1401,7 +1360,7 @@ html[data-theme="dark"]{
 .rc-bar{fill:var(--rc-bar);}
 .rc-now{fill:var(--rc-bar);}  /* leiser jetzt-Anker unter Index 0 */
 .rc-total{font:600 11px Inter,sans-serif;fill:var(--l4);font-variant-numeric:tabular-nums;}
-.rc-axis{font:400 9px Inter,sans-serif;fill:var(--l4);}
+.rc-axis{font:400 11px Inter,sans-serif;fill:var(--l3);}
 /* Spalten-Hitbox: ganze Stunde als Trefferziel (Balken+Gap), unsichtbar, aber
    fokussier-/tippbar. fill:transparent statt opacity:0, damit Pointer-Events
    greifen. Fokus-Ring nach Hausmuster (--accent-text), via rect-Outline. */
@@ -1599,7 +1558,7 @@ html[data-theme="dark"] .day-bar{background:rgba(255,255,255,0.08);}
 html[data-theme="dark"] .day-bar-fill{opacity:1;}
 
 /* ══ Footer ══ */
-footer{margin-top:48px;padding:0 16px;}
+footer{margin-top:48px;padding:var(--sp-5) 16px 0;border-top:1px solid var(--sep);}
 .footer-links{
   display:flex;
   justify-content:center;

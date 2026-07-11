@@ -340,6 +340,12 @@ function renderContent(): void {
     freshness: state.freshness,
     updatedAt: state.updatedAt,
   });
+  const current = state.forecast.current;
+  const announcedPlace = state.place.id === GEO_PLACE_ID ? t("myLocation") : state.place.name;
+  byId("weatherAnnounce").textContent = t("weatherLoaded")
+    .replace("{place}", announcedPlace)
+    .replace("{temp}", formatTemp(current.temperature))
+    .replace("{condition}", weatherLabel(getWmo(current.weatherCode).labelKey, getLang()));
   renderDressToday(byId("dressToday"), state.forecast);
   const didAutoOpen = renderHourlyStrip(byId("hourlyStrip"), state.forecast, hourlyAutoOpenArmed);
   // Nach dem aufgelösten Erst-Ladeversuch entwaffnen. Der Cache-Render bleibt

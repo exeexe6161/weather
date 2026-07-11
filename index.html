@@ -37,8 +37,8 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=094d88677a36"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=094d88677a36">
+<script src="./theme-init.js?v=0b52129ba22e"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=0b52129ba22e">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -115,7 +115,8 @@
   <ul id="favoritesList" class="fav-list"></ul>
 </section>
 
-<section class="weather-section" data-i18n-aria="weatherRegion" aria-label="Wetter" aria-live="polite">
+<section class="weather-section" data-i18n-aria="weatherRegion" aria-label="Wetter">
+  <div id="weatherAnnounce" class="sr-only" role="status" aria-live="polite"></div>
 
   <div id="weatherEmpty" class="state-card">
     <i data-lucide="cloud-sun" class="state-ico"></i>
@@ -127,9 +128,8 @@
   <!-- Skeleton statt Spinner (nur Erstladen ohne Cache): layouttreue Platzhalter
        für die aktuelle Wetterkarte und die Anzieh-Karte — weniger gefühlte
        Wartezeit, kein Sprung beim Erscheinen. Rein dekorativ (aria-hidden);
-       der Ladehinweis bleibt für Screenreader als sr-only Text (die Sektion
-       ist bereits aria-live). -->
-  <div id="weatherLoading" hidden>
+       der Ladehinweis bleibt für Screenreader als sr-only Text. -->
+  <div id="weatherLoading" role="status" hidden>
     <div class="skel-card list-card" aria-hidden="true">
       <div class="skel-row skel-row--head">
         <span class="skel skel-line skel-line--place"></span>
@@ -155,7 +155,7 @@
     <p class="sr-only" data-i18n="loading">Lade Wetterdaten…</p>
   </div>
 
-  <div id="weatherError" class="state-card" hidden>
+  <div id="weatherError" class="state-card" role="alert" hidden>
     <i data-lucide="cloud-fog" class="state-ico"></i>
     <div class="state-title" id="errorTitle" data-i18n="loadError">Wetterdaten konnten nicht geladen werden</div>
     <button id="retryBtn" class="retry-btn" type="button">
@@ -204,13 +204,13 @@
     <a href="./datenschutz" data-i18n="footerDatenschutz">Datenschutz</a>
   </div>
   <p class="footer-note" data-i18n="footerNote">Keine Werbung, kein Tracking. Favoriten bleiben lokal im Browser.</p>
-  <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://www.weatherapi.com/" rel="noopener noreferrer">WeatherAPI.com</a></p>
+  <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer">WeatherAPI.com</a></p>
   <p class="footer-disclaimer" data-i18n="weatherDisclaimer">Wetterdaten sind allgemeine, unsichere Vorhersagen und können örtlich oder zeitlich abweichen. Nicht allein für persönliche Sicherheit, Luftfahrt, Seefahrt oder Notfallplanung verwenden. Beachte amtliche Wetterdienste und Behörden.</p>
 </footer>
 </div>
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=094d88677a36"></script>
+<script src="./script.min.js?v=0b52129ba22e"></script>
 </body>
 </html>

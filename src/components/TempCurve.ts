@@ -24,6 +24,8 @@
 //    nur den Rhythmus an.
 //  - Ruhige Tage (kleine Spanne) bleiben flach statt nervoes zu zacken (FLAT_RANGE).
 
+import { t } from "../i18n/ui";
+
 export interface TempCurveInput {
   // Gefuehlte Temperatur fuer jetzt..+24h (idealerweise 25 Werte). Luecken werden
   // linear ueberbrueckt. Mindestens 13 gueltige Werte noetig, sonst versteckt.
@@ -96,7 +98,7 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
   for (let k = 0; k < MARKS; k++) {
     const idx = Math.round((k / (MARKS - 1)) * hoursSpan);
     const label = k === 0
-      ? 'jetzt'
+      ? t("nowShort")
       : startOk
         ? `${String((input.startHour + idx) % 24).padStart(2, '0')}:00`
         : `+${idx}h`;

@@ -135,14 +135,44 @@ function airQuality(value: unknown): AirQuality | null {
 const MAX_ALERTS = 10;
 
 // Ländernamen-Synonyme, um in alert.areas das Muster "<Land> <Region>" zu
-// erkennen (z. B. "Italia Basilicata"). Bewusst nur die Kernländer; unbekannte
-// Länder landen im sicheren Zweig (nicht filtern).
+// erkennen (z. B. "Italia Basilicata"). WeatherAPI mischt bei europäischen
+// Meteoalarm-Meldungen Englisch, Landessprache und Nutzersprache. Die Gruppen
+// decken deshalb Europa breit ab. Unbekannte Formate landen weiterhin im
+// sicheren Zweig und werden nicht gefiltert.
 const COUNTRY_SYNONYMS: string[][] = [
   ["italy", "italia", "italien"],
   ["germany", "deutschland", "almanya"],
   ["netherlands", "nederland", "holland", "niederlande", "hollanda"],
   ["belgium", "belgie", "belgien", "belgique", "belcika"],
   ["turkey", "turkiye", "turkei"],
+  ["poland", "polska", "polen", "polonya", "pologne", "polonia"],
+  ["france", "frankreich", "fransa", "francia"],
+  ["spain", "espana", "spanien", "ispanya", "spagna"],
+  ["portugal"],
+  ["austria", "osterreich", "avusturya"],
+  ["switzerland", "schweiz", "suisse", "svizzera", "isvicre"],
+  ["czechia", "czech republic", "cesko", "tschechien", "cekya"],
+  ["slovakia", "slovensko", "slowakei", "slovakya"],
+  ["slovenia", "slovenija", "slowenien", "slovenya"],
+  ["croatia", "hrvatska", "kroatien", "hirvatistan"],
+  ["hungary", "magyarorszag", "ungarn", "macaristan"],
+  ["romania", "rumanien", "romanya"],
+  ["bulgaria", "bulgariya", "bulgarien", "bulgaristan"],
+  ["greece", "ellada", "griechenland", "yunanistan"],
+  ["denmark", "danmark", "danemark", "danimarka"],
+  ["norway", "norge", "norwegen", "norvec"],
+  ["sweden", "sverige", "schweden", "isvec"],
+  ["finland", "suomi", "finnland", "finlandiya"],
+  ["ireland", "eire", "irland", "irlanda"],
+  ["united kingdom", "great britain", "uk", "grossbritannien", "birlesik krallik"],
+  ["estonia", "eesti", "estland", "estonya"],
+  ["latvia", "latvija", "lettland", "letonya"],
+  ["lithuania", "lietuva", "litauen", "litvanya"],
+  ["serbia", "srbija", "serbien", "sirbistan"],
+  ["bosnia and herzegovina", "bosna i hercegovina", "bosnien und herzegowina", "bosna hersek"],
+  ["montenegro", "crna gora", "karadag"],
+  ["north macedonia", "severna makedonija", "nordmazedonien", "kuzey makedonya"],
+  ["albania", "shqiperia", "albanien", "arnavutluk"],
 ];
 
 function normalizeText(value: string): string {
@@ -174,9 +204,10 @@ function buildCountryWords(country: string): Set<string> {
 // treffen. Meldungen, die das aktuelle Land ebenfalls nennen, werden weiterhin
 // durch den bestehenden Regionenabgleich beurteilt.
 function mentionsKnownForeignCountry(text: string, countryWords: Set<string>): boolean {
-  const words = new Set(normalizeText(text).split(" ").filter(Boolean));
-  if ([...countryWords].some((word) => words.has(word))) return false;
-  return COUNTRY_SYNONYMS.some((group) => group.some((word) => words.has(word)));
+  const padded = ` ${normalizeText(text)} `;
+  const mentions = (name: string): boolean => padded.includes(` ${normalizeText(name)} `);
+  if ([...countryWords].some(mentions)) return false;
+  return COUNTRY_SYNONYMS.some((group) => group.some(mentions));
 }
 
 function sharedPrefixLen(a: string, b: string): number {
