@@ -14,11 +14,13 @@ function record(value: unknown): JsonRecord {
 }
 
 function finiteNumber(value: unknown, fallback = 0): number {
+  if (value === null || value === undefined || value === "") return fallback;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function optionalNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -58,8 +60,8 @@ async function requestJson(path: string, params: Record<string, string>): Promis
 export function weatherApiCodeToWmo(code: number): number {
   const map: Record<number, number> = {
     1000: 0, 1003: 2, 1006: 3, 1009: 3,
-    1012: 45, 1015: 45, 1018: 45, 1021: 45, 1024: 45, 1027: 45,
-    1030: 45, 1033: 45, 1036: 45, 1039: 45, 1042: 45, 1045: 45, 1048: 45,
+    1012: 1012, 1015: 1015, 1018: 1018, 1021: 1021, 1024: 1024, 1027: 1027,
+    1030: 45, 1033: 1033, 1036: 1036, 1039: 1039, 1042: 1042, 1045: 1045, 1048: 1048,
     1063: 80, 1066: 85, 1069: 85, 1072: 56, 1087: 95,
     1114: 73, 1117: 75, 1135: 45, 1147: 48,
     1150: 51, 1153: 51, 1168: 56, 1171: 57,
@@ -292,25 +294,40 @@ function weatherAlerts(value: unknown, region: string, country: string): Weather
   const regionNorm = normalizeText(region);
   const countryWords = buildCountryWords(country);
   const out: WeatherAlert[] = [];
+  const now = Date.now();
   for (const raw of alerts) {
     const alert = record(raw);
     const event = stringValue(alert.event).trim();
     const headline = stringValue(alert.headline).trim();
     if (!event && !headline) continue;
     if (!alertMatchesLocation(stringValue(alert.areas).trim(), headline, regionNorm, countryWords)) continue;
+    const expires = stringValue(alert.expires).trim() || null;
+    const expiresAt = expires ? Date.parse(expires) : Number.NaN;
+    if (Number.isFinite(expiresAt) && expiresAt <= now) continue;
     out.push({
       event,
       headline,
-      expires: stringValue(alert.expires).trim() || null,
+      expires,
       severity: stringValue(alert.severity).trim() || null,
       urgency: stringValue(alert.urgency).trim() || null,
       effective: stringValue(alert.effective).trim() || null,
       desc: stringValue(alert.desc).trim() || null,
       instruction: stringValue(alert.instruction).trim() || null,
     });
-    if (out.length >= MAX_ALERTS) break;
   }
-  return out;
+  return out
+    .sort((a, b) => {
+      const rank = (severity: string | null | undefined): number => {
+        const normalized = severity?.toLowerCase();
+        return normalized === "extreme" ? 4 : normalized === "severe" ? 3 : normalized === "moderate" ? 2 : normalized === "minor" ? 1 : 0;
+      };
+      const severityDiff = rank(b.severity) - rank(a.severity);
+      if (severityDiff !== 0) return severityDiff;
+      const aTime = a.effective ? Date.parse(a.effective) : Number.POSITIVE_INFINITY;
+      const bTime = b.effective ? Date.parse(b.effective) : Number.POSITIVE_INFINITY;
+      return (Number.isFinite(aTime) ? aTime : Number.POSITIVE_INFINITY) - (Number.isFinite(bTime) ? bTime : Number.POSITIVE_INFINITY);
+    })
+    .slice(0, MAX_ALERTS);
 }
 
 function isCompleteDay(day: DailyEntry): boolean {

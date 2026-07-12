@@ -9,6 +9,18 @@ export const wmoMap: Record<number, WmoInfo> = {
   1:  { icon: "cloud-sun",     iconNight: "cloud-moon",      labelKey: "wmo_mainly_clear" },
   2:  { icon: "cloud-sun",     iconNight: "cloud-moon",      labelKey: "wmo_partly_cloudy" },
   3:  { icon: "cloud",                                       labelKey: "wmo_overcast" },
+  1012: { icon: "cloud-fog",                                labelKey: "weather_haze" },
+  1015: { icon: "cloud-fog",                                labelKey: "weather_dust_haze" },
+  1018: { icon: "wind",                                     labelKey: "weather_blowing_dust" },
+  1021: { icon: "wind",                                     labelKey: "weather_dust_storm" },
+  1024: { icon: "wind",                                     labelKey: "weather_sandstorm" },
+  1027: { icon: "wind",                                     labelKey: "weather_severe_sandstorm" },
+  1033: { icon: "cloud-fog",                                labelKey: "weather_smoke" },
+  1036: { icon: "cloud-fog",                                labelKey: "weather_smoky_haze" },
+  1039: { icon: "cloud-fog",                                labelKey: "weather_smog" },
+  1042: { icon: "cloud-fog",                                labelKey: "weather_severe_smog" },
+  1045: { icon: "wind",                                     labelKey: "weather_saharan_dust" },
+  1048: { icon: "wind",                                     labelKey: "weather_dust" },
   45: { icon: "cloud-fog",                                   labelKey: "wmo_fog" },
   48: { icon: "cloud-fog",                                   labelKey: "wmo_rime_fog" },
   51: { icon: "cloud-drizzle",                               labelKey: "wmo_drizzle_light" },
@@ -50,4 +62,8 @@ export function pickIcon(code: number, isDay: boolean): string {
 // Schnee, Schauer, Gewitter). Trockene Codes: 0-48.
 export function isPrecipCode(code: number): boolean {
   return code >= 51 && code <= 99;
+}
+
+export function isThunderCode(code: number): boolean {
+  return code >= 95 && code <= 99;
 }

@@ -10,6 +10,7 @@ interface CacheEntry<T> {
 }
 
 const store = new Map<string, CacheEntry<unknown>>();
+const pending = new Map<string, Promise<unknown>>();
 const MAX_CACHE_ENTRIES = 1_000;
 
 function prune(now = Date.now()): void {
@@ -52,9 +53,16 @@ export async function getOrSet<T>(
 ): Promise<T> {
   const cached = get<T>(key);
   if (cached !== undefined) return cached;
-  const value = await load();
-  if (shouldCache(value)) set(key, value, ttlMs);
-  return value;
+  const existing = pending.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const request = load()
+    .then((value) => {
+      if (shouldCache(value)) set(key, value, ttlMs);
+      return value;
+    })
+    .finally(() => pending.delete(key));
+  pending.set(key, request);
+  return request;
 }
 
 // Koordinaten auf 2 Nachkommastellen runden (~1,1 km Raster): erhöht die

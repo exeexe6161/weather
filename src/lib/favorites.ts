@@ -3,11 +3,25 @@ import { GEO_PLACE_ID, type Place } from "./geocoding";
 const KEY = "weather:favorites";
 export const MAX_FAVORITES = 5;
 
+function isPlace(value: unknown): value is Place {
+  if (value === null || typeof value !== "object") return false;
+  const place = value as Partial<Place>;
+  return (
+    typeof place.id === "number" && Number.isFinite(place.id) &&
+    typeof place.name === "string" && place.name.trim() !== "" &&
+    typeof place.latitude === "number" && Number.isFinite(place.latitude) && place.latitude >= -90 && place.latitude <= 90 &&
+    typeof place.longitude === "number" && Number.isFinite(place.longitude) && place.longitude >= -180 && place.longitude <= 180 &&
+    typeof place.country === "string" &&
+    typeof place.countryCode === "string" &&
+    (place.admin1 === undefined || typeof place.admin1 === "string")
+  );
+}
+
 export function getFavorites(): Place[] {
   if (typeof localStorage === "undefined") return [];
   try {
     const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    return Array.isArray(value) ? value.slice(0, MAX_FAVORITES) as Place[] : [];
+    return Array.isArray(value) ? value.filter(isPlace).slice(0, MAX_FAVORITES) : [];
   } catch {
     return [];
   }
@@ -35,7 +49,7 @@ export function pruneGeoFavorites(): void {
   let all: Place[] = [];
   try {
     const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    all = Array.isArray(value) ? value as Place[] : [];
+    all = Array.isArray(value) ? value.filter(isPlace) : [];
   } catch {}
   const next = all.filter((p) => p.id !== GEO_PLACE_ID).slice(0, MAX_FAVORITES);
   if (next.length !== all.length) persist(next);

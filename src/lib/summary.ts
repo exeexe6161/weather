@@ -3,7 +3,7 @@
 // Dieses Modul liefert nur i18n Keys (Ebene 1: fertiger Satz, Ebene 2:
 // Bausteine); die sichtbare Copy entsteht in der Komponente über die uiLabels.
 import type { Forecast } from "./weather";
-import { isPrecipCode } from "./wmo";
+import { isPrecipCode, isThunderCode } from "./wmo";
 import { todayHours, rainWindowFor, hourOf, RAIN_PROB_THRESHOLD } from "./clothing";
 import { UV_SHOW_THRESHOLD } from "./uv";
 
@@ -77,7 +77,8 @@ function skyFor(code: number): Sky {
   if (code === 2) return "cloudy";
   if (code === 3) return "overcast";
   if (code === 45 || code === 48) return "grey";
-  if (code >= 95) return "thunder";
+  if (code >= 1012 && code <= 1048) return "grey";
+  if (isThunderCode(code)) return "thunder";
   return "rain"; // 51-94: Niesel, Regen, Schnee, Schauer
 }
 
@@ -115,7 +116,7 @@ export function summaryFor(forecast: Forecast): Summary | null {
   const rainNow = isPrecipCode(c.weatherCode) && sky !== "thunder";
   const rw = rainWindowFor(rest);
   const rainLater = !rainNow && rw !== null && soon(rw.fromHour);
-  const thunderStart = rest.find((h) => typeof h.weatherCode === "number" && h.weatherCode >= 95);
+  const thunderStart = rest.find((h) => typeof h.weatherCode === "number" && isThunderCode(h.weatherCode));
   const thunderLater = thunderStart !== undefined && soon(hourOf(thunderStart.time));
   const todayMax = forecast.daily?.[0]?.precipitationProbabilityMax;
   // Regen war heute, Rest trocken (gleiche Logik wie die Anziehempfehlung)

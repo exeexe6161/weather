@@ -1,4 +1,5 @@
 import type { Forecast } from "../lib/weather";
+import { isThunderCode } from "../lib/wmo";
 import {
   stageFor,
   todayHours,
@@ -45,7 +46,7 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
   // Signal wie thunderLater in summary.ts; typeof fängt alte Caches ohne Feld
   // ab. Über den ganzen Resttag, damit jedes von der Summary gemeldete Gewitter
   // hier mit abgedeckt ist und kein "kein Regen mehr" widerspricht.
-  const thunder = usable && hours.some((h) => typeof h.weatherCode === "number" && h.weatherCode >= 95);
+  const thunder = usable && hours.some((h) => typeof h.weatherCode === "number" && isThunderCode(h.weatherCode));
   const wet = rain !== null || thunder;
 
   // Headline = Stufe der aktuellen Stunde, unverändert aus den Rohsegmenten.

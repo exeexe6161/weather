@@ -22,7 +22,7 @@ import {
 import {
   Sun, Moon, Cloud, CloudSun, CloudMoon, CloudFog, CloudDrizzle, CloudRain,
   CloudRainWind, CloudSnow, CloudSunRain, CloudMoonRain, CloudLightning,
-  CloudHail, Snowflake, type IconNode,
+  CloudHail, Snowflake, Wind, type IconNode,
 } from "lucide";
 
 // Lucide-Icon = Liste von [tag, attrs]-Tupeln im 24×24-Viewport. Genau die
@@ -33,6 +33,7 @@ const ICONS: Record<string, IconNode> = {
   "cloud-rain": CloudRain, "cloud-rain-wind": CloudRainWind, "cloud-snow": CloudSnow,
   "cloud-sun-rain": CloudSunRain, "cloud-moon-rain": CloudMoonRain,
   "cloud-lightning": CloudLightning, "cloud-hail": CloudHail, "snowflake": Snowflake,
+  "wind": Wind,
 };
 
 // Fester Karbon-Look (theme-unabhängig). Canvas kann keine CSS-Variablen lesen,
