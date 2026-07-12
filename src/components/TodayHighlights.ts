@@ -19,6 +19,16 @@ function tile(icon: string, label: string, value: string, time: string): string 
 export function renderTodayHighlights(el: HTMLElement, heading: HTMLElement, forecast: Forecast): void {
   const date = forecast.current.time.slice(0, 10);
   const hours = forecast.hourly.filter((hour) => hour.time.startsWith(date));
+  // Spaet am Abend enthaelt das rollende Forecast-Fenster nur noch ein oder
+  // zwei Stunden des laufenden Tages. Daraus vier vermeintliche Tagesextreme
+  // abzuleiten waere redundant und irrefuehrend. Dann bleibt der Block ruhig
+  // ausgeblendet und die 24-Stunden-Ansicht uebernimmt.
+  if (hours.length < 3) {
+    heading.hidden = true;
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
   const locale = getLocale();
   const warmest = maxBy(hours, (hour) => hour.temperature);
   const gustiest = maxBy(hours, (hour) => hour.windGusts);
