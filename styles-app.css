@@ -1517,10 +1517,12 @@ html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
    liefert der globale Ring. */
 button.day-row{appearance:none;-webkit-appearance:none;background:transparent;border:0;font:inherit;color:inherit;width:100%;text-align:left;cursor:pointer;}
 button.day-row[aria-expanded="true"]{
-  width:calc(100% + var(--sp-4) + var(--sp-4));
-  margin-inline:calc(-1 * var(--sp-4));
-  padding-inline:var(--sp-4);
+  width:100%;
+  margin-inline:0;
+  padding-inline:var(--sp-3);
   background:var(--s2);
+  border-radius:var(--r-md);
+  box-shadow:inset 0 0 0 1px var(--sep);
 }
 @media(hover:hover) and (pointer:fine){button.day-row:hover{background:var(--s2);}}
 @media(prefers-reduced-motion:no-preference){button.day-row{transition:background var(--t-base);}}
