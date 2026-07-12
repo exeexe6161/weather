@@ -1516,7 +1516,12 @@ html:not([data-theme="dark"]) .day-row--outlook .day-label{color:var(--l3);}
    Padding bleiben; die volle Zeile ist eine gute Touch-Fläche. focus-visible
    liefert der globale Ring. */
 button.day-row{appearance:none;-webkit-appearance:none;background:transparent;border:0;font:inherit;color:inherit;width:100%;text-align:left;cursor:pointer;}
-button.day-row[aria-expanded="true"]{background:var(--s2);}
+button.day-row[aria-expanded="true"]{
+  width:calc(100% + var(--sp-4) + var(--sp-4));
+  margin-inline:calc(-1 * var(--sp-4));
+  padding-inline:var(--sp-4);
+  background:var(--s2);
+}
 @media(hover:hover) and (pointer:fine){button.day-row:hover{background:var(--s2);}}
 @media(prefers-reduced-motion:no-preference){button.day-row{transition:background var(--t-base);}}
 /* Kompaktes Tages-Detailpanel unter der gewählten Zeile. Nutzt die bestehenden
