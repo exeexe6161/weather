@@ -7,6 +7,7 @@ import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { renderAirQuality } from "./components/AirQuality";
 import { renderWeatherAlerts } from "./components/WeatherAlerts";
+import { renderTodayHighlights } from "./components/TodayHighlights";
 import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, insertFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t, type Lang } from "./i18n/ui";
 import { showToast } from "./lib/toast";
@@ -253,6 +254,7 @@ function renderPollen(): void {
 
 function renderStarterData(): void {
   if (!state.forecast) return;
+  renderTodayHighlights(byId("todayHighlights"), byId("todayHighlightsHeading"), state.forecast);
   renderAirQuality(byId("airQuality"), byId("airQualityHeading"), state.forecast.airQuality);
   renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone);
 }

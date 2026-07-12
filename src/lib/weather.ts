@@ -56,6 +56,10 @@ export interface AirQuality {
   usEpaIndex: number | null;
   pm25: number | null;
   pm10: number | null;
+  ozone: number | null;
+  nitrogenDioxide: number | null;
+  sulphurDioxide: number | null;
+  carbonMonoxide: number | null;
 }
 export interface WeatherAlert {
   event: string;

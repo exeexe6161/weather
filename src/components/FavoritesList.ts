@@ -31,13 +31,31 @@ export function renderFavoritesList(
   // Umsortier-Pfeile nur ab zwei Favoriten — bei genau einem gäbe es nichts zu
   // verschieben, dann ist die Zeile ruhiger ohne (deaktivierte) Chevrons.
   const showMove = favorites.length > 1;
-  el.innerHTML = favorites
+  const comparable = favorites.flatMap((place) => {
+    const wx = weather.get(place.id);
+    return wx ? [{ place, wx }] : [];
+  });
+  const temperatureSpread = comparable.length > 1
+    ? Math.max(...comparable.map((item) => item.wx.temp)) - Math.min(...comparable.map((item) => item.wx.temp))
+    : 0;
+  const warmest = temperatureSpread >= 0.5 ? comparable.reduce((best, item) => item.wx.temp > best.wx.temp ? item : best) : null;
+  const withRain = comparable.filter((item) => typeof item.wx.rainChance === "number");
+  const rainSpread = withRain.length > 1
+    ? Math.max(...withRain.map((item) => item.wx.rainChance ?? 0)) - Math.min(...withRain.map((item) => item.wx.rainChance ?? 0))
+    : 0;
+  const driest = rainSpread >= 1 ? withRain.reduce((best, item) => (item.wx.rainChance ?? 101) < (best.wx.rainChance ?? 101) ? item : best) : null;
+  const comparison = warmest || driest
+    ? `<li class="fav-compare">${warmest ? `<span>${esc(t("favWarmest"))}: <strong>${esc(warmest.place.name)}</strong></span>` : ""}${driest ? `<span>${esc(t("favDriest"))}: <strong>${esc(driest.place.name)}</strong></span>` : ""}</li>`
+    : "";
+  el.innerHTML = comparison + favorites
     .map((p, i) => {
       const active = p.id === activeId;
       const wx = weather.get(p.id);
-      const sub = wx ? esc(weatherLabel(getWmo(wx.code).labelKey, lang)) : "";
+      const condition = wx ? weatherLabel(getWmo(wx.code).labelKey, lang) : "";
+      const rain = wx && typeof wx.rainChance === "number" ? `${Math.round(wx.rainChance)} %` : "";
+      const sub = wx ? esc([condition, rain ? `${rain} ${t("favRain")}` : ""].filter(Boolean).join(" · ")) : "";
       const vals = wx
-        ? `<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-row-wx-ico"></i><span class="fav-row-temp">${esc(formatTemp(wx.temp))}</span>`
+        ? `${wx.hasAlert ? `<i data-lucide="triangle-alert" class="fav-row-alert" aria-hidden="true"></i>` : ""}<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-row-wx-ico"></i><span class="fav-row-temp">${esc(formatTemp(wx.temp))}</span>`
         : "";
       // Pfeil hoch in der ersten, Pfeil runter in der letzten Zeile deaktiviert
       // (echtes disabled → nicht fokussierbar/auslösbar, kein Out-of-bounds).
@@ -52,7 +70,7 @@ export function renderFavoritesList(
           </span>`
         : "";
       return `<li class="fav-row${active ? " fav-row--active" : ""}">
-        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}">
+        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${wx?.hasAlert ? `. ${esc(t("favAlert"))}` : ""}">
           <span class="fav-row-id">
             <span class="fav-row-name">${esc(p.name)}</span>
             <span class="fav-row-sub">${sub}</span>

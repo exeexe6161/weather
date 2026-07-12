@@ -1,7 +1,7 @@
 // Favoriten-Wetter: schlanke Datenschicht für das Favoriten-Mini-Dashboard.
 // STRIKT getrennt von fetchWeather/normalize (weather.ts) und favorites.ts:
-// eigener, schlanker Endpoint (nur aktuelle Temperatur und Wettercode, kein
-// hourly/daily/past_days), eigener localStorage-Cache mit eigener TTL.
+// eigener, schlanker Endpoint (aktuelle Temperatur, Wettercode sowie kompakte
+// Tageswerte für Vergleich und Warnsignal), eigener localStorage-Cache.
 import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";
 
@@ -14,11 +14,13 @@ const LEGACY_FAV_WEATHER_CACHE_KEY = "weather:favorites-weather";
 // current-Werte ändern sich selten schneller; schont zugleich das Rate-Limit.
 export const FAV_WEATHER_TTL_MIN = 15;
 
-// Schlankes Ergebnis pro Ort (nur was ein Chip braucht).
+// Schlankes Ergebnis pro Ort (nur was Favoritenzeile und Vergleich brauchen).
 export interface FavWeather {
   temp: number;
   code: number;
   isDay: boolean; // für die Tag-/Nacht-Variante des Icons (pickIcon)
+  rainChance?: number | null;
+  hasAlert?: boolean;
 }
 
 // Cache-Eintrag = FavWeather plus Zeitstempel für die TTL-Prüfung.
@@ -29,8 +31,8 @@ export interface FavWeatherEntry extends FavWeather {
 // ── A) Schlanker Multi-Location-Abruf ──────────────────────────────────────
 // Holt das aktuelle Wetter ALLER übergebenen Orte über die eigene Server
 // Route /api/favorites-weather (dahinter maximal fünf schlanke WeatherAPI
-// Current Requests, mit serverseitigem Cache). Gibt
-// eine Map place.id → {temp, code, isDay} zurück. Berührt fetchWeather nicht.
+// eintägige Forecast Requests, mit serverseitigem Cache). Berührt den
+// vollständigen Einzelort Forecast nicht.
 export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number, FavWeather>> {
   const out = new Map<number, FavWeather>();
   if (places.length === 0) return out; // leere Liste → kein Call
@@ -39,9 +41,9 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
   const params = new URLSearchParams({ places: JSON.stringify(payload) });
   const res = await fetchWithTimeout(apiUrl(`/api/favorites-weather?${params}`));
   if (!res.ok) throw new Error(`Favorites weather request failed: ${res.status}`);
-  const data: Array<{ id: number; temp: number; code: number; isDay: boolean }> = await res.json();
+  const data: Array<{ id: number; temp: number; code: number; isDay: boolean; rainChance: number | null; hasAlert: boolean }> = await res.json();
   for (const entry of data) {
-    out.set(entry.id, { temp: entry.temp, code: entry.code, isDay: entry.isDay });
+    out.set(entry.id, { temp: entry.temp, code: entry.code, isDay: entry.isDay, rainChance: entry.rainChance, hasAlert: entry.hasAlert });
   }
   return out;
 }
@@ -61,7 +63,7 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
     for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
       const id = Number(key);
       if (!Number.isInteger(id)) continue;
-      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; savedAt?: unknown };
+      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; rainChance?: unknown; hasAlert?: unknown; savedAt?: unknown };
       if (
         e && typeof e.temp === "number" && Number.isFinite(e.temp) &&
         typeof e.code === "number" && Number.isFinite(e.code) &&
@@ -71,7 +73,9 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
         // → Tag-Fallback. Beim nächsten TTL-Ablauf wird der Eintrag mit echtem
         // isDay frisch überschrieben. Kein harter Bruch, keine Migration nötig.
         const isDay = typeof e.isDay === "boolean" ? e.isDay : true;
-        map.set(id, { temp: e.temp, code: e.code, isDay, savedAt: e.savedAt });
+        const rainChance = typeof e.rainChance === "number" && Number.isFinite(e.rainChance) ? e.rainChance : null;
+        const hasAlert = typeof e.hasAlert === "boolean" ? e.hasAlert : false;
+        map.set(id, { temp: e.temp, code: e.code, isDay, rainChance, hasAlert, savedAt: e.savedAt });
       }
     }
   } catch {
@@ -118,7 +122,15 @@ export function getStaleOrMissingFavorites(
 // Reihenfolge der Favoriten.
 export function cacheFavoriteWeather(id: number, weather: FavWeather): void {
   const cache = readFavWeatherCache();
-  cache.set(id, { temp: weather.temp, code: weather.code, isDay: weather.isDay, savedAt: new Date().toISOString() });
+  const previous = cache.get(id);
+  cache.set(id, {
+    temp: weather.temp,
+    code: weather.code,
+    isDay: weather.isDay,
+    rainChance: weather.rainChance ?? previous?.rainChance ?? null,
+    hasAlert: weather.hasAlert ?? previous?.hasAlert ?? false,
+    savedAt: new Date().toISOString(),
+  });
   writeFavWeatherCache(cache);
 }
 

@@ -119,11 +119,19 @@ function airQuality(value: unknown): AirQuality | null {
   const usEpaIndex = optionalNumber(raw["us-epa-index"]);
   const pm25 = optionalNumber(raw.pm2_5);
   const pm10 = optionalNumber(raw.pm10);
-  if (usEpaIndex === undefined && pm25 === undefined && pm10 === undefined) return null;
+  const ozone = optionalNumber(raw.o3);
+  const nitrogenDioxide = optionalNumber(raw.no2);
+  const sulphurDioxide = optionalNumber(raw.so2);
+  const carbonMonoxide = optionalNumber(raw.co);
+  if ([usEpaIndex, pm25, pm10, ozone, nitrogenDioxide, sulphurDioxide, carbonMonoxide].every((v) => v === undefined)) return null;
   return {
     usEpaIndex: usEpaIndex ?? null,
     pm25: pm25 ?? null,
     pm10: pm10 ?? null,
+    ozone: ozone ?? null,
+    nitrogenDioxide: nitrogenDioxide ?? null,
+    sulphurDioxide: sulphurDioxide ?? null,
+    carbonMonoxide: carbonMonoxide ?? null,
   };
 }
 
@@ -521,20 +529,29 @@ async function getPollen(latitude: number, longitude: number): Promise<PollenLev
 async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWeather>> {
   const out = new Map<number, FavWeather>();
   const responses = await Promise.allSettled(places.map(async (place) => {
-    const data = record(await requestJson("current.json", {
+    const data = record(await requestJson("forecast.json", {
       q: `${place.latitude},${place.longitude}`,
+      days: "1",
       aqi: "no",
+      alerts: "yes",
     }));
     const current = record(data.current);
     const temp = optionalNumber(current.temp_c);
     const code = optionalNumber(record(current.condition).code);
     if (temp === undefined || code === undefined) throw new Error("WeatherAPI returned incomplete current data");
+    const forecastDays = record(data.forecast).forecastday;
+    const day = Array.isArray(forecastDays) && forecastDays.length > 0
+      ? record(record(forecastDays[0]).day)
+      : {};
+    const location = record(data.location);
     return {
       id: place.id,
       weather: {
         temp,
         code: weatherApiCodeToWmo(code),
         isDay: finiteNumber(current.is_day, 1) === 1,
+        rainChance: optionalNumber(day.daily_chance_of_rain) ?? null,
+        hasAlert: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.country)).length > 0,
       },
     };
   }));

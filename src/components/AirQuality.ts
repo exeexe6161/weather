@@ -42,11 +42,15 @@ export function renderAirQuality(el: HTMLElement, heading: HTMLElement, data: Ai
   // versprechen. Ohne gültigen Index kein Untertext.
   const hintKey = index !== null ? aqiHintKey(index) : null;
   const subtextKey = hintKey ?? (index !== null ? "aqi_calm" : null);
-  // Technische Messwerte, nur die vom Provider gelieferten Felder (PM2.5, PM10).
+  // Technische Messwerte, nur die vom Provider gelieferten Konzentrationen.
   // Fehlende Werte werden ausgeblendet, nichts erfunden, keine Umrechnung.
   const pm25 = concentration(data?.pm25 ?? null);
   const pm10 = concentration(data?.pm10 ?? null);
-  const hasDetails = pm25 !== null || pm10 !== null;
+  const ozone = concentration(data?.ozone ?? null);
+  const nitrogenDioxide = concentration(data?.nitrogenDioxide ?? null);
+  const sulphurDioxide = concentration(data?.sulphurDioxide ?? null);
+  const carbonMonoxide = concentration(data?.carbonMonoxide ?? null);
+  const hasDetails = [pm25, pm10, ozone, nitrogenDioxide, sulphurDioxide, carbonMonoxide].some(Boolean);
   const show = index !== null || hasDetails;
   heading.hidden = !show;
   el.hidden = !show;
@@ -64,6 +68,10 @@ export function renderAirQuality(el: HTMLElement, heading: HTMLElement, data: Ai
       <div class="environment-grid">
         ${pm25 ? `<div><span class="environment-label">${t("aqi_pm25")}</span><strong class="environment-value">${esc(pm25)}</strong></div>` : ""}
         ${pm10 ? `<div><span class="environment-label">${t("aqi_pm10")}</span><strong class="environment-value">${esc(pm10)}</strong></div>` : ""}
+        ${ozone ? `<div><span class="environment-label">${t("aqi_o3")}</span><strong class="environment-value">${esc(ozone)}</strong></div>` : ""}
+        ${nitrogenDioxide ? `<div><span class="environment-label">${t("aqi_no2")}</span><strong class="environment-value">${esc(nitrogenDioxide)}</strong></div>` : ""}
+        ${sulphurDioxide ? `<div><span class="environment-label">${t("aqi_so2")}</span><strong class="environment-value">${esc(sulphurDioxide)}</strong></div>` : ""}
+        ${carbonMonoxide ? `<div><span class="environment-label">${t("aqi_co")}</span><strong class="environment-value">${esc(carbonMonoxide)}</strong></div>` : ""}
       </div>
     </div>` : ""}`;
 }

@@ -24,6 +24,13 @@ function urgencyKey(value: string | null | undefined): UrgencyKey | null {
   return (URGENCY_KEYS as string[]).includes(normalized) ? (normalized as UrgencyKey) : null;
 }
 
+function alertStatusKey(alert: WeatherAlert): string | null {
+  const effectiveAt = typeof alert.effective === "string" ? Date.parse(alert.effective) : Number.NaN;
+  if (Number.isFinite(effectiveAt)) return effectiveAt <= Date.now() ? "alert_active" : "alert_expected";
+  const urgency = urgencyKey(alert.urgency);
+  return urgency ? `urgency_${urgency}` : null;
+}
+
 // Formatiert eine ISO Zeit (effective/expires) in Stationszeit. null bei
 // fehlendem oder ungültigem Wert (alte Caches, API-Lücke) → Zeile entfällt.
 function formatAlertTime(value: string | null | undefined, timezone: string): string | null {
@@ -92,7 +99,7 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
     const title = alert.event || alert.headline;
     const detail = alert.headline && alert.headline !== title ? alert.headline : null;
     const severity = severityKey(alert.severity);
-    const urgency = urgencyKey(alert.urgency);
+    const statusKey = alertStatusKey(alert);
     // Severe/Extreme wirken klarer als ein normaler Hinweis: rotes statt
     // orangefarbenes Symbol, zusätzlich die ausgeschriebene Stufe als Badge.
     const critical = severity === "severe" || severity === "extreme";
@@ -118,7 +125,7 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
       <div class="alert-copy">
         <div class="alert-title-row"><strong>${esc(title)}</strong>${badge}</div>
         ${detail ? `<span>${esc(detail)}</span>` : ""}
-        ${urgency ? `<span class="alert-urgency">${esc(t(`urgency_${urgency}`))}</span>` : ""}
+        ${statusKey ? `<span class="alert-urgency">${esc(t(statusKey))}</span>` : ""}
         ${from ? `<span>${esc(t("alert_from").replace("{time}", from))}</span>` : ""}
         ${until ? `<span>${esc(t("alert_until").replace("{time}", until))}</span>` : ""}
         ${more}

@@ -47,7 +47,9 @@ export const WeatherService = {
   // Pro Ort einzeln cachen (Key über gerundete Koordinaten, nicht über die
   // client-seitige place.id): nur die Orte ohne frischen Cache-Treffer landen
   // gemeinsam beim Provider angefragt. WeatherAPI führt dabei pro Ort einen
-  // schlanken Current Request aus; frische Cache Treffer kosten keinen Call.
+  // schlanken eintägigen Forecast Request aus; frische Cache Treffer kosten
+  // keinen Call. Die Aufrufzahl bleibt gegenüber dem früheren Current Request
+  // unverändert, zusätzlich kommen Regenchance und Warnsignal zurück.
   async getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWeather>> {
     const provider = activeProvider();
     const result = new Map<number, FavWeather>();

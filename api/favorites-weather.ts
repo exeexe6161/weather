@@ -2,8 +2,8 @@ import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
 import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
 
-// Der Starter Tarif hat keinen Bulk Endpoint. Fünf Orte halten Kosten und
-// Antwortzeit berechenbar und entsprechen der sichtbaren Favoritengrenze.
+// Der Starter Tarif hat keinen Bulk Endpoint. Fünf eintägige Forecasts halten
+// Kosten und Antwortzeit berechenbar und entsprechen der Favoritengrenze.
 const MAX_PLACES = 5;
 
 function parsePlaces(raw: string): BatchPlace[] | null {
@@ -51,7 +51,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const result = await WeatherService.getCurrentBatch(places);
     res.status(200).json(
-      Array.from(result, ([id, w]) => ({ id, temp: w.temp, code: w.code, isDay: w.isDay }))
+      Array.from(result, ([id, w]) => ({ id, temp: w.temp, code: w.code, isDay: w.isDay, rainChance: w.rainChance, hasAlert: w.hasAlert }))
     );
   } catch {
     sendError(res, 502, "Favorites weather provider request failed");
