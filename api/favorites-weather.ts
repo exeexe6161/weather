@@ -1,22 +1,26 @@
 import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
-import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
+import { type ApiRequest, type ApiResponse, corsGuard, GET_POST_METHODS, jsonBody, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
 
 // Der Starter Tarif hat keinen Bulk Endpoint. Fünf eintägige Forecasts halten
 // Kosten und Antwortzeit berechenbar und entsprechen der Favoritengrenze.
 const MAX_PLACES = 5;
 
-function parsePlaces(raw: string): BatchPlace[] | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+function parsePlaces(parsed: unknown, strictFields: boolean): BatchPlace[] | null {
   if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > MAX_PLACES) return null;
 
   const places: BatchPlace[] = [];
   for (const entry of parsed) {
+    if (
+      strictFields &&
+      (typeof entry !== "object" || entry === null || Array.isArray(entry) ||
+        Object.keys(entry).length !== 3 ||
+        !Object.prototype.hasOwnProperty.call(entry, "id") ||
+        !Object.prototype.hasOwnProperty.call(entry, "latitude") ||
+        !Object.prototype.hasOwnProperty.call(entry, "longitude"))
+    ) {
+      return null;
+    }
     const id = (entry as { id?: unknown })?.id;
     const latitude = (entry as { latitude?: unknown })?.latitude;
     const longitude = (entry as { longitude?: unknown })?.longitude;
@@ -33,16 +37,28 @@ function parsePlaces(raw: string): BatchPlace[] | null {
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
-  if (!corsGuard(req, res)) return;
-  if (!methodGuard(req, res)) return;
+  if (!corsGuard(req, res, GET_POST_METHODS)) return;
+  if (!methodGuard(req, res, GET_POST_METHODS)) return;
   if (!rateLimitGuard(req, res)) return;
 
-  const raw = queryParam(req, "places");
-  if (raw === null) {
-    sendError(res, 400, "Missing places");
-    return;
+  let parsed: unknown;
+  if (req.method === "POST") {
+    const body = jsonBody(req, res);
+    if (!body.ok) return;
+    parsed = body.value;
+  } else {
+    const raw = queryParam(req, "places");
+    if (raw === null) {
+      sendError(res, 400, "Missing places");
+      return;
+    }
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch {
+      parsed = null;
+    }
   }
-  const places = parsePlaces(raw);
+  const places = parsePlaces(parsed, req.method === "POST");
   if (places === null) {
     sendError(res, 400, "Invalid places: expected JSON array of {id, latitude, longitude}, max " + MAX_PLACES);
     return;

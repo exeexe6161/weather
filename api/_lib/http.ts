@@ -7,6 +7,7 @@ export interface ApiRequest {
   method?: string;
   query: Record<string, string | string[] | undefined>;
   headers?: Record<string, string | string[] | undefined>;
+  body?: unknown;
 }
 
 export interface ApiResponse {
@@ -20,6 +21,9 @@ const ALLOWED_APP_ORIGINS = new Set([
   "capacitor://localhost",
   "http://localhost",
 ]);
+
+export const GET_METHODS = ["GET"] as const;
+export const GET_POST_METHODS = ["GET", "POST"] as const;
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 120;
@@ -92,13 +96,17 @@ export function rateLimitGuard(req: ApiRequest, res: ApiResponse): boolean {
 
 // Browser requests stay same-origin. Only the local Capacitor origins used by
 // the native iOS/Android shells may read API responses cross-origin.
-export function corsGuard(req: ApiRequest, res: ApiResponse): boolean {
+export function corsGuard(
+  req: ApiRequest,
+  res: ApiResponse,
+  allowedMethods: readonly string[] = GET_METHODS,
+): boolean {
   const origin = requestHeader(req, "origin");
   const allowed = origin !== null && ALLOWED_APP_ORIGINS.has(origin);
 
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", [...allowedMethods, "OPTIONS"].join(", "));
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Vary", "Origin");
   }
@@ -118,8 +126,12 @@ export function sendError(res: ApiResponse, status: number, message: string): vo
   res.status(status).json({ error: message });
 }
 
-export function methodGuard(req: ApiRequest, res: ApiResponse): boolean {
-  if (req.method !== "GET") {
+export function methodGuard(
+  req: ApiRequest,
+  res: ApiResponse,
+  allowedMethods: readonly string[] = GET_METHODS,
+): boolean {
+  if (!req.method || !allowedMethods.includes(req.method)) {
     sendError(res, 405, "Method not allowed");
     return false;
   }
@@ -137,6 +149,71 @@ export function queryNumber(req: ApiRequest, key: string): number | null {
   if (raw === null) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+type JsonBodyResult =
+  | { ok: true; value: unknown }
+  | { ok: false };
+
+export function jsonBody(req: ApiRequest, res: ApiResponse): JsonBodyResult {
+  const contentType = requestHeader(req, "content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (contentType !== "application/json") {
+    sendError(res, 415, "Content-Type must be application/json");
+    return { ok: false };
+  }
+
+  if (typeof req.body === "string") {
+    try {
+      return { ok: true, value: JSON.parse(req.body) as unknown };
+    } catch {
+      sendError(res, 400, "Invalid JSON body");
+      return { ok: false };
+    }
+  }
+  if (req.body === undefined) {
+    sendError(res, 400, "Invalid JSON body");
+    return { ok: false };
+  }
+  return { ok: true, value: req.body };
+}
+
+function hasExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const actualKeys = Object.keys(value);
+  return actualKeys.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export function requestCoordinates(req: ApiRequest, res: ApiResponse): Coordinates | null {
+  let latitude: number | null;
+  let longitude: number | null;
+
+  if (req.method === "POST") {
+    const parsed = jsonBody(req, res);
+    if (!parsed.ok) return null;
+    if (!hasExactKeys(parsed.value, ["lat", "lon"])) {
+      sendError(res, 400, "Invalid or missing lat/lon");
+      return null;
+    }
+    latitude = typeof parsed.value.lat === "number" ? parsed.value.lat : null;
+    longitude = typeof parsed.value.lon === "number" ? parsed.value.lon : null;
+  } else {
+    latitude = queryNumber(req, "lat");
+    longitude = queryNumber(req, "lon");
+  }
+
+  if (latitude === null || longitude === null || !isValidLatitude(latitude) || !isValidLongitude(longitude)) {
+    sendError(res, 400, "Invalid or missing lat/lon");
+    return null;
+  }
+  return { latitude, longitude };
 }
 
 export function isValidLatitude(v: number): boolean {
