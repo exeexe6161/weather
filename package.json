@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "WeatherPure – minimalistische Wetter App (vanilla TS, esbuild, self-hosted Inter OFL, Lucide ISC, Wetterdaten WeatherAPI.com). www.weatherpure.com",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > styles-pages.min.css",
     "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --target=es2020 --outfile=script.min.js",
@@ -18,11 +21,10 @@
     "lucide": "^0.525.0"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.1",
     "typescript": "^5.8.0"
   }
 }
