@@ -167,7 +167,17 @@ export async function refreshFavoritesWeather(places: Place[]): Promise<Map<numb
       try {
         const fresh = await fetchFavoritesWeather(stale);
         const savedAt = new Date().toISOString();
-        for (const [id, w] of fresh) cache.set(id, { temp: w.temp, code: w.code, isDay: w.isDay, savedAt });
+        for (const [id, w] of fresh) {
+          const previous = cache.get(id);
+          cache.set(id, {
+            temp: w.temp,
+            code: w.code,
+            isDay: w.isDay,
+            rainChance: w.rainChance ?? previous?.rainChance ?? null,
+            hasAlert: w.hasAlert ?? previous?.hasAlert ?? false,
+            savedAt,
+          });
+        }
         writeFavWeatherCache(cache);
       } catch {
         // Netz/API-Fehler: bestehende Cache-Werte behalten, nicht löschen.

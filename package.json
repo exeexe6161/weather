@@ -11,6 +11,7 @@
     "build:sw": "node build-sw.mjs",
     "build": "npm run build:css && npm run build:js && npm run build:sw && npm run build:dist",
     "build:ios": "npm run build && npx cap sync ios",
+    "test": "node tests/run.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

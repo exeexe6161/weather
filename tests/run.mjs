@@ -1,0 +1,37 @@
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
+
+const testsDir = fileURLToPath(new URL("./", import.meta.url));
+const entryPoints = {
+  "favorites-cache.test": resolve(testsDir, "favorites-cache.test.ts"),
+  "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),
+};
+const outputDir = await mkdtemp(join(tmpdir(), "weatherpure-tests-"));
+
+let exitCode = 1;
+try {
+  await build({
+    entryPoints,
+    outdir: outputDir,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node22",
+    logLevel: "warning",
+  });
+
+  const testFiles = Object.keys(entryPoints).map((name) => join(outputDir, `${name}.js`));
+  exitCode = await new Promise((resolveExit, reject) => {
+    const child = spawn(process.execPath, ["--test", ...testFiles], { stdio: "inherit" });
+    child.once("error", reject);
+    child.once("close", (code) => resolveExit(code ?? 1));
+  });
+} finally {
+  await rm(outputDir, { recursive: true, force: true });
+}
+
+process.exitCode = exitCode;
