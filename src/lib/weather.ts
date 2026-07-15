@@ -94,8 +94,11 @@ export interface Forecast {
 // dieses Modell laufen serverseitig im Provider
 // (src/server/weather/providers/WeatherApiProvider.ts).
 export async function fetchWeather(latitude: number, longitude: number): Promise<Forecast> {
-  const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
-  const res = await fetchWithTimeout(apiUrl(`/api/weather?${params}`));
+  const res = await fetchWithTimeout(apiUrl("/api/weather"), 12000, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lat: latitude, lon: longitude }),
+  });
   if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
   return (await res.json()) as Forecast;
 }

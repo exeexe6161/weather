@@ -8,6 +8,7 @@ import { build } from "esbuild";
 const testsDir = fileURLToPath(new URL("./", import.meta.url));
 const entryPoints = {
   "api-routes.test": resolve(testsDir, "api-routes.test.ts"),
+  "client-requests.test": resolve(testsDir, "client-requests.test.ts"),
   "favorites-cache.test": resolve(testsDir, "favorites-cache.test.ts"),
   "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),
 };

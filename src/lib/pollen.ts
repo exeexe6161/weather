@@ -50,8 +50,11 @@ export function stageFor(kind: PollenKind, value: number | null): PollenStageKey
 
 export async function fetchPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
   try {
-    const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude) });
-    const res = await fetchWithTimeout(apiUrl(`/api/pollen?${params}`));
+    const res = await fetchWithTimeout(apiUrl("/api/pollen"), 12000, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: latitude, lon: longitude }),
+    });
     if (!res.ok) return null;
     return (await res.json()) as PollenLevels | null;
   } catch {

@@ -38,8 +38,11 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
   if (places.length === 0) return out; // leere Liste → kein Call
 
   const payload = places.map((p) => ({ id: p.id, latitude: p.latitude, longitude: p.longitude }));
-  const params = new URLSearchParams({ places: JSON.stringify(payload) });
-  const res = await fetchWithTimeout(apiUrl(`/api/favorites-weather?${params}`));
+  const res = await fetchWithTimeout(apiUrl("/api/favorites-weather"), 12000, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   if (!res.ok) throw new Error(`Favorites weather request failed: ${res.status}`);
   const data: Array<{ id: number; temp: number; code: number; isDay: boolean; rainChance: number | null; hasAlert: boolean }> = await res.json();
   for (const entry of data) {
