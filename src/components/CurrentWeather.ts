@@ -171,6 +171,13 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
       : null;
   const windPoint = windDir !== null ? compassPointFor(windDir, t("compassPoints")) : "";
   const windText = windPoint ? `${formatWind(c.windSpeed)} ${windPoint}` : formatWind(c.windSpeed);
+  // Gradzeichen der Haupttemperatur in einen eigenen Span (.cw-deg): es steht
+  // leiser als die Ziffer (Gewicht/Ton via CSS). Nur hier — überall sonst bleibt
+  // formatTemp unverändert. Fehlwert ("–") trägt kein Gradzeichen und bleibt pur.
+  const tempText = formatTemp(c.temperature);
+  const tempHtml = tempText.endsWith("°")
+    ? `${tempText.slice(0, -1)}<span class="cw-deg">°</span>`
+    : tempText;
 
   el.innerHTML = `
     <div class="cw-head">
@@ -193,7 +200,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     </div>
     <div class="cw-main">
       <i data-lucide="${icon}" class="cw-ico"></i>
-      <div class="cw-temp">${formatTemp(c.temperature)}</div>
+      <div class="cw-temp">${tempHtml}</div>
     </div>
     <div class="cw-label">${esc(label)}</div>
     ${summary ? `<p class="cw-summary">${esc(summary)}</p>` : ""}

@@ -41,7 +41,10 @@
 
   --wp-content-max:740px; /* Lesespalte, identisch zur Wetterseite */
 
-  --blue:var(--wp-zenit);
+  /* Link- und Aktionsblau: dunklere Zenit Stufe (= --accent-text der App) statt
+     reinem Zenit — Zenit auf Pur läge bei 4.02:1 und damit unter AA für die
+     17px/500 Links hier. */
+  --blue:#1D62B4;
   --bg:var(--wp-bg);
   --s1:var(--wp-surface);
   --s2:#E9EDF0;
@@ -79,6 +82,7 @@
   --wp-stahl:#9AA3AC;
   --wp-linie:#2A2E33;
 
+  --blue:#7FB1F0; /* helle Zenit Stufe auf Karbon (~8:1), wie --accent-text der App */
   --s2:#262B30;
   --l2:#D4D9DE;
   --l3:#A6AEB6;
@@ -193,8 +197,8 @@ body::before{
 }
 /* Eyebrow in der Typo der sh Überschriften; einziger Zenit Akzent im Kopf */
 .page-tag{
-  font-size:var(--fs-sm);font-weight:700;
-  color:var(--blue);letter-spacing:.6px;
+  font-size:var(--fs-sm);font-weight:650;
+  color:var(--blue);letter-spacing:1.1px; /* gleiche Eyebrow-Laufweite wie .sh der App */
   text-transform:uppercase;
 }
 .page-stand{

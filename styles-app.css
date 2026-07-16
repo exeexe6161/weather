@@ -128,7 +128,12 @@ button.hour-cell,
   --accent-text:#1D62B4;    /* dunklere Zenit Stufe, AA tauglich auf Pur */
   --star:var(--wp-zenit);
   --star-rgb:46,127,224; /* RGB-Kanal von --star (hell) für rgba()-Glow */
-  --btn-bg:var(--wp-zenit); /* Primärbutton nach Design System: Zenit Fläche, Pur Text */
+  /* Primärbutton: dunklere Zenit Stufe (= --accent-text hell) statt reinem Zenit,
+     denn Pur auf Zenit erreicht laut Brand Kontrasttabelle nur 4.02:1 (AA nur
+     groß); Pur auf #1D62B4 liegt bei ~6.1:1 und ist damit auch für die 14.5px
+     Button-Schrift AA-fest. Hover eine Stufe dunkler. */
+  --btn-bg:#1D62B4;
+  --btn-bg-hover:#1A57A0;
   --btn-fg:var(--wp-pur);
   --accent-soft-hover:rgba(46,127,224,.18);  /* getönte Zenit Flächen (Geo Button) */
   --accent-soft-active:rgba(46,127,224,.24);
@@ -165,6 +170,7 @@ button.hour-cell,
   --sp-4:16px;
   --sp-5:20px;
   --sp-6:24px;
+  --card-pad:var(--sp-4); /* Innenabstand der Inhaltskarten; Desktop Stufe hebt an */
   --fs-xs:11px;
   --fs-sm:12.5px;
   --fs-base:14px;
@@ -202,6 +208,11 @@ html[data-theme="dark"]{
   --accent-soft-hover:rgba(46,127,224,.30);
   --accent-soft-active:rgba(46,127,224,.38);
   --accent-border:rgba(127,177,240,.40);
+  /* Primärbutton dunkel: helle Zenit Stufe (= --accent-text dunkel) mit Karbon
+     Text (~8:1) — Pur auf Zenit wäre auf Karbon-Flächen ebenfalls unter AA. */
+  --btn-bg:#7FB1F0;
+  --btn-bg-hover:#93BEF3;
+  --btn-fg:var(--wp-karbon);
   --s2:#262B30;
   --s3:#2F353B;
   --l2:#D4D9DE;
@@ -470,11 +481,14 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 
 /* ══ Layout ══ */
 .app-main{padding:0 16px;min-width:0;max-width:100%;overflow-x:clip;}
+/* Eyebrow-Überschriften: Richtung Brand-Label-Stil (Versalien, deutlich positive
+   Laufweite). 650 statt 700 und 1.1px Laufweite geben den Sektionen mehr Ruhe,
+   ohne die kompakte Größe zu verlassen. */
 .sh{
   margin:var(--sp-6) 2px var(--sp-3);
   font-size:var(--fs-sm);
-  font-weight:700;
-  letter-spacing:.6px;
+  font-weight:650;
+  letter-spacing:1.1px;
   text-transform:uppercase;
   color:var(--l4);
   text-align:left;
@@ -483,7 +497,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   background:var(--s1);
   border-radius:var(--r-card);
   box-shadow:var(--card-shadow);
-  padding:var(--sp-4);
+  padding:var(--card-pad);
 }
 
 /* Dezentes, gestaffeltes Einblenden der Inhaltskarten bei frischen Daten.
@@ -912,7 +926,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   cursor:pointer;
   transition:transform var(--t-base);
 }
-.retry-btn:active{transform:scale(var(--press-scale));}
+.retry-btn:hover{background:var(--btn-bg-hover);}
+.retry-btn:active{transform:scale(var(--press-scale));background:var(--btn-bg-hover);}
 .retry-btn-ico{width:16px;height:16px;}
 
 /* ══ Aktuelles Wetter ══ */
@@ -967,8 +982,17 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   gap:14px;
   margin-top:var(--sp-4);
 }
-.cw-ico{width:56px;height:56px;color:var(--l2);} /* Zenit nur für Wasser und Aktionen */
-.cw-temp{font-size:52px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
+/* Hauptsymbol: etwas größer und mit feinerem Strich (1.5 statt Lucide-Standard 2)
+   — wirkt bei dieser Größe gezeichneter, weniger Baukasten. Gilt nur hier; die
+   kleinen Icons (Stunden, Tage, Kacheln) behalten den Standardstrich. */
+.cw-ico{width:62px;height:62px;color:var(--l2);stroke-width:1.5;} /* Zenit nur für Wasser und Aktionen */
+/* Temperatur als Display-Moment nach Brand-Skala: größer, dafür leichteres
+   Gewicht und relative Laufweite (−3 % wie der Display-Stil der Guidelines,
+   skaliert per em über alle Breakpoints statt fixer Pixel). */
+.cw-temp{font-size:56px;font-weight:750;letter-spacing:-.03em;line-height:1;}
+/* Gradzeichen leiser als die Zahl (leichter + sekundär getönt), die Ziffer
+   trägt den Moment. Theme-aware über --l3. */
+.cw-deg{font-weight:560;color:var(--l3);}
 .cw-label{margin-top:var(--sp-2);font-size:var(--fs-lg);color:var(--l2);font-weight:600;}
 /* Signature Moment: genau ein Satz in Instrument Serif Italic, kein Kasten,
    keine Farbe — nur die Serifenschrift hebt ihn ab */
@@ -1028,7 +1052,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 /* Der Riss als Naht über die volle Kartenbreite (negative Ränder heben das
    Kartenpadding auf); einziger Riss Einsatz in der App */
 .cw-card .wp-riss-divider{
-  margin:var(--sp-4) calc(-1 * var(--sp-4)) 0;
+  margin:var(--sp-4) calc(-1 * var(--card-pad)) 0;
 }
 /* Zentrierte Gruppe als ruhiger Abschluss der Karte unter dem Riss */
 .cw-sun{
@@ -1480,8 +1504,8 @@ html[data-theme="dark"]{
 }
 .daily-divider span{
   font-size:var(--fs-xs);
-  font-weight:700;
-  letter-spacing:.6px;
+  font-weight:650;
+  letter-spacing:1.1px; /* gleiche Eyebrow-Laufweite wie .sh */
   text-transform:uppercase;
   color:var(--l4);
 }
@@ -1715,4 +1739,33 @@ footer{margin-top:48px;padding:var(--sp-5) 16px 0;border-top:1px solid var(--sep
   width:44px;
   height:44px;
   transform:translate(-50%,-50%);
+}
+
+/* ══ Desktop Stufe ══
+   Ab 900px steht die 740px-Lesespalte frei im Raum; damit sie als bewusste
+   Desktop-Gestaltung liest statt als vergrößerte Handy-Ansicht, heben wir
+   moderat an: Schriftgrößen-Tokens (+0.5 bis +1.5px, wirken überall über die
+   Token-Kaskade), Karten-Innenabstand (--card-pad → --sp-5, der Riss folgt
+   automatisch über sein calc), Wortmarke und Claim, und die aktuelle
+   Wetterkarte bekommt ihren vollen Display-Moment (Temperatur 64px, Symbol 68px,
+   Serif-Satz 21px). Die Stundenzellen dürfen minimal breiter atmen. Mobil
+   (<900px) ändert dieser Block nichts. */
+@media (min-width:900px){
+  :root{
+    --fs-xs:11.5px;
+    --fs-sm:13px;
+    --fs-base:14.5px;
+    --fs-md:15px;
+    --fs-lg:16px;
+    --fs-xl:18px;
+    --card-pad:var(--sp-5);
+  }
+  .hero{--wordmark-max:236px;--claim-max:17px;}
+  .cw-main{gap:18px;}
+  .cw-ico{width:68px;height:68px;}
+  .cw-temp{font-size:64px;}
+  .cw-summary{font-size:21px;}
+  .week-summary{font-size:18px;}
+  .hourly-track{gap:6px;}
+  .hour-cell{min-width:60px;}
 }
