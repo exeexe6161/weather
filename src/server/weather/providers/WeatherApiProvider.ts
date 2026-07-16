@@ -1,6 +1,7 @@
 import { fetchWithTimeout } from "../../../lib/http.js";
 import { POLLEN_KINDS, type PollenKind } from "../../../lib/pollen.js";
 import type { BatchPlace, WeatherProvider } from "../WeatherProvider.js";
+import { reserveWeatherProviderQuota } from "../quotaGuard.js";
 import type { AirQuality, DailyEntry, FavWeather, Forecast, Place, PollenLevels, WeatherAlert } from "../types.js";
 
 const BASE_URL = "https://api.weatherapi.com/v1";
@@ -50,7 +51,9 @@ function apiUrl(path: string, params: Record<string, string>): string {
 }
 
 async function requestJson(path: string, params: Record<string, string>): Promise<unknown> {
-  const response = await fetchWithTimeout(apiUrl(path, params));
+  const url = apiUrl(path, params);
+  await reserveWeatherProviderQuota();
+  const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error(`WeatherAPI request failed: ${response.status}`);
   return response.json();
 }

@@ -9,23 +9,47 @@ interface ProviderModule {
     searchPlaces(query: string, language: string): Promise<Array<Record<string, unknown>>>;
     getCurrentBatch(places: Array<{ id: number; latitude: number; longitude: number }>): Promise<Map<number, unknown>>;
   };
+  setQuotaReservationAdapterForTesting(adapter: QuotaReservationAdapter | null | undefined): void;
+}
+
+interface QuotaReservationRequest {
+  month: string;
+}
+
+interface QuotaReservationAdapter {
+  reserve(request: QuotaReservationRequest): Promise<unknown>;
 }
 
 const providerModule = await loadBundledModule<ProviderModule>(`
   export { weatherApiProvider } from './src/server/weather/providers/WeatherApiProvider.ts';
+  export { setQuotaReservationAdapterForTesting } from './src/server/weather/quotaGuard.ts';
 `);
 const provider = providerModule.weatherApiProvider;
 
 const DUMMY_KEY = 'weather-test-key';
 const originalKey = process.env.WEATHERAPI_KEY;
 let restoreNetwork: () => void;
+let reservationRequests: QuotaReservationRequest[];
 
 beforeEach(() => {
   process.env.WEATHERAPI_KEY = DUMMY_KEY;
+  reservationRequests = [];
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve(request) {
+      reservationRequests.push(request);
+      return {
+        status: 'reserved',
+        burstRemaining: 299,
+        monthlyRemaining: 1_999_999,
+        month: request.month,
+      };
+    },
+  });
   restoreNetwork = blockUnexpectedNetwork();
 });
 
 afterEach(() => {
+  providerModule.setQuotaReservationAdapterForTesting(null);
   if (originalKey === undefined) delete process.env.WEATHERAPI_KEY;
   else process.env.WEATHERAPI_KEY = originalKey;
   restoreNetwork();
@@ -120,6 +144,7 @@ test('missing server key fails before fetch with a bounded configuration error',
     assert.doesNotMatch(error.message, /key=/i);
     return true;
   });
+  assert.equal(reservationRequests.length, 0);
 });
 
 test('short geocoding queries return empty without a provider request', async () => {
@@ -218,6 +243,81 @@ test('forecast normalizes the provider response and excludes key and raw fields'
   assert.doesNotMatch(serialized, /provider_private_field|provider_root_field|provider_text/);
   assert.doesNotMatch(serialized, new RegExp(DUMMY_KEY));
   assert.equal(calls.length, 2);
+  assert.equal(reservationRequests.length, 2);
+});
+
+test('exhausted provider budget blocks fetch without exposing counter details', async () => {
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve(request) {
+      return {
+        status: 'monthly_exhausted',
+        burstRemaining: 200,
+        monthlyRemaining: 0,
+        month: request.month,
+      };
+    },
+  });
+  const calls = useFetch(() => jsonResponse([]));
+
+  await assert.rejects(provider.searchPlaces('Berlin', 'de'), (error: Error) => {
+    assert.equal(error.message, 'Weather service is temporarily unavailable');
+    assert.doesNotMatch(error.message, /monthly|counter|redis|upstash/i);
+    return true;
+  });
+  assert.equal(calls.length, 0);
+});
+
+test('counter failures fail closed before provider fetch', async () => {
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve() {
+      throw new Error('simulated counter failure');
+    },
+  });
+  const calls = useFetch(() => jsonResponse([]));
+
+  await assert.rejects(provider.searchPlaces('Berlin', 'de'), (error: Error) => {
+    assert.equal(error.message, 'Weather service is temporarily unavailable');
+    assert.doesNotMatch(error.message, /simulated|counter|redis|upstash/i);
+    return true;
+  });
+  assert.equal(calls.length, 0);
+});
+
+test('missing global adapter fails closed before provider fetch', async () => {
+  providerModule.setQuotaReservationAdapterForTesting(null);
+  const calls = useFetch(() => jsonResponse([]));
+
+  await assert.rejects(provider.searchPlaces('Berlin', 'de'), (error: Error) => {
+    assert.equal(error.message, 'Weather service is temporarily unavailable');
+    return true;
+  });
+  assert.equal(calls.length, 0);
+});
+
+test('provider failure keeps the successful reservation consumed', async () => {
+  let reservations = 0;
+  let rollbacks = 0;
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve(request) {
+      reservations++;
+      return {
+        status: 'reserved',
+        burstRemaining: 299,
+        monthlyRemaining: 1_999_999,
+        month: request.month,
+      };
+    },
+    rollback() {
+      rollbacks++;
+    },
+  } as QuotaReservationAdapter);
+  useFetch(async () => {
+    throw new Error('simulated provider failure');
+  });
+
+  await assert.rejects(provider.searchPlaces('Berlin', 'de'), /simulated provider failure/);
+  assert.equal(reservations, 1);
+  assert.equal(rollbacks, 0);
 });
 
 test('forecast rejects malformed required provider data without exposing the server key', async () => {
@@ -261,4 +361,5 @@ test('favorites batch preserves successful provider entries when another request
 
   assert.deepEqual([...result.entries()], [[1, { temp: 19, code: 2, isDay: true }]]);
   assert.equal(calls.length, 2);
+  assert.equal(reservationRequests.length, 2);
 });
