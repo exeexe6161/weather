@@ -527,6 +527,33 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   to{opacity:1;transform:none;}
 }
 
+/* Leiser Bruder der Kaskade für den manuellen Refresh (settleCards in app.ts):
+   der Inhalt steht bereits, nur die Werte frischen auf — alle Karten blenden
+   gleichzeitig kurz auf, keine Staffelung, kein translate. Opt-in wie oben;
+   Grundzustand bleibt opacity:1 (kein FOUC, reduce unverändert). */
+@media (prefers-reduced-motion:no-preference){
+  #weatherContent.cards-settling .list-card{animation:card-settle .25s ease-out;}
+}
+@keyframes card-settle{
+  from{opacity:.55;}
+}
+
+/* Weicher Wechsel zwischen den Zustandscontainern (empty/loading/error/content):
+   die Animation startet bei jedem Entfernen von [hidden] neu (display:none setzt
+   sie zurück) — setView braucht kein JS dafür. Gleiches Muster für die
+   Zeitstempel-Caption (#topStamp), deren Klasse updateTopStamp bei neuem Stand
+   per Reflow-Neustart setzt. */
+@media (prefers-reduced-motion:no-preference){
+  #weatherEmpty:not([hidden]),
+  #weatherLoading:not([hidden]),
+  #weatherError:not([hidden]),
+  #weatherContent:not([hidden]){animation:view-fade var(--t-base) ease-out;}
+  #topStamp.stamp-fresh{animation:view-fade var(--t-base) ease-out;}
+}
+@keyframes view-fade{
+  from{opacity:0;}
+}
+
 /* ══ Suche ══ */
 .search-section{margin-top:var(--sp-5);position:relative;text-align:left;}
 .search-field{
@@ -601,6 +628,16 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   display:flex;
   flex-direction:column;
   gap:2px;
+}
+/* Overlays (Suchergebnisse, Sprachmenü) blenden weich ein statt hart aufzuploppen.
+   Läuft bei jedem Entfernen von [hidden] neu; nur opacity/transform, Opt-in nach
+   Hausmuster (bei reduce erscheinen sie unverändert sofort). */
+@media (prefers-reduced-motion:no-preference){
+  .search-results:not([hidden]),
+  .top-menu:not([hidden]){animation:menu-in var(--t-base) ease-out;}
+}
+@keyframes menu-in{
+  from{opacity:0;transform:translateY(-4px);}
 }
 .search-result{
   display:flex;
@@ -740,6 +777,7 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 }
 .fav-compare strong{color:var(--l1);font-weight:650;}
 .fav-row{
+  position:relative; /* Anker für den ::after-Hervorheb-Puls beim Umsortieren */
   display:flex;
   align-items:stretch;
   /* Zarte Trennlinie: 55% des Linien-Tokens (theme-aware, da --sep hell/dunkel
@@ -752,6 +790,24 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
    dezent abgesetzte Fläche. inset-Schatten = kein Layout-Wachstum (kein
    border-left, kein Shift). Ersetzt den früheren blauen Akzent-Rahmen. */
 .fav-row--active{background:var(--s2);box-shadow:inset 3px 0 0 0 var(--l1);}
+/* Umsortieren: die bewegte Zeile pulst einmal kurz in Zenit-Tönung auf, damit
+   das Auge ihr an die neue Position folgen kann (Klasse setzt app.ts onMove).
+   Kompletter Block im Opt-in: ohne Animation soll das Overlay gar nicht erst
+   entstehen (both hält es nach dem Auslaufen unsichtbar auf opacity:0). */
+@media (prefers-reduced-motion:no-preference){
+  .fav-row--moved::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:var(--accent-soft);
+    pointer-events:none;
+    animation:fav-moved .6s ease-out both;
+  }
+}
+@keyframes fav-moved{
+  from{opacity:.9;}
+  to{opacity:0;}
+}
 .fav-row-select{
   flex:1 1 auto;
   min-width:0;
@@ -1419,7 +1475,10 @@ html[data-theme="dark"]{
 .rc-hit:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px;border-radius:4px;}
 /* Tooltip: ruhiges Kaestchen im Kartenstil (Flaeche --s1, Rand/Schatten --shadow-3,
    Radius --r-sm), kleiner Text, theme-aware. Absolut in der Karte; Position setzt
-   JS in Bildschirmkoordinaten. pointer-events:none -> faengt keine Hover/Taps ab. */
+   JS in Bildschirmkoordinaten. pointer-events:none -> faengt keine Hover/Taps ab.
+   Sichtbarkeit ueber .rc-tip--show (JS): opacity+visibility statt hidden, damit
+   ein kurzer Fade moeglich ist und die Positionierung Layout hat. visibility
+   wartet beim Ausblenden auf das Ende des Fades (delay), beim Einblenden nicht. */
 .rc-tip{
   position:absolute;
   z-index:5;
@@ -1433,6 +1492,13 @@ html[data-theme="dark"]{
   font-weight:600;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
+  opacity:0;
+  visibility:hidden;
+}
+.rc-tip--show{opacity:1;visibility:visible;}
+@media (prefers-reduced-motion:no-preference){
+  .rc-tip{transition:opacity var(--t-fast) ease,visibility 0s linear var(--t-fast);}
+  .rc-tip--show{transition:opacity var(--t-fast) ease,visibility 0s;}
 }
 
 /* ══ 7 Tage ══ */

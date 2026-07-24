@@ -69,7 +69,8 @@ export function renderFavoritesList(
             </button>
           </span>`
         : "";
-      return `<li class="fav-row${active ? " fav-row--active" : ""}">
+      // data-id: app.ts hebt nach dem Umsortieren die bewegte Zeile darüber hervor.
+      return `<li class="fav-row${active ? " fav-row--active" : ""}" data-id="${p.id}">
         <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${wx?.hasAlert ? `. ${esc(t("favAlert"))}` : ""}">
           <span class="fav-row-id">
             <span class="fav-row-name">${esc(p.name)}</span>

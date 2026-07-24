@@ -17,7 +17,7 @@ import { shareText, shareImage } from "./lib/share";
 import { renderWeatherCard } from "./lib/shareImage";
 import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar } from "./components/SearchBar";
-import { renderCurrentWeather } from "./components/CurrentWeather";
+import { renderCurrentWeather, stopLocalTimeTicker } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
 import { renderTempCurve, forecastStartHour, type TempCurveInput } from "./components/TempCurve";
@@ -116,6 +116,17 @@ function setView(view: "empty" | "loading" | "error" | "content"): void {
   byId("weatherLoading").hidden = view !== "loading";
   byId("weatherError").hidden = view !== "error";
   byId("weatherContent").hidden = view !== "content";
+  // Fehler über die zentrale Ansage-Region (#weatherAnnounce) melden. Die
+  // Erfolgsansage setzt renderContent nach setView("content"), den Ladehinweis
+  // sagt #weatherLoading (role="status") beim Erscheinen selbst an. Fehlertext
+  // aus #errorTitle — der Aufrufer setzt ihn VOR setView("error").
+  if (view === "error") {
+    byId("weatherAnnounce").textContent =
+      document.getElementById("errorTitle")?.textContent ?? t("loadError");
+  }
+  // Ohne sichtbare Wetterkarte tickt auch keine Ortsuhr mehr (sonst liefe der
+  // Timer bis zum nächsten Minutenwechsel weiter, s. CurrentWeather).
+  if (view !== "content") stopLocalTimeTicker();
   // Ohne angezeigten Ort (Empty, Fehler, Laden eines Orts ohne letzten Stand)
   // gilt wieder der sprachabhängige Basistitel; den Wettertitel setzt
   // renderContent nach setView("content") synchron neu
@@ -147,7 +158,14 @@ function updateTopStamp(): void {
       : null;
   if (time) {
     span.hidden = false;
-    span.textContent = t(state.freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", time);
+    const text = t(state.freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", time);
+    if (span.textContent !== text) {
+      span.textContent = text;
+      // Neuer Stand: Caption kurz weich einblenden statt hart umzuspringen.
+      span.classList.remove("stamp-fresh");
+      void span.offsetWidth; // Reflow → Animation startet bei erneutem Add neu
+      span.classList.add("stamp-fresh");
+    }
   } else {
     span.textContent = "";
     span.hidden = true;
@@ -194,6 +212,12 @@ function renderFavorites(): void {
       moveFavorite(place.id, dir);
       renderFavorites();
       renderIcons();
+      // Die bewegte Zeile kurz hervorheben, damit das Auge ihr an die neue
+      // Position folgen kann (der Neuaufbau der Liste springt sonst lautlos).
+      // Frisch gerendert → Klasse einfach setzen, kein Reflow-Neustart nötig.
+      document
+        .querySelector<HTMLElement>(`#favoritesList .fav-row[data-id="${place.id}"]`)
+        ?.classList.add("fav-row--moved");
     },
   }, weather);
 }
@@ -323,9 +347,21 @@ function buildRainChartInput(forecast: Forecast): RainChartInput {
 // wirkungslos und der Inhalt sofort voll sichtbar.
 function revealCards(): void {
   const el = byId("weatherContent");
-  el.classList.remove("cards-revealing");
+  el.classList.remove("cards-revealing", "cards-settling");
   void el.offsetWidth; // erzwingt Reflow → Animation startet bei erneutem Add neu
   el.classList.add("cards-revealing");
+}
+
+// Leiser Bruder von revealCards für den manuellen Refresh: der Inhalt steht
+// bereits, nur die Werte frischen auf — statt der vollen gestaffelten Kaskade
+// (bis ~800ms) ein kurzes, gleichzeitiges Auffrisch-Blenden aller Karten.
+// Gleicher Reflow-Neustart, gleiche Opt-in-Mechanik über CSS (reduced motion:
+// Klasse wirkungslos, Inhalt bleibt voll sichtbar).
+function settleCards(): void {
+  const el = byId("weatherContent");
+  el.classList.remove("cards-revealing", "cards-settling");
+  void el.offsetWidth;
+  el.classList.add("cards-settling");
 }
 
 function renderContent(): void {
@@ -490,7 +526,7 @@ function refreshCurrentPlace(): void {
       renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
       renderFavorites();
       renderIcons();
-      revealCards();
+      settleCards(); // Refresh: kurzes Auffrischen statt voller Kaskade (die bleibt für Ortswechsel)
       // C) Der Aktualisieren-Button frischt auch die übrigen Favoriten auf
       // (batched, nur stale/missing). Der gerade gespiegelte Ort fällt dabei raus.
       loadFavoritesWeather();

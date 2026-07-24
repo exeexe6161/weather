@@ -119,7 +119,9 @@ test('server route guards reject unsupported methods before service access', asy
   };
   const { response, state } = createResponseDouble();
 
-  await routes.weatherHandler(request({ lat: '48', lon: '10' }, 'POST'), response);
+  // GET und POST sind seit den POST Weather APIs beide erlaubt; der Method
+  // Guard greift bei allen übrigen Verben (POST ohne JSON deckt api-routes ab).
+  await routes.weatherHandler(request({ lat: '48', lon: '10' }, 'PUT'), response);
 
   assert.equal(calls, 0);
   assert.equal(state.statusCode, 405);
@@ -215,8 +217,8 @@ test('favorites route parses valid places and exposes only the public weather sh
   routes.WeatherService.getCurrentBatch = async (places) => {
     received = places;
     return new Map([
-      [1, { temp: 20, code: 2, isDay: true, providerOnly: 'hidden' }],
-      [2, { temp: 11, code: 61, isDay: false, providerOnly: 'hidden' }],
+      [1, { temp: 20, code: 2, isDay: true, rainChance: 67, hasAlert: true, providerOnly: 'hidden' }],
+      [2, { temp: 11, code: 61, isDay: false, rainChance: 12, hasAlert: false, providerOnly: 'hidden' }],
     ]);
   };
   const places = [
@@ -230,8 +232,8 @@ test('favorites route parses valid places and exposes only the public weather sh
   assert.deepEqual(received, places);
   assert.equal(state.statusCode, 200);
   assert.deepEqual(state.body, [
-    { id: 1, temp: 20, code: 2, isDay: true },
-    { id: 2, temp: 11, code: 61, isDay: false },
+    { id: 1, temp: 20, code: 2, isDay: true, rainChance: 67, hasAlert: true },
+    { id: 2, temp: 11, code: 61, isDay: false, rainChance: 12, hasAlert: false },
   ]);
   assert.doesNotMatch(JSON.stringify(state.body), /providerOnly/);
 });
@@ -264,7 +266,7 @@ test('favorites route rejects empty, malformed, oversized and invalid place list
 
 test('favorites route keeps successful entries when the service returns a partial batch', async () => {
   routes.WeatherService.getCurrentBatch = async () => new Map([
-    [2, { temp: 14, code: 3, isDay: true }],
+    [2, { temp: 14, code: 3, isDay: true, rainChance: 55, hasAlert: false }],
   ]);
   const places = [
     { id: 1, latitude: 48, longitude: 10 },
@@ -275,7 +277,7 @@ test('favorites route keeps successful entries when the service returns a partia
   await routes.favoritesHandler(request({ places: JSON.stringify(places) }), response);
 
   assert.equal(state.statusCode, 200);
-  assert.deepEqual(state.body, [{ id: 2, temp: 14, code: 3, isDay: true }]);
+  assert.deepEqual(state.body, [{ id: 2, temp: 14, code: 3, isDay: true, rainChance: 55, hasAlert: false }]);
 });
 
 test('favorites route converts an overall provider failure to a bounded 502 response', async () => {

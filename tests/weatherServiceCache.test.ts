@@ -64,6 +64,44 @@ test('cache reports a miss, reuses a fresh value and expires at the real boundar
   assert.equal(loads, 2);
 });
 
+test('cache deduplicates concurrent misses on the same key', async () => {
+  let loads = 0;
+  const key = 'test:cache:inflight';
+  let release!: (value: string) => void;
+  const gate = new Promise<string>((resolve) => { release = resolve; });
+  const loader = () => { loads++; return gate; };
+
+  const first = service.getOrSet(key, 10_000, loader);
+  const second = service.getOrSet(key, 10_000, loader);
+  release('shared');
+
+  assert.equal(await first, 'shared');
+  assert.equal(await second, 'shared');
+  assert.equal(loads, 1);
+  assert.equal(await service.getOrSet(key, 10_000, loader), 'shared');
+  assert.equal(loads, 1);
+});
+
+test('cache shares an in-flight rejection but loads fresh afterwards', async () => {
+  let attempts = 0;
+  const key = 'test:cache:inflight-reject';
+  let fail!: (error: Error) => void;
+  const gate = new Promise<string>((_resolve, reject) => { fail = reject; });
+  const loader = async () => {
+    attempts++;
+    return attempts === 1 ? gate : 'recovered';
+  };
+
+  const first = service.getOrSet(key, 10_000, loader);
+  const second = service.getOrSet(key, 10_000, loader);
+  fail(new Error('temporary in-flight failure'));
+
+  await assert.rejects(first, /temporary in-flight failure/);
+  await assert.rejects(second, /temporary in-flight failure/);
+  assert.equal(await service.getOrSet(key, 10_000, loader), 'recovered');
+  assert.equal(attempts, 2);
+});
+
 test('cache keeps different keys and parameters isolated', () => {
   Date.now = () => 2_000_000;
   const firstKey = service.buildCacheKey('WEATHER_API', ['forecast', 48.1, 10.1]);

@@ -12,6 +12,17 @@ const entryPoints = {
   "favorites-cache.test": resolve(testsDir, "favorites-cache.test.ts"),
   "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),
 };
+// Diese Tests laufen direkt als TypeScript über Nodes Type Stripping (sie
+// bündeln ihre Prüflinge selbst über testHarness.loadBundledModule) — nicht
+// vorbündeln, sonst würde der esbuild-Import im Harness mitgebündelt.
+const directTests = [
+  "tempCompare.test.ts",
+  "serverRoutes.test.ts",
+  "weatherApiProvider.test.ts",
+  "weatherQuotaGuard.test.ts",
+  "weatherServiceCache.test.ts",
+  "uiLabels.test.ts",
+].map((name) => resolve(testsDir, name));
 const outputDir = await mkdtemp(join(tmpdir(), "weatherpure-tests-"));
 
 let exitCode = 1;
@@ -28,7 +39,7 @@ try {
 
   const testFiles = Object.keys(entryPoints).map((name) => join(outputDir, `${name}.js`));
   exitCode = await new Promise((resolveExit, reject) => {
-    const child = spawn(process.execPath, ["--test", ...testFiles], { stdio: "inherit" });
+    const child = spawn(process.execPath, ["--test", ...testFiles, ...directTests], { stdio: "inherit" });
     child.once("error", reject);
     child.once("close", (code) => resolveExit(code ?? 1));
   });

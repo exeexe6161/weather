@@ -26,7 +26,10 @@ export interface CurrentWeatherProps {
 // alten Timer, bevor ein neuer startet — kein Leak.
 let localTimeTimer: ReturnType<typeof setTimeout> | undefined;
 
-function stopLocalTimeTicker(): void {
+// Exportiert für app.ts setView: beim Wechsel weg vom Content-View (error/empty/
+// loading) läuft renderCurrentWeather nicht mehr — der Ticker würde sonst bis zum
+// nächsten Minutenwechsel weiterlaufen und erst über !span.isConnected enden.
+export function stopLocalTimeTicker(): void {
   if (localTimeTimer !== undefined) {
     clearTimeout(localTimeTimer);
     localTimeTimer = undefined;

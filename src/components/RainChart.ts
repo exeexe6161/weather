@@ -180,10 +180,11 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
 
   container.replaceChildren();
   container.insertAdjacentHTML("afterbegin", svg);
-  // Tooltip-Element (zunaechst versteckt) als HTML-Overlay in der Karte.
+  // Tooltip-Element als HTML-Overlay in der Karte. Sichtbarkeit laeuft ueber die
+  // Klasse .rc-tip--show (CSS: opacity/visibility mit kurzem Fade statt hidden) —
+  // ohne Klasse unsichtbar, behaelt aber Layout (visibility) fuer die Positionierung.
   const tip = document.createElement("div");
   tip.className = "rc-tip";
-  tip.hidden = true;
   container.appendChild(tip);
 
   if (!rcBound.has(container)) { bindRainChart(container); rcBound.add(container); }
@@ -300,14 +301,18 @@ function showTip(container: HTMLElement, i: number): void {
   if (!st || !tip) return;
   if (i < 0 || i >= st.vals.length) return;
   tip.textContent = tipText(i, st);
-  tip.hidden = false;
+  // Erst positionieren (visibility:hidden hat Layout → offsetWidth stimmt),
+  // dann per Klasse einblenden (kurzer Opacity-Fade, s. CSS .rc-tip--show).
   rcActive.set(container, i);
   positionTip(container, i, tip);
+  tip.classList.add("rc-tip--show");
 }
 
 function hideTip(container: HTMLElement): void {
   const tip = container.querySelector<HTMLElement>(".rc-tip");
-  if (tip) { tip.hidden = true; tip.textContent = ""; }
+  // Text stehen lassen: er blendet mit aus (Fade-out) und wird beim naechsten
+  // showTip ohnehin frisch gesetzt.
+  tip?.classList.remove("rc-tip--show");
   rcActive.set(container, -1);
 }
 

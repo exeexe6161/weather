@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { weatherApiProvider } from "../src/server/weather/providers/WeatherApiProvider.ts";
+import { setQuotaReservationAdapterForTesting, type QuotaReservationRequest } from "../src/server/weather/quotaGuard.ts";
 import { alertFixture, forecastFixture, historyFixture } from "./fixtures/weatherapi.ts";
+
+// Quota Guard deterministisch freigeben: diese Tests charakterisieren den
+// Provider, nicht das Quota Verhalten (das deckt weatherQuotaGuard.test.ts ab).
+// Ohne Adapter wäre der Guard Fail Closed und jeder Provider Aufruf würde werfen.
+setQuotaReservationAdapterForTesting({
+  reserve: async (request: QuotaReservationRequest) => ({
+    status: "reserved",
+    burstRemaining: request.policy.burstCapacity - 1,
+    monthlyRemaining: request.policy.monthlyLimit - 1,
+    month: request.month,
+  }),
+});
 
 const originalFetch = globalThis.fetch;
 const originalApiKey = process.env.WEATHERAPI_KEY;

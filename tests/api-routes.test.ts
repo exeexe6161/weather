@@ -6,7 +6,20 @@ import pollenHandler from "../api/pollen.ts";
 import weatherHandler from "../api/weather.ts";
 import type { ApiRequest, ApiResponse } from "../api/_lib/http.ts";
 import { WeatherService } from "../src/server/weather/WeatherService.ts";
+import { setQuotaReservationAdapterForTesting, type QuotaReservationRequest } from "../src/server/weather/quotaGuard.ts";
 import { forecastFixture } from "./fixtures/weatherapi.ts";
+
+// Quota Guard deterministisch freigeben: diese Tests prüfen die Routen, nicht
+// das Quota Verhalten (das deckt weatherQuotaGuard.test.ts ab). Ohne Adapter
+// wäre der Guard Fail Closed und jeder Provider Aufruf würde werfen.
+setQuotaReservationAdapterForTesting({
+  reserve: async (request: QuotaReservationRequest) => ({
+    status: "reserved",
+    burstRemaining: request.policy.burstCapacity - 1,
+    monthlyRemaining: request.policy.monthlyLimit - 1,
+    month: request.month,
+  }),
+});
 
 interface CapturedResponse {
   status: number;
