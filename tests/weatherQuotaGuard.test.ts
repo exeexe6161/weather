@@ -282,6 +282,29 @@ test('missing Upstash environment fails closed before any Redis request', async 
   }
 });
 
+test('unconfigured production guard sleeps instead of blocking weather requests', async () => {
+  // Ohne die beiden Upstash Variablen ist der Schutz nicht eingerichtet: der
+  // Produktpfad darf dann NICHT werfen (sonst wäre die App nach einem Deploy
+  // ohne Upstash Setup down), sondern überspringt die Reservierung. Der von
+  // blockUnexpectedNetwork gesperrte fetch stellt sicher, dass dabei kein
+  // Redis Aufruf passiert.
+  const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  quota.setQuotaReservationAdapterForTesting(undefined);
+
+  try {
+    await quota.reserveWeatherProviderQuota(quotaRequest().nowMs);
+  } finally {
+    quota.setQuotaReservationAdapterForTesting(null);
+    if (originalUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+    if (originalToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+  }
+});
+
 test('production adapter reads only the approved server-side Upstash environment names', async () => {
   const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
   const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;

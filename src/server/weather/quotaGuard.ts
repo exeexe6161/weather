@@ -251,9 +251,21 @@ function validDecision(value: unknown, request: QuotaReservationRequest): value 
   return true;
 }
 
+// Die beiden Upstash Variablen sind der bewusste Schalter für den Schutz:
+// fehlen BEIDE Konfigurationswerte, ist der Guard nicht eingerichtet und legt
+// sich schlafen, statt jede Wetteranfrage zu blockieren (sonst wäre die App
+// nach einem Deploy ohne Upstash Setup komplett down). Sobald konfiguriert,
+// bleibt jeder Fehlerpfad unverändert Fail Closed. Test Doubles über
+// setQuotaReservationAdapterForTesting sind davon nie betroffen.
+function quotaProtectionConfigured(): boolean {
+  const environment = runtimeEnvironment();
+  return Boolean(environment.UPSTASH_REDIS_REST_URL?.trim() && environment.UPSTASH_REDIS_REST_TOKEN?.trim());
+}
+
 export async function reserveWeatherProviderQuota(nowMs = Date.now()): Promise<void> {
   const adapter = testAdapter === undefined ? productionAdapter : testAdapter;
   if (adapter === null) throw new WeatherQuotaProtectionError();
+  if (testAdapter === undefined && !quotaProtectionConfigured()) return;
 
   const request = reservationRequest(nowMs);
   let decision: unknown;
