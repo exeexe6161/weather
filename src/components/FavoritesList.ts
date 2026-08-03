@@ -59,12 +59,20 @@ export function renderFavoritesList(
         : "";
       // Pfeil hoch in der ersten, Pfeil runter in der letzten Zeile deaktiviert
       // (echtes disabled → nicht fokussierbar/auslösbar, kein Out-of-bounds).
+      // Position im aria-label: "Trabzon nach oben, Position 2 von 4" sagt dem
+      // Screenreader-Nutzer, wo er steht und wohin die Aktion führt. Ohne sie
+      // klingen alle Pfeile gleich.
+      const moveLabel = (key: "favMoveUp" | "favMoveDown"): string =>
+        t(key)
+          .replace("{place}", esc(p.name))
+          .replace("{pos}", String(i + 1))
+          .replace("{total}", String(favorites.length));
       const move = showMove
         ? `<span class="fav-row-move">
-            <button type="button" class="fav-row-move-btn fav-row-up" data-idx="${i}" data-dir="up"${i === 0 ? " disabled" : ""} aria-label="${t("favMoveUp").replace("{place}", esc(p.name))}">
+            <button type="button" class="fav-row-move-btn fav-row-up" data-idx="${i}" data-dir="up"${i === 0 ? " disabled" : ""} aria-label="${moveLabel("favMoveUp")}">
               <i data-lucide="chevron-up" class="fav-row-move-ico"></i>
             </button>
-            <button type="button" class="fav-row-move-btn fav-row-down" data-idx="${i}" data-dir="down"${i === favorites.length - 1 ? " disabled" : ""} aria-label="${t("favMoveDown").replace("{place}", esc(p.name))}">
+            <button type="button" class="fav-row-move-btn fav-row-down" data-idx="${i}" data-dir="down"${i === favorites.length - 1 ? " disabled" : ""} aria-label="${moveLabel("favMoveDown")}">
               <i data-lucide="chevron-down" class="fav-row-move-ico"></i>
             </button>
           </span>`

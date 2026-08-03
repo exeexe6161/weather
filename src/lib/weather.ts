@@ -1,4 +1,5 @@
 import { fetchWithTimeout, apiUrl } from "./http";
+import { RequestError } from "./loadError";
 
 export interface CurrentWeather {
   time: string;
@@ -99,7 +100,10 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lat: latitude, lon: longitude }),
   });
-  if (!res.ok) throw new Error(`Weather request failed: ${res.status}`);
+  // RequestError statt Error: der Status muss auswertbar bleiben, damit die
+  // Anzeige einen Serverfehler nicht als fehlende Verbindung ausgibt. Der
+  // Wortlaut der Meldung bleibt unverändert.
+  if (!res.ok) throw new RequestError(`Weather request failed: ${res.status}`, res.status);
   return (await res.json()) as Forecast;
 }
 

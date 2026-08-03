@@ -3,6 +3,8 @@
 // die App offline mit den zuletzt geladenen Daten startet.
 import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
+import { classifyLoadError, failTitleKey, type LoadErrorKind } from "./lib/loadError";
+import { decideLinkResolution } from "./lib/linkResolution";
 import { fetchPollen, type PollenLevels } from "./lib/pollen";
 import { renderPollenList } from "./components/PollenList";
 import { renderAirQuality } from "./components/AirQuality";
@@ -56,8 +58,11 @@ function isForecastCacheTooOld(savedAt: string, nowMs = Date.now()): boolean {
 
 // Frische der Anzeige: "fresh" = aktuelle Netzdaten, "stale" = Sofort-Anzeige
 // des letzten Stands während der Netzabruf läuft (Hinweis "Stand HH:MM"),
-// "offline" = Netzabruf gescheitert, letzter Stand bleibt mit Offline-Hinweis
-type Freshness = "fresh" | "stale" | "offline";
+// "failed" = Netzabruf gescheitert, letzter Stand bleibt mit passendem Hinweis.
+// Bewusst NICHT "offline": der Abruf kann auch an einem Serverfehler, einer
+// Ratenbegrenzung oder einer Zeitüberschreitung scheitern, während die
+// Verbindung des Nutzers einwandfrei ist. Den Grund trägt failReason.
+type Freshness = "fresh" | "stale" | "failed";
 
 interface State {
   place: Place | null;
@@ -66,16 +71,26 @@ interface State {
   // API Ausfall fehlt die Pollensektion einfach, statt veraltete Werte zu zeigen
   pollen: PollenLevels | null;
   freshness: Freshness;
+  // Grund des letzten gescheiterten Abrufs, nur bei freshness "failed" gesetzt.
+  failReason: LoadErrorKind | null;
   updatedAt: string;
 }
 
-const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", updatedAt: "" };
+const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", failReason: null, updatedAt: "" };
+
+// Ist der Browser gerade online? navigator.onLine === false ist verlässlich für
+// "keine Verbindung"; true heißt nur, dass eine Schnittstelle aktiv ist, nicht
+// dass der Dienst erreichbar wäre. Genau diese Asymmetrie bildet
+// classifyLoadError ab.
+function isOnline(): boolean {
+  return navigator.onLine !== false;
+}
 
 // Auto-Open des Stundendetail-Panels: bei JEDEM neuen Wetterdatenladen (neuer Ort
 // via selectPlace ODER Refresh via refreshCurrentPlace) wird neu "armed", sodass
 // der Detailkasten die aktuelle Stunde zeigt. Über den Cache→Netz-Doppelrender
 // desselben Orts hinweg bleibt es armed, bis der erste aufgelöste Render
-// (freshness "fresh"/"offline", nicht mehr "stale") wirklich geöffnet hat; danach
+// (freshness "fresh"/"failed", nicht mehr "stale") wirklich geöffnet hat; danach
 // entwaffnet. So springt der Kasten nach manuellem Schließen NICHT bei bloßen
 // Re-Rendern (Sprach- oder Tageswechsel) wieder auf, solange dieselben Daten aktiv
 // sind. Der Strip selbst kann Neuladen nicht von einer Nutzeraktion unterscheiden,
@@ -143,6 +158,30 @@ function setView(view: "empty" | "loading" | "error" | "content"): void {
   }
 }
 
+// Zusatzzeile unter dem Fehlertitel, heute nur für den gesuchten Ort aus einem
+// geteilten Link. Bewusst OHNE data-i18n: der Inhalt ist Nutzereingabe, keine
+// Übersetzung. Ein Sprachwechsel würde einen data-i18n Knoten über
+// applyI18n mit t(key) überschreiben und die Eingabe damit zerstören.
+function setErrorDetail(text: string): void {
+  const el = document.getElementById("errorDetail");
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = text === "";
+}
+
+// Fehleransicht mit ehrlichem, zur Ursache passendem Titel. Der data-i18n Key
+// wird mitgetauscht, damit ein Sprachwechsel im Fehlerzustand den richtigen
+// Text behält.
+function showErrorView(titleKey: string, detail = ""): void {
+  const titleEl = document.getElementById("errorTitle");
+  if (titleEl) {
+    titleEl.setAttribute("data-i18n", titleKey);
+    titleEl.textContent = t(titleKey);
+  }
+  setErrorDetail(detail);
+  setView("error");
+}
+
 // Setzt die obere Zeitstempel-Caption ("Aktualisiert HH:MM" / "Stand HH:MM")
 // unter dem Aktualisieren-Button. Der Span steht statisch im Markup (nicht in
 // der Karte), darum aus dem State gefüllt — bei jedem Render und nach jedem
@@ -153,7 +192,7 @@ function updateTopStamp(): void {
   if (!span) return;
   const f = state.forecast;
   const time =
-    f && state.freshness !== "offline" && state.updatedAt
+    f && state.freshness !== "failed" && state.updatedAt
       ? formatStampInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale())
       : null;
   if (time) {
@@ -172,7 +211,57 @@ function updateTopStamp(): void {
   }
 }
 
+// Die Knopfarten einer Favoritenzeile, in der Reihenfolge des Markups. Dient
+// als Kennung, WELCHER Knopf fokussiert war — die Zeile selbst wird über
+// data-id wiedergefunden.
+const FAV_BUTTON_CLASSES = ["fav-row-select", "fav-row-up", "fav-row-down", "fav-row-x"] as const;
+
+// Setzt den Fokus auf einen bestimmten Knopf einer Favoritenzeile. Liefert
+// false, wenn es ihn nicht gibt oder er deaktiviert ist (Randposition), damit
+// der Aufrufer ausweichen kann.
+function focusFavoriteButton(placeId: number, cls: string): boolean {
+  const row = document.querySelector<HTMLElement>(`#favoritesList .fav-row[data-id="${placeId}"]`);
+  const btn = row?.querySelector<HTMLButtonElement>(`.${cls}`) ?? null;
+  if (!btn || btn.disabled) return false;
+  btn.focus();
+  return true;
+}
+
+// renderFavoritesList ersetzt das gesamte innerHTML der Liste und zerstört
+// dabei den fokussierten Knopf — der Fokus fällt auf <body>. Das trifft nicht
+// nur das Umsortieren, sondern auch das Nachladen des Favoritenwetters im
+// Hintergrund, das einem tabbenden Nutzer mitten in der Bedienung den Fokus
+// wegzieht. Diese Hülle merkt sich, WAS fokussiert war, und stellt es wieder
+// her. Bewusst nur, wenn der Fokus vorher wirklich in der Liste lag: sonst
+// würde ein Hintergrundvorgang den Fokus ungefragt in die Favoriten ziehen.
+function withFavoritesFocus(render: () => void): void {
+  const list = document.getElementById("favoritesList");
+  const active = document.activeElement as HTMLElement | null;
+  const inside = list !== null && active !== null && active !== document.body && list.contains(active);
+  const rowId = inside ? active.closest<HTMLElement>(".fav-row")?.dataset.id ?? null : null;
+  const cls = inside ? FAV_BUTTON_CLASSES.find((name) => active.classList.contains(name)) ?? null : null;
+  render();
+  if (rowId === null || cls === null) return;
+  focusFavoriteButton(Number(rowId), cls);
+}
+
+// Neue Position nach dem Umsortieren ansagen. Der bloße Fokuswechsel liest nur
+// den Knopfnamen vor und verrät nicht, wohin die Zeile gewandert ist.
+function announceFavoritePosition(place: Place): void {
+  const list = getFavorites();
+  const index = list.findIndex((p) => p.id === place.id);
+  if (index === -1) return;
+  byId("weatherAnnounce").textContent = t("favMovedAnnounce")
+    .replace("{place}", place.name)
+    .replace("{pos}", String(index + 1))
+    .replace("{total}", String(list.length));
+}
+
 function renderFavorites(): void {
+  withFavoritesFocus(paintFavorites);
+}
+
+function paintFavorites(): void {
   // Wetter NUR aus dem Cache (Etappe 2: keine Netzaufrufe hier — der Auto-Load,
   // der den Cache füllt, kommt in Etappe 3). Leerer Cache → leere Map → Chips
   // zeigen wie bisher nur den Namen.
@@ -195,7 +284,15 @@ function renderFavorites(): void {
       showToast(t("favRemovedToast").replace("{place}", place.name), {
         label: t("undo"),
         onAction: () => {
-          insertFavorite(place, idx);
+          const next = insertFavorite(place, idx);
+          // insertFavorite gibt die Liste unverändert zurück, wenn das Limit
+          // inzwischen erreicht ist (der Nutzer hat nach dem Entfernen einen
+          // anderen Favoriten hinzugefügt). Ohne diese Prüfung scheitert
+          // Rückgängig lautlos und der Nutzer hält es für erledigt.
+          if (!next.some((p) => p.id === place.id)) {
+            showToast(t("favUndoFailed").replace("{place}", place.name));
+            return;
+          }
           renderFavorites();
           renderContent();
           renderIcons();
@@ -212,6 +309,15 @@ function renderFavorites(): void {
       moveFavorite(place.id, dir);
       renderFavorites();
       renderIcons();
+      // Fokus gezielt auf DENSELBEN logischen Pfeil derselben Zeile, damit
+      // mehrfaches Verschieben in einem Fluss bleibt. Ist dieser Pfeil an der
+      // neuen Randposition deaktiviert (oberste bzw. unterste Zeile), auf den
+      // Gegenpfeil derselben Zeile ausweichen — sonst fiele der Fokus auf
+      // <body> und der Tastaturfluss wäre unterbrochen.
+      if (!focusFavoriteButton(place.id, dir === "up" ? "fav-row-up" : "fav-row-down")) {
+        focusFavoriteButton(place.id, dir === "up" ? "fav-row-down" : "fav-row-up");
+      }
+      announceFavoritePosition(place);
       // Die bewegte Zeile kurz hervorheben, damit das Auge ihr an die neue
       // Position folgen kann (der Neuaufbau der Liste springt sonst lautlos).
       // Frisch gerendert → Klasse einfach setzen, kein Reflow-Neustart nötig.
@@ -377,6 +483,7 @@ function renderContent(): void {
     canAddFavorite: getFavorites().length < MAX_FAVORITES,
     freshness: state.freshness,
     updatedAt: state.updatedAt,
+    failReason: state.failReason,
   });
   const current = state.forecast.current;
   const announcedPlace = state.place.id === GEO_PLACE_ID ? t("myLocation") : state.place.name;
@@ -511,6 +618,7 @@ function refreshCurrentPlace(): void {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
       state.forecast = forecast;
       state.freshness = "fresh";
+      state.failReason = null;
       state.updatedAt = new Date().toISOString();
       if (place.id !== GEO_PLACE_ID) writeJson(FORECAST_CACHE_KEY, {
         placeId: place.id,
@@ -531,10 +639,13 @@ function refreshCurrentPlace(): void {
       // (batched, nur stale/missing). Der gerade gespiegelte Ort fällt dabei raus.
       loadFavoritesWeather();
     })
-    .catch(() => {
+    .catch((err: unknown) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return;
       if (state.forecast) {
-        state.freshness = "offline";
+        // Ehrlich benennen, woran es lag. Vorher stand hier für JEDEN Grund
+        // "Keine Verbindung", auch bei Serverfehler oder Ratenbegrenzung.
+        state.freshness = "failed";
+        state.failReason = classifyLoadError(err, isOnline());
         renderContent();
         renderIcons();
       }
@@ -562,6 +673,9 @@ function syncCityParam(place: Place): void {
 }
 
 export function selectPlace(place: Place): void {
+  // Ein bewusst gewählter Ort beendet eine offene Linkauflösung: der Erneut-
+  // Knopf darf danach nicht mehr die alte Linksuche wiederholen.
+  pendingCityQuery = "";
   // Neuer Ort = neue Wetterdaten: Stundendetail wieder scharf schalten und das
   // Tages-Detail auf Heute zurücksetzen, damit beide direkt aufgeklappt erscheinen.
   hourlyAutoOpenArmed = true;
@@ -596,6 +710,7 @@ export function selectPlace(place: Place): void {
   if (usableCache !== null) {
     state.forecast = usableCache.forecast;
     state.freshness = "stale";
+    state.failReason = null;
     state.updatedAt = usableCache.savedAt;
     setView("content");
     renderContent();
@@ -625,6 +740,7 @@ export function selectPlace(place: Place): void {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
       state.forecast = forecast;
       state.freshness = "fresh";
+      state.failReason = null;
       state.updatedAt = new Date().toISOString();
       if (!isGeoPlace) writeJson(FORECAST_CACHE_KEY, {
         placeId: place.id,
@@ -646,27 +762,64 @@ export function selectPlace(place: Place): void {
       renderIcons();
       if (!showedFromCache) revealCards(); // sonst lautloser Tausch (Cache hat schon eingeblendet)
     })
-    .catch(() => {
+    .catch((err: unknown) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return;
+      const kind = classifyLoadError(err, isOnline());
       if (state.forecast && state.freshness === "stale") {
         // Sofort-Anzeige steht bereits: nur den Hinweis von "Stand HH:MM" auf
-        // den Offline-Hinweis umstellen, die Anzeige selbst bleibt stehen
-        state.freshness = "offline";
+        // den zur Ursache passenden Hinweis umstellen, die Anzeige selbst
+        // bleibt stehen.
+        state.freshness = "failed";
+        state.failReason = kind;
         renderContent();
         renderIcons();
       } else {
-        // Nichts anzeigbar (kein Stand für diesen Ort): ehrliche Fehlermeldung.
-        // Offline von echtem Fehler unterscheiden (UX Playbook: sagen, was
-        // passiert ist): der data-i18n-Key wird mitgetauscht, damit ein
-        // Sprachwechsel im Fehlerzustand den richtigen Text behält.
-        const titleEl = document.getElementById("errorTitle");
-        if (titleEl) {
-          const key = navigator.onLine === false ? "errorOffline" : "loadError";
-          titleEl.setAttribute("data-i18n", key);
-          titleEl.textContent = t(key);
-        }
-        setView("error");
+        // Nichts anzeigbar (kein Stand für diesen Ort): ehrliche Fehlermeldung,
+        // die die tatsächliche Ursache benennt statt pauschal Offline.
+        showErrorView(failTitleKey(kind));
       }
+    });
+}
+
+// Der Ortsname aus einem geteilten Link, solange dessen Auflösung offen oder
+// gescheitert ist. Solange er gesetzt ist, wiederholt der Erneut-Knopf GENAU
+// DIESE Suche. Ohne ihn wäre der Knopf im Linkfehler wirkungslos, weil
+// selectPlace nie lief und state.place damit leer ist.
+let pendingCityQuery = "";
+
+// Löst einen geteilten Ortslink auf.
+//
+// Kein stiller Rückfall auf den zuletzt gespeicherten Ort des Empfängers: das
+// wäre fremdes Wetter, ausgegeben als das geteilte, ohne jeden Hinweis. Ein
+// nicht auflösbarer Link führt deshalb in die Fehleransicht, nicht in eine
+// andere Stadt.
+function resolveCityLink(query: string): void {
+  pendingCityQuery = query;
+  setView("loading");
+  searchCity(query, getLang())
+    .then((places) => {
+      const decision = decideLinkResolution(places, query);
+      if (decision.kind === "none") {
+        showErrorView("errorLinkNotFound", query);
+        return;
+      }
+      pendingCityQuery = "";
+      selectPlace(decision.place);
+      if (decision.kind === "ambiguous") {
+        // Mehrere gleichwertige Treffer: den tatsächlich gewählten Ort
+        // bestätigen, statt ihn stillschweigend zu unterstellen. Der Toast ist
+        // nur der Hinweis, DASS aufgelöst wurde; die dauerhafte Bestätigung ist
+        // die Wetterkarte selbst, die Name, Region und Land zeigt. Reihenfolge
+        // nicht garantiert: liegt kein Cache vor, zeigt selectPlace zunächst
+        // nur die Ladeansicht und die Kartenansage folgt erst nach dem Abruf.
+        const full = [decision.place.name, decision.place.admin1, decision.place.country]
+          .filter(Boolean)
+          .join(", ");
+        showToast(t("linkResolvedToast").replace("{place}", full));
+      }
+    })
+    .catch((err: unknown) => {
+      showErrorView(failTitleKey(classifyLoadError(err, isOnline())), query);
     });
 }
 
@@ -690,7 +843,10 @@ export function initApp(): void {
   renderIcons();
 
   byId("retryBtn").addEventListener("click", () => {
-    if (state.place) selectPlace(state.place);
+    // Vorrang für den Linkpfad: dort lief selectPlace nie, state.place ist
+    // leer, und der Knopf täte ohne diesen Zweig gar nichts.
+    if (pendingCityQuery) resolveCityLink(pendingCityQuery);
+    else if (state.place) selectPlace(state.place);
   });
 
   // Aktualisieren-Button steht statisch im Markup → Listener einmalig hier
@@ -715,15 +871,12 @@ export function initApp(): void {
 
   const cityQuery = new URLSearchParams(location.search).get(CITY_PARAM)?.trim();
   if (cityQuery) {
-    setView("loading");
-    searchCity(cityQuery, getLang())
-      .then((places) => {
-        // Erster Treffer der Geocoding-Suche; nicht auflösbar → stiller Fallback
-        if (places.length) selectPlace(places[0]);
-        else restoreLastPlace();
-      })
-      .catch(restoreLastPlace);
+    // Geteilter Link: eigener Weg mit ehrlichem Fehlerzustand. Der stadt
+    // Parameter bleibt dabei in der URL stehen, damit Neuladen und Erneut
+    // denselben Link nochmals versuchen.
+    resolveCityLink(cityQuery);
   } else {
+    // Normalstart ohne Parameter bleibt unverändert.
     restoreLastPlace();
   }
 

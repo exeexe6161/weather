@@ -10,6 +10,9 @@ const entryPoints = {
   "api-routes.test": resolve(testsDir, "api-routes.test.ts"),
   "client-requests.test": resolve(testsDir, "client-requests.test.ts"),
   "favorites-cache.test": resolve(testsDir, "favorites-cache.test.ts"),
+  "favorites.test": resolve(testsDir, "favorites.test.ts"),
+  "link-resolution.test": resolve(testsDir, "link-resolution.test.ts"),
+  "loadError.test": resolve(testsDir, "loadError.test.ts"),
   "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),
 };
 // Diese Tests laufen direkt als TypeScript über Nodes Type Stripping (sie

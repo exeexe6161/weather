@@ -7,6 +7,7 @@ import { pickIcon, getWmo } from "../lib/wmo";
 import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
 import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone, compassPointFor } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
+import { failNoteKey, type LoadErrorKind } from "../lib/loadError";
 import { esc } from "../dom";
 
 export interface CurrentWeatherProps {
@@ -15,10 +16,15 @@ export interface CurrentWeatherProps {
   isFav: boolean;
   canAddFavorite: boolean;
   // "stale": Sofort-Anzeige des letzten Stands, Netzabruf läuft noch ("Stand
-  // HH:MM"); "offline": Abruf gescheitert, Offline-Hinweis; "fresh": frisch
-  // geladen ("Aktualisiert HH:MM") — die Frische ist durchgehend transparent
-  freshness: "fresh" | "stale" | "offline";
+  // HH:MM"); "failed": Abruf gescheitert, gespeicherte Daten bleiben stehen;
+  // "fresh": frisch geladen ("Aktualisiert HH:MM") — die Frische ist
+  // durchgehend transparent
+  freshness: "fresh" | "stale" | "failed";
   updatedAt: string; // ISO Zeitpunkt des letzten erfolgreichen Abrufs
+  // Grund des gescheiterten Abrufs, nur bei freshness "failed" gesetzt. Ohne
+  // ihn stünde hier pauschal "Keine Verbindung", auch bei Serverfehler,
+  // Ratenbegrenzung oder Zeitüberschreitung.
+  failReason?: LoadErrorKind | null;
 }
 
 // Ticker für die lokale Ortszeit neben dem Ortsnamen. Modulweit genau einer:
@@ -96,7 +102,7 @@ function summaryText(forecast: Forecast): string | null {
 
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   stopLocalTimeTicker();
-  const { place, forecast, isFav, canAddFavorite, freshness, updatedAt } = props;
+  const { place, forecast, isFav, canAddFavorite, freshness, updatedAt, failReason } = props;
   const c = forecast.current;
   const icon = pickIcon(c.weatherCode, c.isDay);
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
@@ -268,7 +274,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-sun-val">${moonSetText}</span>
       </div>` : ""}
     </div>` : ""}
-    ${freshness === "offline" ? `<div class="cw-offline" role="status">${t("offlineNote")} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}
+    ${freshness === "failed" ? `<div class="cw-offline" role="status">${t(failNoteKey(failReason ?? "unknown"))} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}
   `;
 
   const timeSpan = el.querySelector<HTMLElement>(".cw-local-time");

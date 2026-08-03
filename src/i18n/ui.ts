@@ -40,8 +40,12 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   favRemovedToast: { de: "Favorit entfernt: {place}", en: "Favorite removed: {place}", tr: "Favori kaldırıldı: {place}" },
   undo:            { de: "Rückgängig", en: "Undo", tr: "Geri al" },
   favSelectAria:   { de: "Wetter für {place} anzeigen", en: "Show weather for {place}", tr: "{place} için hava durumunu göster" },
-  favMoveUp:       { de: "{place} nach oben", en: "Move {place} up", tr: "{place} yukarı taşı" },
-  favMoveDown:     { de: "{place} nach unten", en: "Move {place} down", tr: "{place} aşağı taşı" },
+  // Position im Namen: ohne sie liest ein Screenreader nur "nach oben" vor und
+  // der Nutzer erfährt nicht, wo er gerade steht und wohin es geht.
+  favMoveUp:       { de: "{place} nach oben, Position {pos} von {total}", en: "Move {place} up, position {pos} of {total}", tr: "{place} yukarı taşı, {total} içinde {pos}. sıra" },
+  favMoveDown:     { de: "{place} nach unten, Position {pos} von {total}", en: "Move {place} down, position {pos} of {total}", tr: "{place} aşağı taşı, {total} içinde {pos}. sıra" },
+  favMovedAnnounce: { de: "{place} ist jetzt Position {pos} von {total}", en: "{place} is now position {pos} of {total}", tr: "{place} şimdi {total} içinde {pos}. sırada" },
+  favUndoFailed:   { de: "{place} konnte nicht zurückgeholt werden. Die Favoritenliste ist voll.", en: "{place} could not be restored. The favorites list is full.", tr: "{place} geri getirilemedi. Favori listesi dolu." },
   share_aria:      { de: "Wetter teilen", en: "Share weather", tr: "Hava durumunu paylaş" },
   share_copied:    { de: "In die Zwischenablage kopiert", en: "Copied to clipboard", tr: "Panoya kopyalandı" },
   emptyTitle:      { de: "Suche eine Stadt für die Vorhersage", en: "Search a city to see the forecast", tr: "Tahmin için bir şehir ara" },
@@ -49,8 +53,22 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   loading:         { de: "Lade Wetterdaten…", en: "Loading weather data…", tr: "Hava verileri yükleniyor…" },
   loadError:       { de: "Wetterdaten konnten nicht geladen werden", en: "Weather data could not be loaded", tr: "Hava verileri yüklenemedi" },
   errorOffline:    { de: "Du bist offline. Stelle eine Verbindung her.", en: "You are offline. Please reconnect.", tr: "Çevrimdışısın. Bağlantı kur." },
+  // Fehlertitel nach Ursache. Kontingentende und Providerausfall kommen beide
+  // als 5xx an und teilen sich deshalb bewusst errorServer: der Text ist für
+  // beide Fälle wahr.
+  errorTimeout:    { de: "Die Antwort hat zu lange gedauert. Bitte erneut versuchen.", en: "The response took too long. Please try again.", tr: "Yanıt çok uzun sürdü. Lütfen tekrar dene." },
+  errorRateLimit:  { de: "Zu viele Anfragen. Bitte kurz warten und erneut versuchen.", en: "Too many requests. Please wait a moment and try again.", tr: "Çok fazla istek. Lütfen biraz bekleyip tekrar dene." },
+  errorServer:     { de: "Der Wetterdienst ist gerade nicht erreichbar. Bitte später erneut versuchen.", en: "The weather service is currently unavailable. Please try again later.", tr: "Hava durumu servisine şu anda ulaşılamıyor. Lütfen daha sonra tekrar dene." },
+  errorLinkNotFound: { de: "Der Ort aus dem Link wurde nicht gefunden", en: "The location from the link was not found", tr: "Bağlantıdaki konum bulunamadı" },
   retry:           { de: "Erneut versuchen", en: "Try again", tr: "Tekrar dene" },
   offlineNote:     { de: "Keine Verbindung. Gespeicherte Daten werden angezeigt.", en: "No connection. Showing saved data.", tr: "Bağlantı yok. Kayıtlı veriler gösteriliyor." },
+  // Hinweis in der Wetterkarte, wenn gespeicherte Daten weiter angezeigt
+  // werden. Nur offlineNote darf von fehlender Verbindung sprechen.
+  failTimeout:     { de: "Die Antwort hat zu lange gedauert. Gespeicherte Daten werden angezeigt.", en: "The response took too long. Showing saved data.", tr: "Yanıt çok uzun sürdü. Kayıtlı veriler gösteriliyor." },
+  failRateLimit:   { de: "Zu viele Anfragen. Gespeicherte Daten werden angezeigt.", en: "Too many requests. Showing saved data.", tr: "Çok fazla istek. Kayıtlı veriler gösteriliyor." },
+  failServer:      { de: "Der Wetterdienst ist gerade nicht erreichbar. Gespeicherte Daten werden angezeigt.", en: "The weather service is currently unavailable. Showing saved data.", tr: "Hava durumu servisine şu anda ulaşılamıyor. Kayıtlı veriler gösteriliyor." },
+  failUnknown:     { de: "Aktualisieren war gerade nicht möglich. Gespeicherte Daten werden angezeigt.", en: "Refreshing was not possible just now. Showing saved data.", tr: "Şu anda yenileme yapılamadı. Kayıtlı veriler gösteriliyor." },
+  linkResolvedToast: { de: "Aus dem Link geöffnet: {place}", en: "Opened from the link: {place}", tr: "Bağlantıdan açıldı: {place}" },
   staleNote:       { de: "Stand {time}", en: "As of {time}", tr: "{time} itibarıyla" },
   freshNote:       { de: "Aktualisiert {time}", en: "Updated {time}", tr: "{time} itibarıyla güncel" },
   weatherLoaded:   { de: "Wetter für {place} geladen: {temp}, {condition}", en: "Weather for {place} loaded: {temp}, {condition}", tr: "{place} için hava durumu yüklendi: {temp}, {condition}" },

@@ -852,20 +852,38 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 /* Umsortier-Spalte: zwei gestapelte Chevrons (zusammen ~44px hohes Tippziel),
    dezent gedämpft. Deaktiviert (Rand) sichtbar leiser, nicht klickbar. */
 .fav-row-move{display:flex;flex-direction:column;justify-content:center;flex:0 0 auto;}
+/* Trefferfläche 44 mal 30 px je Pfeil. Bewusste kompakte Ausnahme vom 44er
+   Raster, gültig NUR für diese zwei vertikal gestapelten Pfeile: zwei echte
+   44 mal 44 Ziele übereinander bräuchten 88px, die Zeile hat 60 (.fav-row-select
+   min-height). Beide Ziele teilen die 60px lückenlos und überlappungsfrei; mit
+   je 30px Höhe liegen sie deutlich über den 24px, die WCAG 2.5.8 verlangt.
+   Der Entfernen-Knopf daneben bleibt beim vollen Raster (44 mal Zeilenhöhe). */
 .fav-row-move-btn{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:32px;
-  height:22px;
+  width:44px;
+  height:30px;
   background:none;
   border:none;
   color:var(--l4);
   cursor:pointer;
 }
+/* Feine Trennung zwischen Auf und Ab OHNE Platzverbrauch: als inset-Schatten,
+   NICHT als border — 30 + 1 + 30 wären 61px und würden die 60px-Zeile sprengen.
+   Sichtbar getrennt sind die beiden Ziele zusätzlich durch die 14px Luft
+   zwischen den Glyphen (16px Icon in 30px Box). */
+.fav-row-up{box-shadow:inset 0 -1px 0 0 var(--sep);}
 .fav-row-move-btn:hover:not(:disabled){color:var(--l2);}
 .fav-row-move-btn:disabled{opacity:.3;cursor:default;}
 .fav-row-move-ico{width:16px;height:16px;}
+/* Fokusring nach INNEN legen: der globale Ring läuft mit outline-offset:2px
+   nach außen und würde vom overflow:hidden der .fav-list an den Kartenrändern
+   beschnitten (rechter Rand beim X, oben/unten bei erster und letzter Zeile).
+   Gleiches Muster wie .rc-hit:focus-visible. */
+.fav-row-select:focus-visible,
+.fav-row-move-btn:focus-visible,
+.fav-row-x:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px;}
 .fav-row-x{
   flex:0 0 auto;
   align-self:stretch;

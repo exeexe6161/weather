@@ -37,8 +37,8 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=53e447b98eb3"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=53e447b98eb3">
+<script src="./theme-init.js?v=7a3f3a9f83ea"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=7a3f3a9f83ea">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -158,6 +158,9 @@
   <div id="weatherError" class="state-card" role="alert" hidden>
     <i data-lucide="cloud-fog" class="state-ico"></i>
     <div class="state-title" id="errorTitle" data-i18n="loadError">Wetterdaten konnten nicht geladen werden</div>
+    <!-- Gesuchter Ort aus einem geteilten Link. Bewusst OHNE data-i18n: der
+         Inhalt ist Nutzereingabe, die ein Sprachwechsel nicht überschreiben darf. -->
+    <p class="state-sub" id="errorDetail" hidden></p>
     <button id="retryBtn" class="retry-btn" type="button">
       <i data-lucide="refresh-cw" class="retry-btn-ico"></i>
       <span data-i18n="retry">Erneut versuchen</span>
@@ -214,6 +217,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=53e447b98eb3"></script>
+<script src="./script.min.js?v=7a3f3a9f83ea"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 import { fetchWithTimeout, apiUrl } from "./http";
+import { RequestError } from "./loadError";
 
 // Marker-Id des per Geolocation ermittelten Ortes ("Mein Standort").
 // Orte mit dieser Id dürfen nie in localStorage landen (Datenschutzzusage:
@@ -24,6 +25,9 @@ export async function searchCity(query: string, language = "de"): Promise<Place[
   if (q.length < 3) return [];
   const params = new URLSearchParams({ q, lang: language });
   const res = await fetchWithTimeout(apiUrl(`/api/geocoding?${params}`));
-  if (!res.ok) throw new Error(`Geocoding request failed: ${res.status}`);
+  // Wie fetchWeather: Status auswertbar halten, Wortlaut unverändert. Der
+  // Linkpfad braucht ihn, um einen Serverfehler von "Ort nicht gefunden" zu
+  // unterscheiden.
+  if (!res.ok) throw new RequestError(`Geocoding request failed: ${res.status}`, res.status);
   return (await res.json()) as Place[];
 }
