@@ -38,7 +38,7 @@
   <div class="page-header">
     <div class="page-meta">
       <span class="page-tag">Legal information</span>
-      <span class="page-stand">Last updated: 6 July 2026</span>
+      <span class="page-stand">Last updated: 3 August 2026</span>
     </div>
     <h1 class="page-title">Privacy</h1>
     <p class="page-subtitle">Privacy policy under Art. 13 DSGVO (the EU General Data Protection Regulation, GDPR)</p>
@@ -55,7 +55,7 @@
 
   <h2 class="sh">General</h2>
   <div class="card">
-    <p>This weather app is deliberately designed to be data minimal: no account, no sign up, no cookies, no tracking and no analytics services. WeatherPure operates its own server interface solely for weather, pollen and location search requests and the temporary caching described below. All personal settings remain in the browser.</p>
+    <p>This weather app is deliberately designed to be data minimal: no account, no sign up, no cookies, no tracking and no analytics services. WeatherPure operates its own server interface solely for weather, pollen and location search requests, the temporary caching described below and the technical protection measures described below. All personal settings remain in the browser.</p>
   </div>
 
   <h2 class="sh">Local data storage (localStorage)</h2>
@@ -67,10 +67,18 @@
   <h2 class="sh">Weather data from WeatherAPI</h2>
   <div class="card">
     <p>Weather, pollen values and location search are retrieved through WeatherPure's own server interface. It forwards coordinates or search terms server side to <strong>WeatherAPI.com</strong>, a service of Zoomash Ltd in the United Kingdom. The browser does not contact WeatherAPI directly. WeatherAPI therefore receives the WeatherPure server IP address, the API key and the coordinates or search terms required for the request, but not the device IP address.</p>
-    <p>The legal basis is Art. 6 Abs. 1 lit. f GDPR, the legitimate interest in providing the requested weather information. WeatherAPI describes possible processing and international transfers in its privacy policy. The specific data protection classification and any required contractual safeguards should be legally reviewed before public launch.</p>
+    <p>The legal basis is Art. 6 Abs. 1 lit. f GDPR, the legitimate interest in providing the requested weather information. WeatherAPI describes possible processing and international transfers in its privacy policy.</p>
     <p>To speed up repeated requests and limit API calls, WeatherPure caches results only in the memory of the respective server instance: weather and favorite weather for no longer than 15 minutes, current pollen values for no longer than 60 minutes and location search results for no longer than 24 hours. No database is used for this cache, and IP addresses or user accounts are not part of it.</p>
     <p>To protect the server interface against automated misuse, the connection address is converted into a salted technical counting key and retained for no more than one minute in the memory of the respective server instance. The raw address is not stored in this application memory; the key is used solely to temporarily limit unusually high request volumes.</p>
     <p>Further information: <a href="https://www.weatherapi.com/terms.aspx" rel="noopener noreferrer">WeatherAPI Terms</a> and <a href="https://www.weatherapi.com/privacy.aspx" rel="noopener noreferrer">WeatherAPI Privacy</a></p>
+  </div>
+
+  <h2 class="sh">Quota protection for the server interface (Upstash)</h2>
+  <div class="card">
+    <p>Independently of the per connection limit described above, WeatherPure also protects the request quota it holds with WeatherAPI for the service as a whole. To do so, WeatherPure's own server interface checks and updates two shared counters before every call to WeatherAPI. They are held in a Redis database from <strong>Upstash, Inc.</strong>, USA, provided through the Vercel marketplace.</p>
+    <p>Only three technical values are stored there, and all of them apply to the service as a whole rather than to individual users: the number of calls still possible in the short term, the time this value was last updated, and the number of calls already used in the current calendar month. The first two values expire no later than 60 seconds after the most recently counted call, the monthly value at the start of the next calendar month (UTC).</p>
+    <p>These counters are not derived from the connection address. No user IP addresses, coordinates, search terms, device identifiers, user identifiers or usage profiles are transmitted or stored in this step. The stored values contain no information about individual people or devices. The connection to Upstash is made solely from the WeatherPure server, not from the end device.</p>
+    <p>Upstash describes its data processing in its <a href="https://upstash.com/trust/privacy.pdf" rel="noopener noreferrer">privacy policy</a> and provides a <a href="https://upstash.com/trust/dpa.pdf" rel="noopener noreferrer">Data Processing Addendum</a>.</p>
   </div>
 
   <h2 class="sh">Location request (only with consent)</h2>

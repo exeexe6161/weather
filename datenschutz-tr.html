@@ -38,7 +38,7 @@
   <div class="page-header">
     <div class="page-meta">
       <span class="page-tag">Yasal bilgiler</span>
-      <span class="page-stand">Son güncelleme: 6 Temmuz 2026</span>
+      <span class="page-stand">Son güncelleme: 3 Ağustos 2026</span>
     </div>
     <h1 class="page-title">Gizlilik</h1>
     <p class="page-subtitle">Art. 13 DSGVO (AB Genel Veri Koruma Tüzüğü, GDPR) uyarınca gizlilik politikası</p>
@@ -55,7 +55,7 @@
 
   <h2 class="sh">Genel bilgiler</h2>
   <div class="card">
-    <p>Bu hava durumu uygulaması bilinçli olarak asgari veriyle çalışacak şekilde tasarlanmıştır: hesap yok, kayıt yok, çerez yok, takip yok ve analiz hizmeti yok. WeatherPure kendi sunucu arayüzünü yalnızca hava durumu, polen ve konum arama istekleri ile aşağıda açıklanan kısa süreli önbellekleme için işletir. Tüm kişisel ayarlar tarayıcıda kalır.</p>
+    <p>Bu hava durumu uygulaması bilinçli olarak asgari veriyle çalışacak şekilde tasarlanmıştır: hesap yok, kayıt yok, çerez yok, takip yok ve analiz hizmeti yok. WeatherPure kendi sunucu arayüzünü yalnızca hava durumu, polen ve konum arama istekleri, aşağıda açıklanan kısa süreli önbellekleme ve aşağıda açıklanan teknik koruma önlemleri için işletir. Tüm kişisel ayarlar tarayıcıda kalır.</p>
   </div>
 
   <h2 class="sh">Yerel veri saklama (localStorage)</h2>
@@ -67,10 +67,18 @@
   <h2 class="sh">WeatherAPI hava verileri</h2>
   <div class="card">
     <p>Hava durumu, polen değerleri ve konum araması WeatherPure'ün kendi sunucu arayüzü üzerinden alınır. Bu arayüz koordinatları veya arama terimlerini sunucu tarafında Birleşik Krallık merkezli Zoomash Ltd hizmeti olan <strong>WeatherAPI.com</strong>'a iletir. Tarayıcı WeatherAPI ile doğrudan bağlantı kurmaz. WeatherAPI cihazın IP adresi yerine WeatherPure sunucusunun IP adresini, API anahtarını ve istek için gerekli koordinatları veya arama terimlerini alır.</p>
-    <p>Yasal dayanak, talep edilen hava durumu bilgilerinin sunulmasına ilişkin meşru menfaat olan GDPR Art. 6 Abs. 1 lit. f maddesidir. WeatherAPI gizlilik politikasında olası veri işleme ve uluslararası aktarımları açıklar. Kamuya açık yayından önce özel veri koruma sınıflandırması ve gerekli sözleşmesel güvenceler hukuken inceletilmelidir.</p>
+    <p>Yasal dayanak, talep edilen hava durumu bilgilerinin sunulmasına ilişkin meşru menfaat olan GDPR Art. 6 Abs. 1 lit. f maddesidir. WeatherAPI gizlilik politikasında olası veri işleme ve uluslararası aktarımları açıklar.</p>
     <p>Tekrarlanan istekleri hızlandırmak ve API çağrılarını sınırlamak için WeatherPure sonuçları yalnızca ilgili sunucu örneğinin belleğinde tutar: hava durumu ve favori hava durumu en fazla 15 dakika, güncel polen değerleri en fazla 60 dakika ve konum araması sonuçları en fazla 24 saat. Bu önbellek için veritabanı kullanılmaz; IP adresleri veya kullanıcı hesapları önbelleğin parçası değildir.</p>
     <p>Sunucu arayüzünü otomatik kötüye kullanıma karşı korumak için bağlantı adresinden tuzlanmış teknik bir sayım anahtarı oluşturulur ve ilgili sunucu örneğinin belleğinde en fazla bir dakika tutulur. Ham adres bu uygulama belleğinde saklanmaz; anahtar yalnızca olağan dışı sayıdaki isteği geçici olarak sınırlamak için kullanılır.</p>
     <p>Daha fazla bilgi: <a href="https://www.weatherapi.com/terms.aspx" rel="noopener noreferrer">WeatherAPI Koşulları</a> ve <a href="https://www.weatherapi.com/privacy.aspx" rel="noopener noreferrer">WeatherAPI Gizlilik Politikası</a></p>
+  </div>
+
+  <h2 class="sh">Sunucu arayüzü için kota koruması (Upstash)</h2>
+  <div class="card">
+    <p>Yukarıda açıklanan bağlantı başına sınırlamadan bağımsız olarak WeatherPure, WeatherAPI'den aldığı istek kotasını hizmetin tamamı için ayrıca korur. Bunun için kendi sunucu arayüzü, WeatherAPI'ye yapılan her çağrıdan önce ortak iki sayaç değerini kontrol eder ve günceller. Bu değerler, Vercel pazar yeri üzerinden sağlanan <strong>Upstash, Inc.</strong> (ABD) şirketine ait bir Redis veritabanında tutulur.</p>
+    <p>Orada yalnızca üç teknik değer saklanır ve bunların hepsi tek tek kullanıcılar için değil, hizmetin tamamı için geçerlidir: kısa vadede hâlâ mümkün olan çağrı sayısı, bu değerin en son güncellendiği zaman ve içinde bulunulan takvim ayında kullanılmış çağrı sayısı. İlk iki değer, sayılan son çağrıdan en geç 60 saniye sonra silinir; aylık değer ise bir sonraki takvim ayının başında (UTC) silinir.</p>
+    <p>Bu sayaç değerleri bağlantı adresinden türetilmez. Bu adımda kullanıcıların IP adresleri, koordinatlar, arama terimleri, cihaz kimlikleri, kullanıcı kimlikleri veya kullanım profilleri aktarılmaz ya da saklanmaz. Saklanan değerler tek tek kişilere veya cihazlara ilişkin bilgi içermez. Upstash bağlantısı yalnızca WeatherPure sunucusundan kurulur, uç cihazdan değil.</p>
+    <p>Upstash, veri işleme uygulamalarını <a href="https://upstash.com/trust/privacy.pdf" rel="noopener noreferrer">gizlilik politikasında</a> açıklar ve bir <a href="https://upstash.com/trust/dpa.pdf" rel="noopener noreferrer">Data Processing Addendum</a> sunar.</p>
   </div>
 
   <h2 class="sh">Konum sorgusu (yalnızca onayla)</h2>

@@ -38,7 +38,7 @@
   <div class="page-header">
     <div class="page-meta">
       <span class="page-tag">Rechtliche Informationen</span>
-      <span class="page-stand">Stand: 6. Juli 2026</span>
+      <span class="page-stand">Stand: 3. August 2026</span>
     </div>
     <h1 class="page-title">Datenschutz</h1>
     <p class="page-subtitle">Datenschutzerklärung nach Art. 13 DSGVO</p>
@@ -55,7 +55,7 @@
 
   <h2 class="sh">Allgemeines</h2>
   <div class="card">
-    <p>Diese Wetter App ist bewusst datensparsam gestaltet: kein Konto, keine Anmeldung, keine Cookies, kein Tracking und keine Analysedienste. WeatherPure betreibt eine eigene Server-Schnittstelle ausschließlich für Wetter-, Pollen- und Ortssuchanfragen sowie deren unten beschriebene kurzzeitige Zwischenspeicherung. Alle persönlichen Einstellungen verbleiben im Browser.</p>
+    <p>Diese Wetter App ist bewusst datensparsam gestaltet: kein Konto, keine Anmeldung, keine Cookies, kein Tracking und keine Analysedienste. WeatherPure betreibt eine eigene Server-Schnittstelle ausschließlich für Wetter-, Pollen- und Ortssuchanfragen, deren unten beschriebene kurzzeitige Zwischenspeicherung sowie die unten beschriebenen technischen Schutzmaßnahmen. Alle persönlichen Einstellungen verbleiben im Browser.</p>
   </div>
 
   <h2 class="sh">Lokale Datenspeicherung (localStorage)</h2>
@@ -67,10 +67,18 @@
   <h2 class="sh">Wetterdaten von WeatherAPI</h2>
   <div class="card">
     <p>Wetter, Pollenwerte und Ortssuche werden über die eigene Server Schnittstelle von WeatherPure abgerufen. Diese leitet Koordinaten oder Suchbegriffe serverseitig an <strong>WeatherAPI.com</strong>, einen Dienst von Zoomash Ltd im Vereinigten Königreich, weiter. Der Browser kontaktiert WeatherAPI nicht direkt. WeatherAPI erhält daher die IP Adresse des WeatherPure Servers, den API Schlüssel sowie die für die Anfrage erforderlichen Koordinaten oder Suchbegriffe, nicht jedoch die IP Adresse des Endgeräts.</p>
-    <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der Bereitstellung der angefragten Wetterinformationen. WeatherAPI beschreibt in seiner Datenschutzerklärung mögliche Verarbeitungen und internationale Übermittlungen. Die konkrete datenschutzrechtliche Einordnung und etwa erforderliche Vertragsgrundlagen sollten vor dem öffentlichen Start rechtlich geprüft werden.</p>
-    <p>Zur Beschleunigung wiederholter Anfragen und zur Begrenzung der API Aufrufe speichert WeatherPure Ergebnisse nur im Arbeitsspeicher der jeweiligen Server Instanz zwischen: Wetter und Favoritenwetter höchstens 15 Minuten, aktuelle Pollenwerte höchstens 60 Minuten und Ergebnisse der Ortssuche höchstens 24 Stunden. Es gibt dafür keine Datenbank; IP Adressen und Nutzerkonten werden nicht Teil dieses Anwendungscaches.</p>
+    <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, das berechtigte Interesse an der Bereitstellung der angefragten Wetterinformationen. WeatherAPI beschreibt in seiner Datenschutzerklärung mögliche Verarbeitungen und internationale Übermittlungen.</p>
+    <p>Zur Beschleunigung wiederholter Anfragen und zur Begrenzung der API Aufrufe speichert WeatherPure Ergebnisse nur im Arbeitsspeicher der jeweiligen Server Instanz zwischen: Wetter und Favoritenwetter höchstens 15 Minuten, aktuelle Pollenwerte höchstens 60 Minuten und Ergebnisse der Ortssuche höchstens 24 Stunden. Für diesen Antwort Cache wird keine Datenbank verwendet; IP Adressen und Nutzerkonten werden nicht Teil dieses Anwendungscaches.</p>
     <p>Zum Schutz der Server Schnittstelle vor automatisiertem Missbrauch wird aus der Verbindungsadresse ein gesalzener technischer Zählschlüssel gebildet und höchstens eine Minute im Arbeitsspeicher der jeweiligen Server Instanz gehalten. Die rohe Adresse wird nicht in diesem Anwendungsspeicher abgelegt; der Zählschlüssel dient ausschließlich der vorübergehenden Begrenzung ungewöhnlich vieler Anfragen.</p>
     <p>Weitere Informationen: <a href="https://www.weatherapi.com/terms.aspx" rel="noopener noreferrer">WeatherAPI Bedingungen</a> und <a href="https://www.weatherapi.com/privacy.aspx" rel="noopener noreferrer">WeatherAPI Datenschutz</a></p>
+  </div>
+
+  <h2 class="sh">Kontingentschutz der Server Schnittstelle (Upstash)</h2>
+  <div class="card">
+    <p>Unabhängig von der oben beschriebenen kurzzeitigen Begrenzung je Verbindung schützt WeatherPure zusätzlich das bei WeatherAPI gebuchte Anfragekontingent für den Dienst insgesamt. Dazu prüft und aktualisiert die eigene Server Schnittstelle vor jedem Abruf bei WeatherAPI zwei gemeinsame Zählerstände. Sie liegen in einer Redis Datenbank von <strong>Upstash, Inc.</strong>, USA, die über den Marktplatz von Vercel bereitgestellt wird.</p>
+    <p>Gespeichert werden dort ausschließlich drei technische Werte, die alle für den Dienst insgesamt gelten und nicht für einzelne Nutzer: die Zahl der kurzfristig noch möglichen Abrufe, der Zeitpunkt der letzten Aktualisierung dieses Werts und die Zahl der im laufenden Kalendermonat bereits verbrauchten Abrufe. Die ersten beiden Werte verfallen spätestens 60 Sekunden nach dem zuletzt gezählten Abruf, der Monatswert zu Beginn des nächsten Kalendermonats (UTC).</p>
+    <p>Diese Zählerstände werden nicht aus der Verbindungsadresse gebildet. Übertragen oder gespeichert werden dabei keine IP Adressen der Nutzer, keine Koordinaten, keine Suchbegriffe, keine Gerätekennungen, keine Nutzerkennungen und keine Nutzungsprofile. Die gespeicherten Werte enthalten keine Angaben zu einzelnen Personen oder Geräten. Die Verbindung zu Upstash erfolgt ausschließlich vom WeatherPure Server aus, nicht vom Endgerät.</p>
+    <p>Upstash beschreibt die Datenverarbeitung in seiner <a href="https://upstash.com/trust/privacy.pdf" rel="noopener noreferrer">Datenschutzerklärung</a> und stellt ein <a href="https://upstash.com/trust/dpa.pdf" rel="noopener noreferrer">Data Processing Addendum</a> bereit.</p>
   </div>
 
   <h2 class="sh">Standortabfrage (nur nach Einwilligung)</h2>
