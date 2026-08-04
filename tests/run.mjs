@@ -11,6 +11,7 @@ const entryPoints = {
   "client-requests.test": resolve(testsDir, "client-requests.test.ts"),
   "favorites-cache.test": resolve(testsDir, "favorites-cache.test.ts"),
   "favorites.test": resolve(testsDir, "favorites.test.ts"),
+  "forecast-cache.test": resolve(testsDir, "forecast-cache.test.ts"),
   "link-resolution.test": resolve(testsDir, "link-resolution.test.ts"),
   "loadError.test": resolve(testsDir, "loadError.test.ts"),
   "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),

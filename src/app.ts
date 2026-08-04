@@ -27,34 +27,14 @@ import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast, resetDailyPanelToToday } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
+import { getUsableForecast, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
 import { bestWeatherDayKey } from "./lib/weekSummary";
 import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
-const FORECAST_CACHE_KEY = "weather:weatherapi:last-forecast";
-const LEGACY_FORECAST_CACHE_KEY = "weather:last-forecast";
 const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
 const DEFAULT_FORECAST_DAYS = 7;
-
-interface ForecastCache {
-  placeId: number;
-  latitude: number;
-  longitude: number;
-  savedAt: string;
-  forecast: Forecast;
-}
-
-// Forecast-Cache, der älter als dies ist, wird beim Start NICHT mehr als
-// Sofort-Anzeige gezeigt. Nach 60 Minuten wird sie außerdem gelöscht, damit
-// aktuelle Wetterwerte nicht veraltet angezeigt werden. Gleicher TTL-Stil wie
-// isFavWeatherStale (Date.parse + Number.isFinite-Guard).
-const MAX_FORECAST_CACHE_AGE_MS = 60 * 60 * 1000;
-function isForecastCacheTooOld(savedAt: string, nowMs = Date.now()): boolean {
-  const savedMs = Date.parse(savedAt);
-  if (!Number.isFinite(savedMs)) return true;
-  return nowMs - savedMs > MAX_FORECAST_CACHE_AGE_MS;
-}
 
 // Frische der Anzeige: "fresh" = aktuelle Netzdaten, "stale" = Sofort-Anzeige
 // des letzten Stands während der Netzabruf läuft (Hinweis "Stand HH:MM"),
@@ -275,6 +255,11 @@ function paintFavorites(): void {
       removeFavorite(place.id);
       // P1: Wetter-Eintrag des entfernten Favoriten sofort mit aufräumen.
       pruneFavWeatherCache(getFavorites().map((p) => p.id));
+      // Denselben Ort auch aus dem Forecast-Cache werfen. Der aktuell
+      // angezeigte Ort bleibt dabei erhalten, auch wenn er gerade seinen
+      // Favoritenstatus verloren hat: er ist der "+1"-Platz, und ohne ihn
+      // stünde die offene Karte nach einem Neuladen wieder im Ladeskelett.
+      pruneForecastCache([...getFavorites().map((p) => p.id), ...(state.place ? [state.place.id] : [])]);
       renderFavorites();
       renderContent();
       renderIcons();
@@ -620,13 +605,11 @@ function refreshCurrentPlace(): void {
       state.freshness = "fresh";
       state.failReason = null;
       state.updatedAt = new Date().toISOString();
-      if (place.id !== GEO_PLACE_ID) writeJson(FORECAST_CACHE_KEY, {
-        placeId: place.id,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        savedAt: state.updatedAt,
-        forecast,
-      } satisfies ForecastCache);
+      // Stand dieses Orts ablegen (ein Eintrag je Ort). Der Geo-Ort wird in
+      // putForecast selbst abgewiesen, der Guard hier ist die erste Linie.
+      if (place.id !== GEO_PLACE_ID) {
+        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt);
+      }
       // Gratis-Update: aktueller Ort, wenn Favorit, ohne extra Call spiegeln.
       if (isFavorite(place.id)) {
         cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode, isDay: forecast.current.isDay });
@@ -693,19 +676,14 @@ export function selectPlace(place: Place): void {
   // Sofort-Anzeige: liegt für genau diesen Ort ein letzter Stand vor, wird er
   // ohne Spinner gerendert ("Stand HH:MM"), während parallel IMMER frisch
   // geholt wird — die lokale Kopie ist nur die Brücke, nie die Quelle der
-  // Wahrheit. Für den Geo-Ort wird der Cache gar nicht erst gelesen: er wird
-  // nie persistiert (Datenschutzzusage), die Sofort-Anzeige darf das nicht
-  // aufweichen.
-  const cached = !isGeoPlace ? readJson<ForecastCache>(FORECAST_CACHE_KEY) : null;
-  if (cached !== null && isForecastCacheTooOld(cached.savedAt)) {
-    localStorage.removeItem(FORECAST_CACHE_KEY);
-  }
-  // Sehr alten Cache (älter als MAX_FORECAST_CACHE_AGE_MS) NICHT als Sofort-
-  // Anzeige zeigen: eine tagealte Vorhersage als "Stand" wäre irreführend. Bis
-  // zur Grenze wird er gezeigt (mit Datums-Label, s. formatStampInZone); darüber
-  // greift online der frische Abruf, offline der ehrliche Fehlerzustand.
-  const usableCache =
-    cached !== null && cached.placeId === place.id && !isForecastCacheTooOld(cached.savedAt) ? cached : null;
+  // Wahrheit. Seit dem Cache je Ort greift das auch beim Hin- und Herwechseln
+  // zwischen Favoriten, wo vorher jeder Ort den anderen überschrieb.
+  //
+  // Zu alte Stände liefert getUsableForecast nicht mehr: eine tagealte
+  // Vorhersage als "Stand" wäre irreführend. Dann greift online der frische
+  // Abruf, offline der ehrliche Fehlerzustand. Für den Geo-Ort gibt es nie
+  // einen Treffer, sein Standort wird nicht gespeichert (Datenschutzzusage).
+  const usableCache = getUsableForecast(place.id);
   const showedFromCache = usableCache !== null;
   if (usableCache !== null) {
     state.forecast = usableCache.forecast;
@@ -742,13 +720,9 @@ export function selectPlace(place: Place): void {
       state.freshness = "fresh";
       state.failReason = null;
       state.updatedAt = new Date().toISOString();
-      if (!isGeoPlace) writeJson(FORECAST_CACHE_KEY, {
-        placeId: place.id,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        savedAt: state.updatedAt,
-        forecast,
-      } satisfies ForecastCache);
+      if (!isGeoPlace) {
+        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt);
+      }
       // Gratis-Update: ist der geladene Ort ein Favorit, dessen current direkt in
       // den Favoriten-Cache spiegeln (kein extra Call; Geo-Ort ist nie Favorit).
       if (isFavorite(place.id)) {
@@ -827,14 +801,12 @@ export function initApp(): void {
   // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
   // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
   pruneGeoFavorites();
-  localStorage.removeItem(LEGACY_FORECAST_CACHE_KEY);
   if (readJson<Place>(LAST_PLACE_KEY)?.id === GEO_PLACE_ID) {
     localStorage.removeItem(LAST_PLACE_KEY);
   }
-  const storedForecast = readJson<ForecastCache>(FORECAST_CACHE_KEY);
-  if (storedForecast?.placeId === GEO_PLACE_ID || (storedForecast && isForecastCacheTooOld(storedForecast.savedAt))) {
-    localStorage.removeItem(FORECAST_CACHE_KEY);
-  }
+  // Räumt in einem Zug die alten Einzelforecast-Schlüssel weg, verwirft
+  // Geo-Einträge und defekte Stände und entfernt abgelaufene Orte.
+  pruneExpiredForecasts();
   localStorage.removeItem("weather:forecast-days");
 
   initSearchBar(byId("searchBar"), { onSelect: selectPlace });
