@@ -64,6 +64,11 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   favUndoFailed:   { de: "{place} konnte nicht zurückgeholt werden. Die Favoritenliste ist voll.", en: "{place} could not be restored. The favorites list is full.", tr: "{place} geri getirilemedi. Favori listesi dolu." },
   share_aria:      { de: "Wetter teilen", en: "Share weather", tr: "Hava durumunu paylaş" },
   share_copied:    { de: "In die Zwischenablage kopiert", en: "Copied to clipboard", tr: "Panoya kopyalandı" },
+  // Teilen endet nie stumm: gescheiterter Zwischenablagezugriff und ein Gerät
+  // ganz ohne Teilen-Weg melden sich, der Bilddownload bestätigt sich.
+  // Der bewusste Abbruch des nativen Dialogs bleibt bewusst ohne Rückmeldung.
+  share_failed:    { de: "Teilen ist hier nicht möglich", en: "Sharing is not available here", tr: "Burada paylaşım mümkün değil" },
+  share_downloaded: { de: "Bild gespeichert", en: "Image saved", tr: "Görsel kaydedildi" },
   emptyTitle:      { de: "Suche eine Stadt für die Vorhersage", en: "Search a city to see the forecast", tr: "Tahmin için bir şehir ara" },
   emptySub:        { de: "Oder nutze deinen Standort über die Schaltfläche oben.", en: "Or use your location via the button above.", tr: "Veya yukarıdaki düğmeyle konumunu kullan." },
   loading:         { de: "Lade Wetterdaten…", en: "Loading weather data…", tr: "Hava verileri yükleniyor…" },

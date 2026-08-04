@@ -15,7 +15,7 @@ import { getLang, getLocale, t, type Lang } from "./i18n/ui";
 import { showToast } from "./lib/toast";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
-import { shareText, shareImage } from "./lib/share";
+import { shareText, shareImage, decideSharePath, type ShareCapabilities } from "./lib/share";
 import { renderWeatherCard } from "./lib/shareImage";
 import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar, closeSearch } from "./components/SearchBar";
@@ -536,12 +536,47 @@ function renderContent(): void {
   document.getElementById("shareBtn")?.addEventListener("click", shareCurrentWeather);
 }
 
+// Obergrenze für die Bilderzeugung. Der try/catch in shareImage.ts fängt Fehler,
+// aber kein HÄNGEN: bliebe document.fonts.ready offen, käme die Kette nie zurück,
+// sharing bliebe true und der Teilen-Knopf wäre bis zum Neuladen tot. 8 s liegen
+// weit über der normalen Zeichendauer, der Rückfall ist Text-Teilen.
+const SHARE_IMAGE_TIMEOUT_MS = 8000;
+
+// Promise mit Zeitlimit: nach ms löst es mit null auf, statt weiter zu warten.
+// Der Timer wird in beiden Fällen abgeräumt, damit kein verspätetes Feuern bleibt.
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
+}
+
+// Liest EINMAL, was das Gerät kann. Die Probe für canShare ist absichtlich klein,
+// aber NICHT leer: Null-Byte-Dateien werden von Browsern uneinheitlich behandelt
+// und würden hier ein falsches Nein liefern. Sie wird nur gefragt, nie geteilt.
+function readShareCapabilities(): ShareCapabilities {
+  const hasShare = typeof navigator.share === "function";
+  let canShareFiles = false;
+  if (hasShare && typeof navigator.canShare === "function") {
+    try {
+      const probe = new File([new Uint8Array([0x89])], "weatherpure.png", { type: "image/png" });
+      canShareFiles = navigator.canShare({ files: [probe] });
+    } catch {
+      canShareFiles = false; // wirft statt false zu liefern → wie nicht unterstützt
+    }
+  }
+  return { hasShare, canShareFiles, hasClipboard: typeof navigator.clipboard?.writeText === "function" };
+}
+
 // Teilt das aktuell angezeigte Wetter. Bevorzugt ein handgezeichnetes PNG (mit
 // Text + URL als Begleittext); kann das Gerät keine Dateien teilen, fällt es auf
 // Text-Teilen zurück (alles in share.ts). EIN Knopf, ein Verhalten, Bild bevorzugt.
 // Ohne geladene Daten ein No-op, kein Crash. URL: stadtspezifischer Deep-Link
 // (?stadt=) für benannte Orte, kanonische Startseite für den Geo-Ort — dort NIE
 // Koordinaten teilen (Datenschutzzusage); auch das Bild zeigt nur "Mein Standort".
+// Die Fähigkeiten werden VOR der Bilderzeugung geprüft: ohne Abnehmer für eine
+// Datei wird das 1080×1920-PNG gar nicht erst gezeichnet.
 let sharing = false;
 async function shareCurrentWeather(): Promise<void> {
   if (sharing || !state.place || !state.forecast) return;
@@ -558,19 +593,39 @@ async function shareCurrentWeather(): Promise<void> {
       : `${base}?${CITY_PARAM}=${encodeURIComponent(place.name.toLowerCase())}`;
   const payload = { title: "WeatherPure", text, url };
 
+  // Kein Weg zum Teilen: ehrlich melden statt still enden. Vor dem Sperren des
+  // Knopfes, hier gibt es nichts zu warten.
+  const path = decideSharePath(readShareCapabilities());
+  if (path === "unsupported") {
+    showToast(t("share_failed"));
+    return;
+  }
+
   // Knopf während Font-ready + Zeichnen + toBlob kurz sperren (kein Doppel-Tap).
   const btn = document.getElementById("shareBtn") as HTMLButtonElement | null;
   sharing = true;
   if (btn) { btn.disabled = true; btn.classList.add("cw-share--busy"); }
   try {
-    const blob = await renderWeatherCard({ name, forecast, locale: getLocale(), lang: getLang() });
-    if (blob) {
-      const file = new File([blob], "weatherpure.png", { type: "image/png" });
-      await shareImage(payload, file);
-    } else {
-      // Zeichnen/toBlob gescheitert → sauberer Rückfall auf Text-Teilen.
-      await shareText(payload);
+    if (path === "image") {
+      // Nur hier wird gezeichnet. null steht für alle drei Fehlschläge: Zeichnen
+      // gescheitert, Zeichnen abgelehnt ODER Zeitlimit gerissen. Jedes Mal bleibt
+      // der native Textpfad übrig, den es hier sicher gibt (image setzt hasShare
+      // voraus). Das catch ist nötig, damit eine Ablehnung nicht am Toast vorbei
+      // nach oben durchschlägt und das Teilen still enden lässt.
+      const blob = await withTimeout(
+        renderWeatherCard({ name, forecast, locale: getLocale(), lang: getLang() }).catch(() => null),
+        SHARE_IMAGE_TIMEOUT_MS
+      );
+      if (blob) {
+        const file = new File([blob], "weatherpure.png", { type: "image/png" });
+        await shareImage(payload, file);
+        return;
+      }
     }
+    // "native-text", "clipboard" und der Rückfall aus dem Bildpfad: shareText
+    // nimmt den nativen Dialog, wenn es ihn gibt, sonst die Zwischenablage, und
+    // meldet jeden Ausgang selbst (kopiert, gescheitert, Abbruch bleibt stumm).
+    await shareText(payload);
   } finally {
     sharing = false;
     if (btn) { btn.disabled = false; btn.classList.remove("cw-share--busy"); }

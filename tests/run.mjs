@@ -15,6 +15,10 @@ const entryPoints = {
   "link-resolution.test": resolve(testsDir, "link-resolution.test.ts"),
   "loadError.test": resolve(testsDir, "loadError.test.ts"),
   "provider-characterization.test": resolve(testsDir, "provider-characterization.test.ts"),
+  // share.ts zieht i18n/ui und toast nach; solche Prüflinge müssen vorgebündelt
+  // werden, weil ihre Importpfade keine Dateiendung tragen. Nur importfreie
+  // Module laufen unten direkt über Nodes Type Stripping.
+  "sharePath.test": resolve(testsDir, "sharePath.test.ts"),
 };
 // Diese Tests laufen direkt als TypeScript über Nodes Type Stripping (sie
 // bündeln ihre Prüflinge selbst über testHarness.loadBundledModule) — nicht
