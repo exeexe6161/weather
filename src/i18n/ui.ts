@@ -14,6 +14,17 @@ export const LOCALES: Record<Lang, string> = {
 
 const LANG_KEY = "weather:lang";
 
+// Die Rechtsseiten liegen als je drei Dateien nebeneinander: Deutsch ist die
+// Basis ohne Suffix, EN und TR tragen -en bzw. -tr (dieselbe Konvention, nach
+// der theme-init.js auf den Seiten selbst umleitet). Bewusst ein enger Union-
+// Typ statt string: die Funktion baut einen Pfad, ein beliebiger String hätte
+// hier nichts zu suchen.
+export type LegalBase = "impressum" | "datenschutz";
+
+export function legalHref(base: LegalBase, lang: Lang): string {
+  return lang === "de" ? `./${base}` : `./${base}-${lang}`;
+}
+
 export const uiLabels: Record<string, Record<Lang, string>> = {
   docTitle:        { de: "WeatherPure: Wetter auf das Wesentliche", en: "WeatherPure – Weather, simply essential", tr: "WeatherPure – Sadece önemli olan" },
   heroSubtitle:    { de: "Schlicht, schnell und klar", en: "Simple, fast and clear", tr: "Sade, hızlı ve net" },
@@ -24,6 +35,11 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   searchLabel:     { de: "Stadt suchen", en: "Search city", tr: "Şehir ara" },
   searchPlaceholder: { de: "Stadt suchen, z. B. Berlin", en: "Search a city, e.g. London", tr: "Şehir ara, örn. İstanbul" },
   searchNoResults: { de: "Keine Treffer", en: "No results", tr: "Sonuç yok" },
+  // Trefferzahl in der Statusregion der Suche. Zwei Keys, weil Englisch im
+  // Singular "result" ohne s braucht; DE und TR sind in beiden Fällen gleich.
+  // Beide tragen {n}, damit die Platzhalterprüfung in uiLabels.test.ts greift.
+  searchResultsOne: { de: "{n} Treffer", en: "{n} result", tr: "{n} sonuç" },
+  searchResultsMany: { de: "{n} Treffer", en: "{n} results", tr: "{n} sonuç" },
   searchClear:     { de: "Suche leeren", en: "Clear search", tr: "Aramayı temizle" },
   searchLoading:   { de: "Suche läuft…", en: "Searching…", tr: "Aranıyor…" },
   searchError:     { de: "Suche derzeit nicht möglich", en: "Search is currently unavailable", tr: "Arama şu anda kullanılamıyor" },
@@ -302,6 +318,15 @@ export function applyI18n(root: ParentNode = document): void {
   root.querySelectorAll("[data-i18n-aria]").forEach((el) => {
     const key = el.getAttribute("data-i18n-aria");
     if (key) el.setAttribute("aria-label", t(key));
+  });
+  // Footer-Links auf die Rechtsseiten: die Sprachfassung folgt der App-Sprache.
+  // applyI18n läuft aus initLang UND setLang, damit stimmen Erstbesuch und
+  // manueller Wechsel über denselben Weg. Das href im Markup bleibt die deutsche
+  // Basis und trägt den Fall ohne JavaScript. Nur die beiden bekannten Basen
+  // werden geschrieben — ein fremder Wert lässt das href unangetastet.
+  root.querySelectorAll("[data-i18n-href]").forEach((el) => {
+    const base = el.getAttribute("data-i18n-href");
+    if (base === "impressum" || base === "datenschutz") el.setAttribute("href", legalHref(base, current));
   });
 }
 

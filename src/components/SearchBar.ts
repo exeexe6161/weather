@@ -12,6 +12,18 @@ export interface SearchBarOptions {
 
 const DEBOUNCE_MS = 500;
 
+// Von außen aufrufbarer Abschluss der Suche. app.ts nutzt ihn beim Sprachwechsel:
+// die Treffer kommen sprachspezifisch vom Server (searchCity mit getLang), eine
+// offene Liste wäre nach dem Wechsel inhaltlich veraltet. Schließen ist dann
+// ehrlicher als Nachübersetzen. Wird von initSearchBar gesetzt, vorher No-op.
+// initSearchBar läuft genau einmal (app.ts, initApp), daher genügt die einfache
+// Modulvariable — bei mehrfacher Initialisierung gewönne der letzte Aufruf.
+let closeSearchImpl: (() => void) | null = null;
+
+export function closeSearch(): void {
+  closeSearchImpl?.();
+}
+
 function preventIosSafariFocusZoom(input: HTMLInputElement): void {
   const nav = navigator as Navigator & { standalone?: boolean };
   const isIos = /iPad|iPhone|iPod/.test(nav.userAgent) || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
@@ -83,10 +95,25 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     opts.onSelect(place);
   }
 
+  // Die Statusregion bleibt dauerhaft im Accessibility Tree — Text in einer
+  // versteckten Live-Region zu setzen und sie danach einzublenden wird von
+  // Screenreadern uneinheitlich angesagt. Leer nimmt sie über
+  // .search-status:empty keinen Platz ein, die Optik bleibt also gleich.
   function showStatus(msg: string): void {
     status.textContent = msg;
-    status.hidden = msg === "";
   }
+
+  // Wartende Suche abbrechen und lastQuery leeren: sonst würde ein laufender
+  // Debounce die Liste gleich wieder öffnen bzw. eine noch fliegende Antwort
+  // durchrutschen (runSearch verwirft alles, was nicht mehr lastQuery ist).
+  // Der eingegebene Text bleibt stehen, damit weitergetippt werden kann.
+  closeSearchImpl = (): void => {
+    if (timer) clearTimeout(timer);
+    lastQuery = "";
+    selectFirstOnResults = false;
+    closeList();
+    showStatus("");
+  };
 
   function renderResults(places: Place[]): void {
     input.removeAttribute("aria-busy");
@@ -105,7 +132,10 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     }
     currentPlaces = places;
     activeIndex = -1;
-    showStatus("");
+    // Trefferzahl melden statt den Status zu leeren: sonst hört ein Screenreader
+    // "Suche läuft…" und danach nichts. Genau eine Region, die Zustände Laden,
+    // Trefferzahl, keine Treffer und Fehler lösen einander dort ab.
+    showStatus(t(places.length === 1 ? "searchResultsOne" : "searchResultsMany").replace("{n}", String(places.length)));
     list.innerHTML = places
       .map((p, i) => {
         const region = [p.admin1, p.country].filter(Boolean).join(", ");

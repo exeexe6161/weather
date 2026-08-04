@@ -188,6 +188,14 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
     ? `${tempText.slice(0, -1)}<span class="cw-deg">°</span>`
     : tempText;
 
+  // Favoritenstern bei erreichtem Limit: aria-disabled statt echtem disabled.
+  // Ein disabled Button feuert kein click, ist nicht fokussierbar und zeigt sein
+  // title nur bei Maus-Hover — auf Touch passiert beim Antippen also gar nichts.
+  // So bleibt der Knopf erreichbar, app.ts nennt den Grund als Toast, und der
+  // Grund steht zusätzlich schon im zugänglichen Namen.
+  const favBlocked = !isFav && !canAddFavorite;
+  const favLabel = favBlocked ? t("favLimit") : isFav ? t("favRemove") : t("favAdd");
+
   el.innerHTML = `
     <div class="cw-head">
       <div class="cw-place">
@@ -200,9 +208,9 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         </button>
         ${place.id !== GEO_PLACE_ID ? `<button type="button" class="fav-toggle" id="favToggle"
           aria-pressed="${isFav}"
-          ${!isFav && !canAddFavorite ? "disabled" : ""}
-          title="${!isFav && !canAddFavorite ? t("favLimit") : isFav ? t("favRemove") : t("favAdd")}"
-          aria-label="${!isFav && !canAddFavorite ? t("favLimit") : isFav ? t("favRemove") : t("favAdd")}">
+          ${favBlocked ? `aria-disabled="true"` : ""}
+          title="${favLabel}"
+          aria-label="${favLabel}">
           <i data-lucide="star" class="fav-toggle-ico${isFav ? " fav-toggle-ico--on" : ""}"></i>
         </button>` : ""}
       </div>

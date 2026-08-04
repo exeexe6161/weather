@@ -657,7 +657,10 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   text-align:left;
   cursor:pointer;
 }
-.search-result:hover,.search-result:focus-visible{background:var(--s2);}
+/* aria-selected mitnehmen: die Pfeiltastenauswahl laeuft ueber
+   aria-activedescendant, der echte Fokus bleibt im Eingabefeld. :focus-visible
+   greift dort nie, ohne diese Regel waere die aktive Option unsichtbar. */
+.search-result:hover,.search-result:focus-visible,.search-result[aria-selected="true"]{background:var(--s2);}
 .search-result-ico{width:16px;height:16px;flex:0 0 auto;color:var(--l4);}
 .search-result-name{
   flex:0 1 auto;
@@ -683,6 +686,10 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
   color:var(--l3);
   padding:0 4px;
 }
+/* Die Statusregion steht dauerhaft im Markup (verlaessliche Live-Region). Ohne
+   Text darf sie keinen Platz einnehmen — Abstand und Padding werden dann
+   neutralisiert, die Optik bleibt damit exakt wie mit dem frueheren hidden. */
+.search-status:empty{margin-top:0;padding:0;}
 .geo-row{margin-top:var(--sp-4);}
 /* Standort- und Aktualisieren-Button nebeneinander, je ~halbe Breite. Bei zu
    wenig Platz (schmales Handy) brechen sie sauber untereinander um statt zu
@@ -1040,6 +1047,12 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .cw-share-ico{width:18px;height:18px;}
 /* Während das Share-Bild erzeugt wird: Knopf dezent gedämpft, nicht klickbar. */
 .cw-share--busy{opacity:.55;cursor:default;}
+/* Favoritenlimit erreicht: der Stern traegt aria-disabled statt disabled (er
+   bleibt bedienbar, damit der Grund als Toast kommen kann). Die gedaempfte
+   Darstellung kam vorher vom nativen disabled-Rendering und muss deshalb hier
+   gesetzt werden. Gleiche Werte wie .cw-share--busy, damit gesperrte Knoepfe in
+   der Karte gleich aussehen. */
+.fav-toggle[aria-disabled="true"]{opacity:.55;cursor:default;}
 .fav-toggle[aria-pressed="true"]{color:var(--star);}
 .fav-toggle[aria-pressed="true"] .fav-toggle-ico{fill:currentColor;}
 @media (prefers-reduced-motion:no-preference){

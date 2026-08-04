@@ -20,6 +20,7 @@ const entryPoints = {
 // bündeln ihre Prüflinge selbst über testHarness.loadBundledModule) — nicht
 // vorbündeln, sonst würde der esbuild-Import im Harness mitgebündelt.
 const directTests = [
+  "legalHref.test.ts",
   "tempCompare.test.ts",
   "serverRoutes.test.ts",
   "weatherApiProvider.test.ts",

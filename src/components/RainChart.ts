@@ -173,8 +173,12 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
     return `<rect x="${x.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${baseY.toFixed(2)}" class="rc-hit" data-rc-index="${i}" tabindex="${i === 0 ? "0" : "-1"}" role="button" aria-label="${esc(aria)}"/>`;
   }).join("");
 
+  // role="group", NICHT role="img": role="img" ist ein Blattknoten und nimmt alle
+  // Nachkommen aus dem Accessibility Tree — die fokussierbaren Stunden-Hitboxen
+  // unten waeren fuer Screenreader dann nicht erreichbar, obwohl der Tastaturfokus
+  // weiter funktioniert. Das aria-label bleibt und benennt die Gruppe.
   const svg =
-    `<svg viewBox="0 0 ${W} ${H}" class="rc-svg" role="img" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
+    `<svg viewBox="0 0 ${W} ${H}" class="rc-svg" role="group" aria-label="${esc(input.ariaLabel)}" preserveAspectRatio="none">` +
     base + sockets + bars + now + peakLabel + axis.join("") + hits +
     `</svg>`;
 

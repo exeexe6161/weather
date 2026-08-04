@@ -37,8 +37,8 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=fc366ca0c623"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=fc366ca0c623">
+<script src="./theme-init.js?v=9b8872b9306f"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=9b8872b9306f">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -89,7 +89,11 @@
     </button>
   </div>
   <ul id="searchResults" class="search-results" role="listbox" data-i18n-aria="resultsAria" aria-label="Suchergebnisse" hidden></ul>
-  <div id="searchStatus" class="search-status" role="status" aria-live="polite" hidden></div>
+  <!-- Live-Region bleibt dauerhaft im Accessibility Tree: Inhalt in einer
+       versteckten Region zu setzen und sie danach einzublenden wird von
+       Screenreadern uneinheitlich angesagt. Leer kollabiert sie über
+       .search-status:empty, also ohne sichtbaren Leerraum. -->
+  <div id="searchStatus" class="search-status" role="status" aria-live="polite"></div>
   <div class="geo-row">
     <div class="geo-actions">
       <div class="geo-col">
@@ -205,9 +209,11 @@
 
 <footer>
   <div class="footer-links">
-    <a href="./impressum" data-i18n="footerImpressum">Impressum</a>
+    <!-- href = deutsche Basisfassung als Fallback ohne JavaScript. Mit JS setzt
+         applyI18n über data-i18n-href die zur App-Sprache passende Fassung. -->
+    <a href="./impressum" data-i18n-href="impressum" data-i18n="footerImpressum">Impressum</a>
     <span>·</span>
-    <a href="./datenschutz" data-i18n="footerDatenschutz">Datenschutz</a>
+    <a href="./datenschutz" data-i18n-href="datenschutz" data-i18n="footerDatenschutz">Datenschutz</a>
   </div>
   <p class="footer-note" data-i18n="footerNote">Keine Werbung, kein Tracking. Favoriten bleiben lokal im Browser.</p>
   <p class="footer-attribution"><span data-i18n="footerAttributionPrefix">Wetterdaten von</span> <a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer">WeatherAPI.com</a></p>
@@ -217,6 +223,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=fc366ca0c623"></script>
+<script src="./script.min.js?v=9b8872b9306f"></script>
 </body>
 </html>

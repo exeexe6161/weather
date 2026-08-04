@@ -18,7 +18,7 @@ import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
 import { shareText, shareImage } from "./lib/share";
 import { renderWeatherCard } from "./lib/shareImage";
 import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
-import { initSearchBar } from "./components/SearchBar";
+import { initSearchBar, closeSearch } from "./components/SearchBar";
 import { renderCurrentWeather, stopLocalTimeTicker } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
@@ -515,6 +515,16 @@ function renderContent(): void {
   document.getElementById("favToggle")?.addEventListener("click", () => {
     const place = state.place!;
     const wasAdded = !isFavorite(place.id);
+    // Limit erreicht: Grund nennen und aussteigen. Der Stern trägt nur noch
+    // aria-disabled, ist also klickbar — ohne diesen Zweig liefe der komplette
+    // Erfolgspfad durch. addFavorite würde zwar still nichts tun (Guard in
+    // favorites.ts), aber die Erfolgsanimation weiter unten würde ein Glühen
+    // auf eine fehlgeschlagene Aktion legen. Steht deshalb VOR jedem Speichern,
+    // Render und jeder Animation.
+    if (wasAdded && getFavorites().length >= MAX_FAVORITES) {
+      showToast(t("favLimit"));
+      return;
+    }
     if (wasAdded) addFavorite(place); else removeFavorite(place.id);
     renderFavorites();
     renderContent();
@@ -827,6 +837,9 @@ export function initApp(): void {
 
   // Sprachwechsel: dynamische Bereiche mit neuen Labels/Locales neu rendern
   document.addEventListener("weather:langchange", () => {
+    // Offene Trefferliste schließen: sie kam sprachspezifisch vom Server und
+    // wäre nach dem Wechsel veraltet. Schließen ist ehrlicher als nachübersetzen.
+    closeSearch();
     renderFavorites();
     renderEmptyCities(); // sprachabhängige Städteliste neu aufbauen
     if (state.place && state.forecast) renderContent();
