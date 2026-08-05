@@ -1,4 +1,5 @@
 import type { WeatherAlert } from "../lib/weather";
+import { alertsSectionState, type Freshness } from "../lib/sectionState";
 import { getLocale, t } from "../i18n/ui";
 import { esc } from "../dom";
 
@@ -82,17 +83,33 @@ function bindAlertMore(el: HTMLElement): void {
   });
 }
 
-export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string): void {
+// `freshness` entscheidet, ob eine Entwarnung überhaupt gezeigt werden darf.
+// Ohne sie rendert die Sektion blind aus dem Forecast Cache und würde nach einem
+// gescheiterten Refresh "Aktuell keine Wetterwarnungen" über alte Daten
+// schreiben. Die Abstufung selbst liegt in alertsSectionState.
+export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string, freshness: Freshness): void {
   bindAlertMore(el); // einmalig; delegiert das Auf- und Zuklappen
-  const all = Array.isArray(alerts) ? alerts : [];
-  const visible = all.slice(0, MAX_VISIBLE);
-  const show = visible.length > 0;
-  heading.hidden = !show;
-  el.hidden = !show;
-  if (!show) {
+  // null statt 0, wenn der Stand gar kein Warnfeld hat (alter Cache): daraus
+  // darf weder eine Warnung noch eine Entwarnung abgeleitet werden.
+  const all = Array.isArray(alerts) ? alerts : null;
+  const section = alertsSectionState(all === null ? null : all.length, freshness);
+  heading.hidden = section === "hidden";
+  el.hidden = section === "hidden";
+  if (section === "hidden" || all === null) {
     el.replaceChildren();
     return;
   }
+  // Ohne Warnung: eine Zeile plus der bestehende Hinweis auf amtliche Stellen.
+  // Bei "none" die belegte Entwarnung, bei "failed" nur die Feststellung, dass
+  // nicht aktualisiert werden konnte. Die Sektion bleibt in beiden Fällen
+  // stehen, damit sie nach einem Fehlversuch nicht wortlos verschwindet.
+  if (section !== "list") {
+    el.innerHTML =
+      `<p class="section-empty">${esc(t(section === "none" ? "alerts_none" : "alerts_failed"))}</p>` +
+      `<p class="alert-note">${esc(t("alert_note"))}</p>`;
+    return;
+  }
+  const visible = all.slice(0, MAX_VISIBLE);
   const rows = visible.map((alert) => {
     const from = formatAlertTime(alert.effective, timezone);
     const until = formatAlertTime(alert.expires, timezone);

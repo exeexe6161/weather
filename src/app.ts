@@ -5,7 +5,8 @@ import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { classifyLoadError, failTitleKey, type LoadErrorKind } from "./lib/loadError";
 import { decideLinkResolution } from "./lib/linkResolution";
-import { fetchPollen, type PollenLevels } from "./lib/pollen";
+import { fetchPollen, POLLEN_LOADING, type PollenResult } from "./lib/pollen";
+import type { Freshness } from "./lib/sectionState";
 import { renderPollenList } from "./components/PollenList";
 import { renderAirQuality } from "./components/AirQuality";
 import { renderWeatherAlerts } from "./components/WeatherAlerts";
@@ -42,21 +43,23 @@ const DEFAULT_FORECAST_DAYS = 7;
 // Bewusst NICHT "offline": der Abruf kann auch an einem Serverfehler, einer
 // Ratenbegrenzung oder einer Zeitüberschreitung scheitern, während die
 // Verbindung des Nutzers einwandfrei ist. Den Grund trägt failReason.
-type Freshness = "fresh" | "stale" | "failed";
+// Der Typ liegt in lib/sectionState, weil die Sektionen ihre Sichtbarkeit
+// daran entscheiden.
 
 interface State {
   place: Place | null;
   forecast: Forecast | null;
   // Bewusst ohne localStorage Cache (kein eigener Key nötig): offline oder bei
-  // API Ausfall fehlt die Pollensektion einfach, statt veraltete Werte zu zeigen
-  pollen: PollenLevels | null;
+  // API Ausfall zeigt die Pollensektion den passenden Hinweis, nie veraltete
+  // Werte. Der Status trägt die Bedeutung, nicht mehr ein mehrdeutiges null.
+  pollen: PollenResult;
   freshness: Freshness;
   // Grund des letzten gescheiterten Abrufs, nur bei freshness "failed" gesetzt.
   failReason: LoadErrorKind | null;
   updatedAt: string;
 }
 
-const state: State = { place: null, forecast: null, pollen: null, freshness: "fresh", failReason: null, updatedAt: "" };
+const state: State = { place: null, forecast: null, pollen: POLLEN_LOADING, freshness: "fresh", failReason: null, updatedAt: "" };
 
 // Ist der Browser gerade online? navigator.onLine === false ist verlässlich für
 // "keine Verbindung"; true heißt nur, dass eine Schnittstelle aktiv ist, nicht
@@ -371,7 +374,9 @@ function renderStarterData(): void {
   if (!state.forecast) return;
   renderTodayHighlights(byId("todayHighlights"), byId("todayHighlightsHeading"), state.forecast);
   renderAirQuality(byId("airQuality"), byId("airQualityHeading"), state.forecast.airQuality);
-  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone);
+  // freshness mitgeben: eine Entwarnung darf nur erscheinen, wenn der letzte
+  // Abruf nicht gescheitert ist (siehe alertsSectionState).
+  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone, state.freshness);
 }
 
 // Wochenüberblick-Aussage über der Tagesliste. Immer die nächsten ~7 Tage,
@@ -728,6 +733,11 @@ export function selectPlace(place: Place): void {
   // Tages-Detail auf Heute zurücksetzen, damit beide direkt aufgeklappt erscheinen.
   hourlyAutoOpenArmed = true;
   resetDailyPanelToToday();
+  // Pollen GANZ HIER OBEN zurücksetzen, vor jedem Render. Stand der Reset
+  // weiter unten beim Abruf, lief der Cache-Sofortrender noch mit den Werten
+  // des VORHERIGEN Orts und zeigte sie kurz unter dem neuen Ortsnamen. Mit dem
+  // Status "loading" bleibt die Sektion still, bis eine eigene Antwort da ist.
+  state.pollen = POLLEN_LOADING;
   // Geolocation-Ort nie persistieren: weder als letzter Ort noch im
   // Forecast-Cache (beide enthalten Koordinaten). Er lebt nur im State.
   const isGeoPlace = place.id === GEO_PLACE_ID;
@@ -766,15 +776,16 @@ export function selectPlace(place: Place): void {
 
   // Pollen parallel zum Wetter holen: eigener WeatherAPI Endpoint,
   // dessen Ausfall die Wetteranzeige nicht blockieren darf. fetchPollen wirft
-  // nie (Fehler intern → null = Sektion bleibt aus).
-  state.pollen = null;
-  fetchPollen(place.latitude, place.longitude).then((levels) => {
+  // nie und meldet den Ausgang als Status; die Sektion sagt danach ehrlich, ob
+  // Werte vorliegen, keine verfügbar sind oder der Abruf gescheitert ist.
+  // Zurückgesetzt wurde bereits ganz oben in dieser Funktion.
+  fetchPollen(place.latitude, place.longitude).then((result) => {
     // Referenzgleichheit statt nur id: der Geo-Ort trägt immer id -1, aber jeder
     // "Mein Standort"-Klick erzeugt ein neues Place-Objekt. So wird eine überholte
     // Pollen-Antwort verworfen, ohne dass ein bloßer Refresh (gleiches Objekt,
     // kein erneuter Pollen-Abruf) die laufende Antwort fälschlich killt.
     if (state.place !== place || state.place?.id !== place.id) return;
-    state.pollen = levels;
+    state.pollen = result;
     renderPollen();
   });
 

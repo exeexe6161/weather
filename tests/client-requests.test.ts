@@ -112,7 +112,7 @@ test("geocoding client remains GET on the web API path", async () => {
 test("client error behavior remains compatible", async () => {
   globalThis.fetch = async () => new Response(null, { status: 503 });
   await assert.rejects(fetchWeather(50, 8), /Weather request failed: 503/);
-  assert.equal(await fetchPollen(50, 8), null);
+  assert.deepEqual(await fetchPollen(50, 8), { status: "failed" });
   await assert.rejects(fetchFavoritesWeather([{
     id: 1,
     name: "Fixture",

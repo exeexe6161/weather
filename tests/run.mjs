@@ -26,6 +26,7 @@ const entryPoints = {
 const directTests = [
   "legalHref.test.ts",
   "tempCompare.test.ts",
+  "sectionState.test.ts",
   "serverRoutes.test.ts",
   "weatherApiProvider.test.ts",
   "weatherQuotaGuard.test.ts",

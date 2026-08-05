@@ -1239,6 +1239,12 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 .alert-copy strong{font-size:var(--fs-md);overflow-wrap:anywhere;}
 .alert-copy span,.alert-note{font-size:var(--fs-xs);color:var(--l3);overflow-wrap:anywhere;}
 .alert-note{margin:var(--sp-3) 0 0;}
+/* Einzeilige Aussage in einer sonst leeren Sektion (Warnungen, Pollen): ruhige
+   Entwarnung oder sachlicher Verfuegbarkeitshinweis. Eine Stufe praesenter als
+   .alert-note, weil sie die eigentliche Aussage der Karte traegt und nicht die
+   Fussnote; .alert-note bleibt darunter die leisere Ergaenzung. Nur Tokens,
+   damit Hell und Dunkel ueber --l2 automatisch mitgehen. */
+.section-empty{margin:0;font-size:var(--fs-sm);color:var(--l2);overflow-wrap:anywhere;}
 /* Warnstufe als reines Textlabel, gleiches Prinzip wie .pollen-stage: Farbe
    statt Pille/Badge Flaeche, damit die Liste ruhig bleibt. */
 .alert-badge{font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.02em;color:var(--l3);}

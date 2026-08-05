@@ -128,6 +128,15 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   pollen_low:      { de: "Gering", en: "Low", tr: "Düşük" },
   pollen_moderate: { de: "Mittel", en: "Moderate", tr: "Orta" },
   pollen_high:     { de: "Hoch", en: "High", tr: "Yüksek" },
+  // Leerzustände der Pollensektion. Nur pollen_none_notable ist eine
+  // Entwarnung, und sie erscheint ausschließlich, wenn echte Messwerte
+  // vorliegen und alle unter der Anzeigeschwelle bleiben. Die beiden anderen
+  // Texte sprechen bewusst nur über Verfügbarkeit: sie behaupten weder eine
+  // Abdeckungslücke des Anbieters noch das Ausbleiben von Pollen, und geben
+  // keinerlei gesundheitliche Einschätzung.
+  pollen_none_notable: { de: "Aktuell keine nennenswerte Belastung.", en: "No notable pollen levels right now.", tr: "Şu anda kayda değer polen yok." },
+  pollen_unavailable: { de: "Für diese Region sind derzeit keine Pollendaten verfügbar.", en: "No pollen data is available for this region right now.", tr: "Bu bölge için şu anda polen verisi mevcut değil." },
+  pollen_failed:   { de: "Pollendaten konnten nicht geladen werden.", en: "Pollen data could not be loaded.", tr: "Polen verileri yüklenemedi." },
   air_quality_title: { de: "Luftqualität", en: "Air quality", tr: "Hava kalitesi" },
   aqi_index:       { de: "Luftqualitätsindex", en: "Air quality index", tr: "Hava kalitesi indeksi" },
   aqi_calm:        { de: "Aktuell unauffällig", en: "Currently unremarkable", tr: "Şu anda dikkat çekmiyor" },
@@ -150,6 +159,15 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   aqi_very_unhealthy: { de: "Sehr ungesund", en: "Very unhealthy", tr: "Çok sağlıksız" },
   aqi_hazardous:   { de: "Gefährlich", en: "Hazardous", tr: "Tehlikeli" },
   alerts_title:    { de: "Wetterwarnungen", en: "Weather alerts", tr: "Hava uyarıları" },
+  // Entwarnung. Erscheint nur, wenn der letzte Wetterabruf nicht gescheitert
+  // ist. Bewusst ohne Absolutheit ("keine Warnungen bekannt" wäre schwächer,
+  // "garantiert keine Gefahr" wäre falsch); der darunter stehende alert_note
+  // verweist zusätzlich auf die amtlichen Stellen.
+  alerts_none:     { de: "Aktuell keine Wetterwarnungen.", en: "No weather alerts right now.", tr: "Şu anda hava uyarısı yok." },
+  // Gegenstück für den gescheiterten Abruf: der angezeigte Stand enthält keine
+  // Warnung, bestätigen lässt sich das gerade aber nicht. Bewusst eine reine
+  // Feststellung über den Abruf, keine Aussage über die Lage.
+  alerts_failed:   { de: "Warnungen konnten nicht aktualisiert werden.", en: "Alerts could not be updated.", tr: "Uyarılar güncellenemedi." },
   alert_from:      { de: "Gültig ab {time}", en: "Valid from {time}", tr: "{time} tarihinden itibaren geçerli" },
   alert_until:     { de: "Gültig bis {time}", en: "Valid until {time}", tr: "{time} tarihine kadar geçerli" },
   alert_details:   { de: "Details anzeigen", en: "Show details", tr: "Ayrıntıları göster" },
