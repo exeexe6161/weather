@@ -17,6 +17,41 @@ function activeProvider(): WeatherProvider {
   return PROVIDERS.WEATHER_API;
 }
 
+// Schlüsselform der Ortssuche für den Cache. NUR für den Cache: der Rückgabewert
+// ersetzt nie die Anfrage an den Provider, die trägt immer den Originalbegriff.
+//
+// Zwei eng begrenzte Schritte, in dieser Reihenfolge:
+//
+//   1. Das türkische İ (U+0130) wird gezielt auf ASCII "I" abgebildet, damit
+//      "İstanbul" und "istanbul" denselben Eintrag treffen. Belegt: beide liefern
+//      beim Provider denselben einen Treffer, ein gemeinsamer Eintrag spart also
+//      einen Aufruf, ohne ein fremdes Ergebnis auszuliefern.
+//   2. Die ASCII Großbuchstaben A bis Z werden gefaltet, damit "Berlin" und
+//      "berlin" wie schon vorher denselben Eintrag treffen.
+//
+// Die Reihenfolge ist unkritisch, nicht nur zufällig richtig: Schritt 2 kann nur
+// Zeichen aus "a" bis "z" erzeugen und damit nie ein İ, das Schritt 1 noch
+// sehen müsste. Umgekehrt liefert Schritt 1 ein ASCII "I", das Schritt 2
+// planmäßig mitfaltet.
+//
+// Alles andere bleibt Zeichen für Zeichen stehen. Insbesondere:
+//
+// Bewusst NICHT toLowerCase() auf dem ganzen Begriff: das zerlegt U+0130 in "i"
+// plus kombinierendes U+0307, und genau diese Form findet der Provider nicht
+// (live geprüft: null Treffer, während "İstanbul" und "istanbul" je einen
+// liefern). Genau daran ist die Suche vorher gescheitert.
+//
+// Bewusst NICHT toLocaleLowerCase("tr"): das macht aus dem englischen "I" ein
+// punktloses "ı" und beschädigt damit die Gegenrichtung.
+//
+// Bewusst KEIN pauschales Entfernen kombinierender Zeichen und keine Normalform
+// über den ganzen String: beides würde weit über den belegten Fall hinausgreifen.
+export function geocodingCacheQuery(query: string): string {
+  return query
+    .replace(/İ/g, "I")
+    .replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+}
+
 export const WeatherService = {
   getForecast(latitude: number, longitude: number): Promise<Forecast> {
     const provider = activeProvider();
@@ -35,13 +70,23 @@ export const WeatherService = {
 
   searchPlaces(query: string, language: string): Promise<Place[]> {
     const provider = activeProvider();
-    // Normalisiert (trim + lowercase), damit "Berlin" und "berlin" denselben
-    // Eintrag treffen; die eigentliche Mindestlänge prüft schon der Client.
-    const normalized = query.trim().slice(0, 100).toLowerCase();
+    // Der Provider bekommt den Begriff so, wie der Nutzer ihn getippt hat, nur
+    // getrimmt und auf 100 Zeichen gekappt. Vorher lief hier ein pauschales
+    // toLowerCase, dessen Ergebnis SOWOHL in den Cache Schlüssel ALS AUCH an den
+    // Provider ging. Für Umlaute war das folgenlos, für das türkische große İ
+    // nicht: es zerfällt zu "i" plus kombinierendem U+0307, und WeatherAPI findet
+    // die so verfälschte Anfrage nicht mehr. Direkt am Provider geprüft:
+    // "İstanbul" und "istanbul" liefern je einen Treffer, die zerlegte Form
+    // keinen. Die Kleinschreibung war für den Provider ohnehin nie nötig, denn
+    // search.json unterscheidet Groß und Kleinschreibung nicht (ebenfalls direkt
+    // geprüft, "Berlin" und "berlin" liefern dasselbe); sie diente allein der
+    // Trefferquote im Cache und lebt dort weiter.
+    const providerQuery = query.trim().slice(0, 100);
     const requestedLanguage = language.trim().toLowerCase();
     const normalizedLanguage = requestedLanguage === "en" || requestedLanguage === "tr" ? requestedLanguage : "de";
-    const key = buildCacheKey(provider.id, ["geocoding", normalized, normalizedLanguage]);
-    return getOrSet(key, TTL.GEOCODING_MS, () => provider.searchPlaces(normalized, normalizedLanguage));
+    // Sprache bleibt wie bisher Teil des Schlüssels.
+    const key = buildCacheKey(provider.id, ["geocoding", geocodingCacheQuery(providerQuery), normalizedLanguage]);
+    return getOrSet(key, TTL.GEOCODING_MS, () => provider.searchPlaces(providerQuery, normalizedLanguage));
   },
 
   // Pro Ort einzeln cachen (Key über gerundete Koordinaten, nicht über die
