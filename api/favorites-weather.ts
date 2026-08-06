@@ -1,6 +1,6 @@
 import { WeatherService } from "../src/server/weather/WeatherService.js";
 import type { BatchPlace } from "../src/server/weather/WeatherProvider.js";
-import { type ApiRequest, type ApiResponse, corsGuard, GET_POST_METHODS, jsonBody, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError } from "./_lib/http.js";
+import { type ApiRequest, type ApiResponse, corsGuard, GET_POST_METHODS, jsonBody, methodGuard, rateLimitGuard, queryParam, isValidLatitude, isValidLongitude, sendError, sendMappedError } from "./_lib/http.js";
 
 // Der Starter Tarif hat keinen Bulk Endpoint. Fünf eintägige Forecasts halten
 // Kosten und Antwortzeit berechenbar und entsprechen der Favoritengrenze.
@@ -69,7 +69,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(200).json(
       Array.from(result, ([id, w]) => ({ id, temp: w.temp, code: w.code, isDay: w.isDay, rainChance: w.rainChance, hasAlert: w.hasAlert }))
     );
-  } catch {
-    sendError(res, 502, "Favorites weather provider request failed");
+  } catch (err) {
+    sendMappedError(res, err);
   }
 }

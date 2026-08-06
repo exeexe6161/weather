@@ -1,3 +1,5 @@
+import { mapServerError } from "../../src/server/weather/errorMapping.js";
+
 // Schlanke, lokale Typen für Vercel Node Functions statt einer @vercel/node
 // Abhängigkeit: res.status()/res.json()/req.query stehen zur Laufzeit auf
 // Vercel ohnehin zur Verfügung, dieses Interface bildet nur ab, was die
@@ -87,8 +89,11 @@ export function rateLimitGuard(req: ApiRequest, res: ApiResponse): boolean {
   res.setHeader("RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
 
   if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+    // Hier bleibt die ECHTE Restzeit stehen, anders als beim 503. Dieses Limit
+    // gilt nur für diesen einen Aufrufer und spiegelt seine eigene Aktivität;
+    // es verrät nichts über den globalen Schutzzustand.
     res.setHeader("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
-    sendError(res, 429, "Too many requests");
+    sendError(res, 429, "Too many requests", "rate_limited");
     return false;
   }
   return true;
@@ -122,8 +127,33 @@ export function corsGuard(
   return true;
 }
 
-export function sendError(res: ApiResponse, status: number, message: string): void {
-  res.status(status).json({ error: message });
+// `reason` ist ein grober, stabiler Code für Aufrufer und für die Prüfung nach
+// einem Deployment. Er bleibt optional, damit die bestehenden 4xx Antworten
+// wortgleich bleiben und kein Aufrufer bricht.
+export function sendError(res: ApiResponse, status: number, message: string, reason?: string): void {
+  res.status(status).json(reason === undefined ? { error: message } : { error: message, reason });
+}
+
+// Einzige Stelle, an der ein geworfener Fehler zu einer Antwort wird. Alle vier
+// Routen gehen hierüber, damit es keine zweite Zuordnungstabelle gibt, die
+// auseinanderlaufen könnte.
+//
+// Bewusst OHNE Logging. Vercel hält den Statuscode jeder Anfrage ohnehin fest,
+// und die Zuordnung Status zu Reason ist eindeutig — ein zusätzliches
+// console.* brächte keine neue Information, würde aber einen Pfad schaffen, auf
+// dem versehentlich ein Rohfehler landen könnte. Genau das ist hier gefährlich:
+// die Anfrage URL des Providers trägt den WeatherAPI Schlüssel als
+// Query Parameter, und ein Netzwerkfehler aus fetch führt die Ziel URL je nach
+// Laufzeit in seiner Meldung oder in `cause` mit. Ein `console.error(err)` auf
+// diesem Pfad könnte den Schlüssel in die Logs schreiben. Der Fehlerwert wird
+// deshalb ausschließlich an mapServerError gereicht, das allein seinen `name`
+// liest und feste Texte zurückgibt.
+export function sendMappedError(res: ApiResponse, err: unknown): void {
+  const mapped = mapServerError(err);
+  if (mapped.retryAfterSeconds !== undefined) {
+    res.setHeader("Retry-After", String(mapped.retryAfterSeconds));
+  }
+  sendError(res, mapped.status, mapped.message, mapped.reason);
 }
 
 export function methodGuard(

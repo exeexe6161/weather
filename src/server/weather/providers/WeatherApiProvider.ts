@@ -50,11 +50,28 @@ function apiUrl(path: string, params: Record<string, string>): string {
   return `${BASE_URL}/${path}?${query}`;
 }
 
+// Der Provider hat geantwortet, aber nicht verwertbar. Traegt den Status als
+// auswertbare Eigenschaft statt nur im Meldungstext, damit die Zuordnung in
+// errorMapping.ts ihn nicht aus einem String zurueckgewinnen muss.
+//
+// Der `name` ist die stabile Kennung ueber Buendelgrenzen hinweg, genau wie bei
+// RequestError im Client. Die Meldung enthaelt ausschliesslich den Statuswert,
+// NIE die Anfrage URL: die traegt den WeatherAPI Schluessel als Query Parameter.
+export class ProviderHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`WeatherAPI request failed: ${status}`);
+    this.name = "ProviderHttpError";
+    this.status = status;
+  }
+}
+
 async function requestJson(path: string, params: Record<string, string>): Promise<unknown> {
   const url = apiUrl(path, params);
   await reserveWeatherProviderQuota();
   const response = await fetchWithTimeout(url);
-  if (!response.ok) throw new Error(`WeatherAPI request failed: ${response.status}`);
+  if (!response.ok) throw new ProviderHttpError(response.status);
   return response.json();
 }
 
@@ -512,20 +529,44 @@ function normalizedPollen(pollen: JsonRecord, kind: PollenKind): number | null {
   return parsed ?? null;
 }
 
+// `null` bedeutet hier GENAU EINES: der Abruf war erfolgreich, aber der
+// Anbieter fuehrt fuer diesen Ort kein Pollenobjekt. Das ist echte regionale
+// Nichtverfuegbarkeit, und die Oberflaeche darf das so benennen.
+//
+// Frueher stand hier ein `catch { return null }` ueber der ganzen Funktion.
+// Damit wurde AUCH ein geschlossener Kontingentschutz und ein Providerausfall
+// zu `null`, die Route antwortete mit 200, und die Pollensektion behauptete
+// "fuer diese Region sind derzeit keine Pollendaten verfuegbar" — eine Aussage
+// ueber die Abdeckung des Anbieters, die in diesen Faellen schlicht falsch war.
+// Technische Fehler laufen deshalb jetzt nach oben durch und werden in der
+// Route sauber klassifiziert. Der Client liest daraus `failed` statt
+// `unavailable` (siehe lib/pollen.ts).
+//
+// Der Ausfall bleibt trotzdem folgenlos fuer die Wetteranzeige: Pollen laeuft
+// als eigener, paralleler Abruf, und ein Fehler dort blockiert die Wetterkarte
+// nicht (siehe app.ts selectPlace).
 async function getPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {
-  try {
-    const data = record(await requestJson("current.json", {
-      q: `${latitude},${longitude}`,
-      pollen: "yes",
-      aqi: "no",
-    }));
-    const pollen = record(record(data.current).pollen);
-    if (Object.keys(pollen).length === 0) return null;
-    const levels = {} as Record<PollenKind, number | null>;
-    for (const kind of POLLEN_KINDS) levels[kind] = normalizedPollen(pollen, kind);
-    return levels;
-  } catch {
-    return null;
+  const data = record(await requestJson("current.json", {
+    q: `${latitude},${longitude}`,
+    pollen: "yes",
+    aqi: "no",
+  }));
+  const pollen = record(record(data.current).pollen);
+  if (Object.keys(pollen).length === 0) return null;
+  const levels = {} as Record<PollenKind, number | null>;
+  for (const kind of POLLEN_KINDS) levels[kind] = normalizedPollen(pollen, kind);
+  return levels;
+}
+
+// Der Abruf DIESES Orts war erfolgreich, seine Nutzlast aber unbrauchbar.
+// Bewusst von einem gescheiterten Abruf getrennt: der Anbieter hat geantwortet,
+// es gibt fuer diesen Ort nur nichts Anzeigbares. Ein solcher Ort faellt still
+// aus dem Ergebnis, auch wenn er der einzige war — das ist eine ehrliche
+// Aussage ueber die Daten und kein verschleierter Fehlschlag.
+class IncompleteBatchEntryError extends Error {
+  constructor() {
+    super("WeatherAPI returned incomplete current data");
+    this.name = "IncompleteBatchEntryError";
   }
 }
 
@@ -541,7 +582,7 @@ async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWea
     const current = record(data.current);
     const temp = optionalNumber(current.temp_c);
     const code = optionalNumber(record(current.condition).code);
-    if (temp === undefined || code === undefined) throw new Error("WeatherAPI returned incomplete current data");
+    if (temp === undefined || code === undefined) throw new IncompleteBatchEntryError();
     const forecastDays = record(data.forecast).forecastday;
     const day = Array.isArray(forecastDays) && forecastDays.length > 0
       ? record(record(forecastDays[0]).day)
@@ -560,6 +601,26 @@ async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWea
   }));
   for (const response of responses) {
     if (response.status === "fulfilled") out.set(response.value.id, response.value.weather);
+  }
+  // Teilerfolg bleibt Teilerfolg: was geladen werden konnte, wird geliefert.
+  //
+  // Bleibt dagegen NICHTS uebrig, wird unterschieden. Ein gescheiterter ABRUF
+  // (Kontingentschutz, Providerstatus, Zeitueberschreitung, defekte Antwort)
+  // darf nicht als leerer Erfolg erscheinen: die Route antwortete darauf frueher
+  // mit 200 und einem leeren Array, und ein geschlossener Kontingentschutz blieb
+  // voellig lautlos. Er geht deshalb nach oben und wird in der Route
+  // klassifiziert.
+  //
+  // Eine erfolgreiche Antwort mit unbrauchbarer Nutzlast ist dagegen KEIN
+  // Fehlschlag, auch wenn sie alle Orte betrifft: der Anbieter hat geantwortet,
+  // es gibt nur nichts anzuzeigen. Diese Orte fallen weiterhin still heraus.
+  if (out.size === 0 && places.length > 0) {
+    const failed = responses.find(
+      (response): response is PromiseRejectedResult =>
+        response.status === "rejected"
+        && (response.reason as { name?: unknown } | null)?.name !== "IncompleteBatchEntryError"
+    );
+    if (failed) throw failed.reason;
   }
   return out;
 }

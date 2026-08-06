@@ -23,7 +23,7 @@ export class RequestError extends Error {
   }
 }
 
-export type LoadErrorKind = "offline" | "timeout" | "rateLimit" | "server" | "unknown";
+export type LoadErrorKind = "offline" | "timeout" | "rateLimit" | "busy" | "server" | "unknown";
 
 // Status eines RequestError, auch wenn instanceof scheitert. Letzteres kann
 // passieren, wenn ein Fehler eine Bündelgrenze überquert und damit auf eine
@@ -52,6 +52,18 @@ export function classifyLoadError(err: unknown, online: boolean): LoadErrorKind 
   const status = statusOf(err);
   if (status !== null) {
     if (status === 429) return "rateLimit";
+    // 503 und 504 stehen VOR der Sammelregel für 5xx, sonst würden sie dort
+    // mitgefangen. Der Server unterscheidet seit Block B vier Zustände; die
+    // Entscheidung fällt allein am Statuscode, der Antwortkörper wird bewusst
+    // nicht gelesen (auf einem Fehlerpfad ist er am unzuverlässigsten).
+    //
+    // 503 heißt: der Dienst hat den Abruf selbst gestoppt, weil er gerade
+    // stark ausgelastet ist. Warum genau, bleibt bewusst unsichtbar.
+    if (status === 503) return "busy";
+    // 504 heißt: der Wetteranbieter war zu langsam. Für den Nutzer ist das
+    // dasselbe wie eine eigene Zeitüberschreitung, daher dieselbe Art und
+    // derselbe Text — kein zusätzlicher Begriff für denselben Sachverhalt.
+    if (status === 504) return "timeout";
     if (status >= 500) return "server";
   }
 
@@ -68,6 +80,7 @@ export function failNoteKey(kind: LoadErrorKind): string {
     case "offline": return "offlineNote";
     case "timeout": return "failTimeout";
     case "rateLimit": return "failRateLimit";
+    case "busy": return "failBusy";
     case "server": return "failServer";
     default: return "failUnknown";
   }
@@ -75,15 +88,21 @@ export function failNoteKey(kind: LoadErrorKind): string {
 
 // Titel der Fehleransicht, wenn gar nichts anzeigbar ist.
 //
-// Ein aufgebrauchtes Kontingent ist hier bewusst NICHT eigens benannt: die
-// Route in api/weather.ts fasst Providerausfall und Kontingentende zu einem
-// 502 zusammen, und der Server steht unter Freeze. Der Sammeltext für 5xx ist
-// für beide Fälle wahr und behauptet nichts, was nicht belegt ist.
+// Seit Block B antwortet der Server mit 503, wenn er den Abruf selbst gestoppt
+// hat, und mit 502 bei einem echten Providerausfall. Beide Fälle haben deshalb
+// jetzt einen eigenen, zutreffenden Text. Vorher teilten sie sich errorServer,
+// was für den gestoppten Abruf eine Aussage über WeatherAPI machte, die dann
+// nicht stimmte.
+//
+// Der Text zu "busy" nennt bewusst keinen Grund: warum der Dienst gerade
+// stoppt, geht den Aufrufer nichts an und wäre ein Hinweis darauf, wie der
+// Schutz arbeitet.
 export function failTitleKey(kind: LoadErrorKind): string {
   switch (kind) {
     case "offline": return "errorOffline";
     case "timeout": return "errorTimeout";
     case "rateLimit": return "errorRateLimit";
+    case "busy": return "errorBusy";
     case "server": return "errorServer";
     default: return "loadError";
   }

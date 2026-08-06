@@ -83,11 +83,15 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   loading:         { de: "Lade Wetterdaten…", en: "Loading weather data…", tr: "Hava verileri yükleniyor…" },
   loadError:       { de: "Wetterdaten konnten nicht geladen werden", en: "Weather data could not be loaded", tr: "Hava verileri yüklenemedi" },
   errorOffline:    { de: "Du bist offline. Stelle eine Verbindung her.", en: "You are offline. Please reconnect.", tr: "Çevrimdışısın. Bağlantı kur." },
-  // Fehlertitel nach Ursache. Kontingentende und Providerausfall kommen beide
-  // als 5xx an und teilen sich deshalb bewusst errorServer: der Text ist für
-  // beide Fälle wahr.
+  // Fehlertitel nach Ursache. Seit Block B unterscheidet der Server einen
+  // selbst gestoppten Abruf (503) von einem echten Providerausfall (502), beide
+  // haben deshalb einen eigenen Text.
   errorTimeout:    { de: "Die Antwort hat zu lange gedauert. Bitte erneut versuchen.", en: "The response took too long. Please try again.", tr: "Yanıt çok uzun sürdü. Lütfen tekrar dene." },
   errorRateLimit:  { de: "Zu viele Anfragen. Bitte kurz warten und erneut versuchen.", en: "Too many requests. Please wait a moment and try again.", tr: "Çok fazla istek. Lütfen biraz bekleyip tekrar dene." },
+  // Der Dienst hat den Abruf selbst gestoppt. Der Grund bleibt bewusst
+  // ungenannt: er ginge den Nutzer nichts an und wäre ein Hinweis darauf, wie
+  // der Schutz arbeitet. Keine Zahlen, keine Begriffe aus der Technik.
+  errorBusy:       { de: "Der Dienst ist gerade stark ausgelastet. Bitte in ein paar Minuten erneut versuchen.", en: "The service is very busy right now. Please try again in a few minutes.", tr: "Servis şu anda çok yoğun. Lütfen birkaç dakika sonra tekrar dene." },
   errorServer:     { de: "Der Wetterdienst ist gerade nicht erreichbar. Bitte später erneut versuchen.", en: "The weather service is currently unavailable. Please try again later.", tr: "Hava durumu servisine şu anda ulaşılamıyor. Lütfen daha sonra tekrar dene." },
   errorLinkNotFound: { de: "Der Ort aus dem Link wurde nicht gefunden", en: "The location from the link was not found", tr: "Bağlantıdaki konum bulunamadı" },
   retry:           { de: "Erneut versuchen", en: "Try again", tr: "Tekrar dene" },
@@ -96,6 +100,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   // werden. Nur offlineNote darf von fehlender Verbindung sprechen.
   failTimeout:     { de: "Die Antwort hat zu lange gedauert. Gespeicherte Daten werden angezeigt.", en: "The response took too long. Showing saved data.", tr: "Yanıt çok uzun sürdü. Kayıtlı veriler gösteriliyor." },
   failRateLimit:   { de: "Zu viele Anfragen. Gespeicherte Daten werden angezeigt.", en: "Too many requests. Showing saved data.", tr: "Çok fazla istek. Kayıtlı veriler gösteriliyor." },
+  failBusy:        { de: "Der Dienst ist gerade stark ausgelastet. Gespeicherte Daten werden angezeigt.", en: "The service is very busy right now. Showing saved data.", tr: "Servis şu anda çok yoğun. Kayıtlı veriler gösteriliyor." },
   failServer:      { de: "Der Wetterdienst ist gerade nicht erreichbar. Gespeicherte Daten werden angezeigt.", en: "The weather service is currently unavailable. Showing saved data.", tr: "Hava durumu servisine şu anda ulaşılamıyor. Kayıtlı veriler gösteriliyor." },
   failUnknown:     { de: "Aktualisieren war gerade nicht möglich. Gespeicherte Daten werden angezeigt.", en: "Refreshing was not possible just now. Showing saved data.", tr: "Şu anda yenileme yapılamadı. Kayıtlı veriler gösteriliyor." },
   linkResolvedToast: { de: "Aus dem Link geöffnet: {place}", en: "Opened from the link: {place}", tr: "Bağlantıdan açıldı: {place}" },

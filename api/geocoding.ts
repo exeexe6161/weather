@@ -1,5 +1,5 @@
 import { WeatherService } from "../src/server/weather/WeatherService.js";
-import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, rateLimitGuard, queryParam, sendError } from "./_lib/http.js";
+import { type ApiRequest, type ApiResponse, corsGuard, methodGuard, rateLimitGuard, queryParam, sendError, sendMappedError } from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!corsGuard(req, res)) return;
@@ -16,7 +16,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const places = await WeatherService.searchPlaces(q, lang);
     res.status(200).json(places);
-  } catch {
-    sendError(res, 502, "Geocoding provider request failed");
+  } catch (err) {
+    // Auch die Ortssuche laeuft durch den Kontingentschutz (search.json geht
+    // ueber denselben requestJson Pfad), ein geschlossener Guard legt sie also
+    // mit still. Sie braucht dieselbe Trennung wie das Wetter.
+    sendMappedError(res, err);
   }
 }

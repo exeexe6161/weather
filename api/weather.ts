@@ -7,7 +7,7 @@ import {
   methodGuard,
   rateLimitGuard,
   requestCoordinates,
-  sendError,
+  sendMappedError,
 } from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -21,7 +21,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const forecast = await WeatherService.getForecast(coordinates.latitude, coordinates.longitude);
     res.status(200).json(forecast);
-  } catch {
-    sendError(res, 502, "Weather provider request failed");
+  } catch (err) {
+    // Trennt Kontingentschutz, Providerfehler, Zeitüberschreitung und eigenen
+    // Fehler. Der Fehlerwert selbst verlässt die Serverseite nie.
+    sendMappedError(res, err);
   }
 }

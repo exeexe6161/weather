@@ -204,17 +204,41 @@ test('pollen normalizes real fields and returns null for empty provider data', a
   assert.equal(empty, null);
 });
 
-test('pollen converts timeout, invalid JSON and provider status errors to null', async () => {
-  const failures: Array<() => Promise<Response> | Response> = [
-    async () => { throw new DOMException('timed out', 'AbortError'); },
-    () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('invalid json'); } }) as Response,
-    () => jsonResponse({}, 503),
-  ];
-  useFetch(() => (failures.shift() ?? (() => jsonResponse({}, 500)))());
+test('pollen reicht technische Fehler durch, statt sie als Leerzustand auszugeben', async () => {
+  // Frueher lieferten Zeitueberschreitung, defektes JSON und ein Providerstatus
+  // allesamt `null`, also dasselbe Ergebnis wie eine erfolgreiche Antwort ohne
+  // Pollenobjekt. Die Route antwortete daraufhin mit 200 und die Oberflaeche
+  // behauptete eine regionale Abdeckungsluecke, die es nicht gab. `null` ist
+  // jetzt ausschliesslich die echte Nichtverfuegbarkeit.
+  const timeout = () => { throw new DOMException('timed out', 'AbortError'); };
+  useFetch(timeout);
+  await assert.rejects(provider.getPollen(40, 8), (err: Error) => err.name === 'AbortError');
 
-  assert.equal(await provider.getPollen(40, 8), null);
-  assert.equal(await provider.getPollen(41, 9), null);
-  assert.equal(await provider.getPollen(42, 10), null);
+  useFetch(() => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('invalid json'); } }) as Response);
+  await assert.rejects(provider.getPollen(41, 9), SyntaxError);
+
+  useFetch(() => jsonResponse({}, 503));
+  await assert.rejects(provider.getPollen(42, 10), (err: Error & { status?: number }) => {
+    assert.equal(err.name, 'ProviderHttpError');
+    assert.equal(err.status, 503);
+    return true;
+  });
+});
+
+test('ein Providerfehler traegt den Status als Eigenschaft und nie die Anfrage URL', async () => {
+  // Der Status muss auswertbar bleiben, damit errorMapping ihn nicht aus einem
+  // Meldungstext zurueckgewinnen muss. Die Anfrage URL darf nirgends auftauchen:
+  // sie traegt den WeatherAPI Schluessel als Query Parameter.
+  useFetch(() => jsonResponse({}, 502));
+
+  await assert.rejects(provider.getForecast(48, 10), (err: Error & { status?: number }) => {
+    assert.equal(err.name, 'ProviderHttpError');
+    assert.equal(err.status, 502);
+    assert.doesNotMatch(err.message, /api\.weatherapi\.com/);
+    assert.doesNotMatch(err.message, new RegExp(DUMMY_KEY));
+    assert.doesNotMatch(err.message, /key=/);
+    return true;
+  });
 });
 
 test('forecast normalizes the provider response and excludes key and raw fields', async () => {
@@ -364,4 +388,42 @@ test('favorites batch preserves successful provider entries when another request
   assert.deepEqual([...result.entries()], [[1, { temp: 19, code: 2, isDay: true, rainChance: null, hasAlert: false }]]);
   assert.equal(calls.length, 2);
   assert.equal(reservationRequests.length, 2);
+});
+
+test('favorites batch meldet einen Totalausfall, statt ihn als leeren Erfolg auszugeben', async () => {
+  // Teilerfolg bleibt Teilerfolg (Test darueber). Scheitert dagegen JEDER Ort,
+  // ist ein leeres Ergebnis keine Aussage ueber das Wetter, sondern ein
+  // verschleierter Fehlschlag: die Route antwortete darauf frueher mit 200 und
+  // einem leeren Array, und ein geschlossener Kontingentschutz blieb lautlos.
+  const quota = new Error('Weather service is temporarily unavailable');
+  quota.name = 'WeatherQuotaProtectionError';
+  useFetch(() => { throw quota; });
+
+  await assert.rejects(
+    provider.getCurrentBatch([
+      { id: 1, latitude: 48, longitude: 10 },
+      { id: 2, latitude: 49, longitude: 11 },
+    ]),
+    (err: Error) => err.name === 'WeatherQuotaProtectionError',
+  );
+});
+
+test('favorites batch ohne Orte bleibt ein leeres Ergebnis ohne Fehler', async () => {
+  useFetch(() => { throw new Error('darf nicht aufgerufen werden'); });
+
+  const result = await provider.getCurrentBatch([]);
+
+  assert.equal(result.size, 0);
+});
+
+test('favorites batch: unbrauchbare Nutzlast bleibt ein leeres Ergebnis, kein Fehler', async () => {
+  // Der Anbieter hat erfolgreich geantwortet, die Nutzlast trug nur keinen
+  // Wettercode. Das ist eine ehrliche Aussage ueber die Daten und kein
+  // gescheiterter Abruf, deshalb faellt der Ort still heraus — auch als
+  // einziger. Nur ein gescheiterter ABRUF wird zum Fehler.
+  useFetch(() => jsonResponse({ current: { temp_c: 19, condition: {}, is_day: 1 } }));
+
+  const result = await provider.getCurrentBatch([{ id: 1, latitude: 48, longitude: 10 }]);
+
+  assert.equal(result.size, 0);
 });

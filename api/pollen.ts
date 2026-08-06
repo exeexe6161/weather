@@ -7,7 +7,7 @@ import {
   methodGuard,
   rateLimitGuard,
   requestCoordinates,
-  sendError,
+  sendMappedError,
 } from "./_lib/http.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -19,11 +19,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   if (coordinates === null) return;
 
   try {
-    // getPollen scheitert nie (fängt intern ab, liefert notfalls null) —
-    // ein null Ergebnis ist ein gültiger 200er, kein Fehlerfall.
+    // `null` ist hier ausschliesslich die ECHTE Aussage "der Anbieter liefert
+    // fuer diesen Ort kein Pollenobjekt" und bleibt ein gueltiger 200er.
+    // Technische Fehler reicht getPollen inzwischen durch, statt sie ebenfalls
+    // in `null` zu verwandeln — sonst haette die Oberflaeche bei geschlossenem
+    // Kontingentschutz eine Abdeckungsluecke des Anbieters behauptet, die es
+    // nicht gibt.
     const levels = await WeatherService.getPollen(coordinates.latitude, coordinates.longitude);
     res.status(200).json(levels);
-  } catch {
-    sendError(res, 502, "Pollen provider request failed");
+  } catch (err) {
+    sendMappedError(res, err);
   }
 }
