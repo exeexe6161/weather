@@ -27,7 +27,7 @@ import { renderTempCurve, forecastStartHour, type TempCurveInput } from "./compo
 import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast, resetDailyPanelToToday } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
-import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache } from "./lib/favoritesWeather";
+import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache, mirrorForNewFavorite } from "./lib/favoritesWeather";
 import { getUsableForecast, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
 import { bestWeatherDayKey } from "./lib/weekSummary";
 import { renderIcons } from "./icons";
@@ -530,12 +530,39 @@ function renderContent(): void {
       showToast(t("favLimit"));
       return;
     }
-    if (wasAdded) addFavorite(place); else removeFavorite(place.id);
+    // Der neue Chip soll genau die Werte zeigen, die in der Karte darüber
+    // bereits stehen. Quelle ist der schon geladene Vollforecast DESSELBEN
+    // Orts, also KEIN zusätzlicher Providerabruf.
+    //
+    // Ohne diese Spiegelung bleibt der Chip leer, bis irgendwann ein
+    // Nachladelauf greift: cacheFavoriteWeather wird sonst nur in selectPlace
+    // und refreshCurrentPlace aufgerufen, dort jeweils hinter isFavorite(),
+    // ausgewertet zum ZEITPUNKT DES ABRUFS. Wer einen Ort erst öffnet und
+    // danach favorisiert, war zum Abrufzeitpunkt kein Favorit und kann diese
+    // Bedingung strukturell nie erreichen.
+    //
+    // Der Zeitstempel ist bewusst state.updatedAt und nicht "jetzt": ein aus
+    // dem lokalen Forecast-Cache gezeigter Stand gälte sonst die volle TTL lang
+    // als frisch, der reguläre Nachladelauf bliebe aus und der Chip zeigte
+    // einen alten Wert als aktuellen. mirrorForNewFavorite meldet über
+    // needsFetch, wenn der gespiegelte Stand dafür schon zu alt ist.
+    let mirrorNeedsFetch = false;
+    if (wasAdded) {
+      addFavorite(place);
+      const mirror = mirrorForNewFavorite(state.forecast, state.updatedAt);
+      if (mirror.entry !== null) cacheFavoriteWeather(place.id, mirror.entry, mirror.entry.savedAt);
+      mirrorNeedsFetch = mirror.needsFetch;
+    } else {
+      removeFavorite(place.id);
+    }
     renderFavorites();
     renderContent();
     renderIcons();
     if (wasAdded) {
       document.getElementById("favToggle")?.classList.add("fav-toggle--added");
+      // Nur wenn nichts Frisches gespiegelt werden konnte. refreshFavoritesWeather
+      // holt dann ohnehin ausschließlich die wirklich veralteten Orte.
+      if (mirrorNeedsFetch) loadFavoritesWeather();
     }
   });
   document.getElementById("shareBtn")?.addEventListener("click", shareCurrentWeather);

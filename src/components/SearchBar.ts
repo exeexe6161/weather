@@ -2,6 +2,7 @@
 // startet ausschließlich nach Klick auf die klar beschriftete Schaltfläche
 // (Einwilligung), Koordinaten werden nicht persistiert.
 import { searchCity, GEO_PLACE_ID, type Place } from "../lib/geocoding";
+import { searchStatusKey, shouldSearch, type SearchOutcome } from "../lib/searchStatus";
 import { t, getLang } from "../i18n/ui";
 import { esc } from "../dom";
 import { renderIcons } from "../icons";
@@ -103,6 +104,23 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     status.textContent = msg;
   }
 
+  // Einziger Weg, einen Zustand in die Statusregion zu schreiben: der Text folgt
+  // ausschließlich der Entscheidung aus lib/searchStatus. Der Platzhalter {n}
+  // wird nur dort ersetzt, wo es eine Trefferzahl gibt.
+  //
+  // Bewusst über textContent und ohne Vergleich mit dem alten Wert: bleibt der
+  // Text gleich (zwei aufeinanderfolgende Zeichen unter der Mindestlänge),
+  // ändert sich textContent nicht und Screenreader sagen ihn nicht erneut an.
+  function showOutcome(outcome: SearchOutcome): void {
+    const key = searchStatusKey(outcome);
+    if (key === null) {
+      showStatus("");
+      return;
+    }
+    const text = t(key);
+    showStatus(outcome.kind === "results" ? text.replace("{n}", String(outcome.count)) : text);
+  }
+
   // Wartende Suche abbrechen und lastQuery leeren: sonst würde ein laufender
   // Debounce die Liste gleich wieder öffnen bzw. eine noch fliegende Antwort
   // durchrutschen (runSearch verwirft alles, was nicht mehr lastQuery ist).
@@ -120,7 +138,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     if (!places.length) {
       selectFirstOnResults = false;
       closeList();
-      showStatus(t("searchNoResults"));
+      showOutcome({ kind: "results", count: 0 });
       return;
     }
     // Enter war schneller als die Antwort: ersten Treffer direkt übernehmen,
@@ -135,7 +153,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     // Trefferzahl melden statt den Status zu leeren: sonst hört ein Screenreader
     // "Suche läuft…" und danach nichts. Genau eine Region, die Zustände Laden,
     // Trefferzahl, keine Treffer und Fehler lösen einander dort ab.
-    showStatus(t(places.length === 1 ? "searchResultsOne" : "searchResultsMany").replace("{n}", String(places.length)));
+    showOutcome({ kind: "results", count: places.length });
     list.innerHTML = places
       .map((p, i) => {
         const region = [p.admin1, p.country].filter(Boolean).join(", ");
@@ -175,7 +193,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   function runSearch(query: string): void {
     lastQuery = query;
     input.setAttribute("aria-busy", "true");
-    showStatus(t("searchLoading"));
+    showOutcome({ kind: "loading" });
     searchCity(query, getLang())
       .then((places) => {
         if (query !== lastQuery) return; // veraltete Antwort verwerfen
@@ -183,8 +201,8 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       })
       .catch(() => {
         if (query !== lastQuery) return;
-        closeList();
-        showStatus(t("searchError"));
+        closeList(); // räumt auch aria-busy und aria-expanded ab
+        showOutcome({ kind: "error" });
       });
   }
 
@@ -193,13 +211,16 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     syncClear();
     selectFirstOnResults = false; // neues Tippen hebt eine wartende Enter-Wahl auf
     if (timer) clearTimeout(timer);
-    if (q.length < 3) {
+    // Unter der Mindestlänge wird weiterhin NICHT gesucht (kein Netzaufruf),
+    // aber der Nutzer erfährt jetzt den Grund, statt vor einem stummen Feld zu
+    // sitzen. Bei komplett leerem Feld bleibt die Region leer.
+    if (!shouldSearch(q.length)) {
       lastQuery = "";
       closeList();
-      showStatus("");
+      showOutcome({ kind: "typing", length: q.length });
       return;
     }
-    showStatus(t("searchLoading"));
+    showOutcome({ kind: "loading" });
     timer = setTimeout(() => runSearch(q), DEBOUNCE_MS);
   });
 
@@ -220,7 +241,9 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
         return;
       }
       const q = input.value.trim();
-      if (q.length < 3) return;
+      // Enter unter der Mindestlänge löst keinen Abruf aus. Der Hinweis steht
+      // bereits, das input-Ereignis hat ihn beim Tippen gesetzt.
+      if (!shouldSearch(q.length)) return;
       if (timer) clearTimeout(timer);
       selectFirstOnResults = true;
       runSearch(q);

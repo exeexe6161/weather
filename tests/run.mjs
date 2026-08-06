@@ -27,6 +27,7 @@ const directTests = [
   "legalHref.test.ts",
   "tempCompare.test.ts",
   "sectionState.test.ts",
+  "searchStatus.test.ts",
   "serverRoutes.test.ts",
   "weatherApiProvider.test.ts",
   "weatherQuotaGuard.test.ts",

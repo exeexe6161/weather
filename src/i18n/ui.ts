@@ -34,7 +34,13 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   weatherRegion:   { de: "Wetter", en: "Weather", tr: "Hava durumu" },
   searchLabel:     { de: "Stadt suchen", en: "Search city", tr: "Şehir ara" },
   searchPlaceholder: { de: "Stadt suchen, z. B. Berlin", en: "Search a city, e.g. London", tr: "Şehir ara, örn. İstanbul" },
-  searchNoResults: { de: "Keine Treffer", en: "No results", tr: "Sonuç yok" },
+  // Kein Treffer nennt einen nächsten Schritt statt nur den Befund. Bewusst
+  // OHNE die Behauptung, es gäbe den Ort nicht: die Grenze liegt beim Anbieter,
+  // nicht in der Wirklichkeit.
+  searchNoResults: { de: "Keine passenden Orte gefunden. Prüfe die Schreibweise.", en: "No matching places found. Check the spelling.", tr: "Eşleşen bir yer bulunamadı. Yazımı kontrol edin." },
+  // Rückmeldung unter der Mindestlänge. Die Zahl steht ausgeschrieben im Text
+  // und muss mit SEARCH_MIN_LENGTH in lib/searchStatus.ts übereinstimmen.
+  searchTooShort:  { de: "Mindestens 3 Zeichen eingeben", en: "Enter at least 3 characters", tr: "En az 3 karakter girin" },
   // Trefferzahl in der Statusregion der Suche. Zwei Keys, weil Englisch im
   // Singular "result" ohne s braucht; DE und TR sind in beiden Fällen gleich.
   // Beide tragen {n}, damit die Platzhalterprüfung in uiLabels.test.ts greift.
@@ -42,7 +48,10 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   searchResultsMany: { de: "{n} Treffer", en: "{n} results", tr: "{n} sonuç" },
   searchClear:     { de: "Suche leeren", en: "Clear search", tr: "Aramayı temizle" },
   searchLoading:   { de: "Suche läuft…", en: "Searching…", tr: "Aranıyor…" },
-  searchError:     { de: "Suche derzeit nicht möglich", en: "Search is currently unavailable", tr: "Arama şu anda kullanılamıyor" },
+  // Bleibt eine ehrliche Feststellung über den Abruf und lädt zum zweiten
+  // Versuch ein. Der Nutzer tippt dafür einfach weiter, es braucht keinen
+  // eigenen Knopf und damit auch keinen zusätzlichen Abrufpfad.
+  searchError:     { de: "Suche derzeit nicht möglich. Versuche es erneut.", en: "Search is currently unavailable. Try again.", tr: "Arama şu anda kullanılamıyor. Tekrar deneyin." },
   geoBtn:          { de: "Mein Standort", en: "My location", tr: "Konumum" },
   geoHint:         { de: "Nur mit Zustimmung. Nicht dauerhaft gespeichert; an WeatherAPI übertragen.", en: "Only with consent. Not stored permanently; sent to WeatherAPI.", tr: "Yalnızca onayla. Kalıcı olarak saklanmaz; WeatherAPI'ye iletilir." },
   geoDenied:       { de: "Standortzugriff abgelehnt. Suche eine Stadt oder erlaube den Zugriff in den Einstellungen.", en: "Location access denied. Search for a city or allow access in Settings.", tr: "Konum erişimi reddedildi. Bir şehir ara veya Ayarlar'dan erişime izin ver." },

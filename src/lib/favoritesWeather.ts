@@ -4,6 +4,8 @@
 // Tageswerte für Vergleich und Warnsignal), eigener localStorage-Cache.
 import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";
+// Nur Typen, zur Laufzeit bleibt dieses Modul unabhängig von weather.ts.
+import type { CurrentWeather, Forecast } from "./weather";
 
 // Eigener WeatherAPI Cache Key, unabhängig von der reinen Favoriten Ortsliste
 // und dem Einzelort Vollforecast.
@@ -123,7 +125,12 @@ export function getStaleOrMissingFavorites(
 // der Chip ist damit sofort frisch und fällt im nächsten Batch als nicht-stale
 // heraus. Kein eigener Netzaufruf. placeId-basiert, also unabhängig von der
 // Reihenfolge der Favoriten.
-export function cacheFavoriteWeather(id: number, weather: FavWeather): void {
+// savedAt ist bewusst überschreibbar: der Aufrufer kennt den ECHTEN Stand der
+// Daten, die er spiegelt. Wird ein aus dem lokalen Forecast-Cache gezeigter
+// Stand mit "jetzt" gestempelt, gilt er die volle TTL lang als frisch und der
+// reguläre Nachladelauf bleibt aus — der Chip zeigte dann einen alten Wert als
+// aktuellen. Ohne Angabe bleibt es beim bisherigen Verhalten.
+export function cacheFavoriteWeather(id: number, weather: FavWeather, savedAt: string = new Date().toISOString()): void {
   const cache = readFavWeatherCache();
   const previous = cache.get(id);
   cache.set(id, {
@@ -132,9 +139,65 @@ export function cacheFavoriteWeather(id: number, weather: FavWeather): void {
     isDay: weather.isDay,
     rainChance: weather.rainChance ?? previous?.rainChance ?? null,
     hasAlert: weather.hasAlert ?? previous?.hasAlert ?? false,
-    savedAt: new Date().toISOString(),
+    savedAt,
   });
   writeFavWeatherCache(cache);
+}
+
+// ── D) Spiegelung aus dem bereits geladenen Vollforecast ───────────────────
+// Reduziert einen Vollforecast auf die schlanke Chip-Form. KEIN Netzzugriff:
+// die Werte stehen bereits auf dem Bildschirm, sie werden nur übernommen.
+//
+// Fehlende Werte werden bewusst als `undefined` zurückgegeben und NICHT als
+// null oder false: cacheFavoriteWeather behält bei `undefined` den vorherigen
+// Wert. Ein Forecast aus der Zeit vor den Warnungen (`alerts` ist optional,
+// s. weather.ts) darf keine Entwarnung erzeugen — "Feld nicht vorhanden" und
+// "keine Warnung" sind zwei verschiedene Aussagen.
+//
+// null, wenn Temperatur oder Wettercode fehlen: ein Chip ohne diese beiden
+// Werte hätte nichts zu zeigen, dann ist der reguläre Abruf der richtige Weg.
+export function favWeatherFromForecast(forecast: Forecast | null | undefined): FavWeather | null {
+  const current = forecast?.current as Partial<CurrentWeather> | undefined;
+  if (current === null || current === undefined) return null;
+  const temp = current.temperature;
+  const code = current.weatherCode;
+  if (typeof temp !== "number" || !Number.isFinite(temp)) return null;
+  if (typeof code !== "number" || !Number.isFinite(code)) return null;
+  const rain = forecast?.daily?.[0]?.precipitationProbabilityMax;
+  return {
+    temp,
+    code,
+    isDay: current.isDay === true,
+    rainChance: typeof rain === "number" && Number.isFinite(rain) ? rain : undefined,
+    hasAlert: Array.isArray(forecast?.alerts) ? forecast.alerts.length > 0 : undefined,
+  };
+}
+
+export interface FavoriteMirror {
+  // Was in den Cache geschrieben werden soll, oder null wenn nichts spiegelbar ist.
+  readonly entry: FavWeatherEntry | null;
+  // Ob zusätzlich der reguläre Batch-Abruf angestoßen werden muss. true genau
+  // dann, wenn nichts gespiegelt werden konnte ODER der gespiegelte Stand nach
+  // derselben TTL-Regel bereits veraltet ist.
+  readonly needsFetch: boolean;
+}
+
+// Entscheidet in einem Zug, was ein frisch hinzugefügter Favorit sofort zeigen
+// darf und ob dafür trotzdem noch nachgeladen werden muss. Reine Funktion,
+// damit die Regel ohne DOM prüfbar bleibt.
+export function mirrorForNewFavorite(
+  forecast: Forecast | null | undefined,
+  updatedAt: string,
+  nowMs = Date.now()
+): FavoriteMirror {
+  const weather = favWeatherFromForecast(forecast);
+  // Ohne verwertbaren Zeitstempel lässt sich die Frische nicht beurteilen; ein
+  // Wert ohne beurteilbares Alter darf nicht in den Cache.
+  if (weather === null || !Number.isFinite(Date.parse(updatedAt))) {
+    return { entry: null, needsFetch: true };
+  }
+  const entry: FavWeatherEntry = { ...weather, savedAt: updatedAt };
+  return { entry, needsFetch: isFavWeatherStale(entry, nowMs) };
 }
 
 // Verwaiste Einträge entfernen: behält nur die Orte, deren placeId in validIds
