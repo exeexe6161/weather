@@ -143,8 +143,10 @@ function bindHourlyStrip(el: HTMLElement): void {
     buttons[next].focus();
   });
 
-  // Escape schließt und gibt den Fokus zur Zelle zurück (das Sprachmenü macht den
-  // Rückwurf nicht; hier sinnvoll, da es ein Detail-Panel ist).
+  // Escape schließt und gibt den Fokus zur Zelle zurück. Der Handler greift nur
+  // bei offenem Panel; das Sprachmenü ist seit dem Disclosure-Umbau ebenso
+  // geguardet und wirft den Fokus ebenfalls zurück, deshalb kapert keiner der
+  // beiden dokumentweiten Escape-Handler den Fokus des anderen.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && panelOpen()) closeHourDetail(true);
   });

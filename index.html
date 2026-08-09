@@ -37,8 +37,8 @@
 <meta name="twitter:description" content="Aktuelle Lage, stündliche Werte und 7 Tage Trend. Kostenlos, ohne Anmeldung und ohne Tracking.">
 <meta name="twitter:image" content="https://weatherpure.com/og-image-light.png">
 <title>WeatherPure: Wetter auf das Wesentliche</title>
-<script src="./theme-init.js?v=01617e59ef98"></script>
-<link rel="stylesheet" href="./styles-app.min.css?v=01617e59ef98">
+<script src="./theme-init.js?v=065a5b200e89"></script>
+<link rel="stylesheet" href="./styles-app.min.css?v=065a5b200e89">
 </head>
 <body>
 <div id="splash" role="presentation" aria-hidden="true">
@@ -49,14 +49,14 @@
 
 <div class="top-controls" role="toolbar" data-i18n-aria="settingsAria" aria-label="Einstellungen">
   <div class="top-pill-wrap">
-    <button class="top-pill" id="langSwitch" type="button" aria-haspopup="menu" aria-expanded="false" data-i18n-aria="langAria" aria-label="Sprache wechseln">
+    <button class="top-pill" id="langSwitch" type="button" aria-expanded="false" aria-controls="langMenu" data-i18n-aria="langAria" aria-label="Sprache wechseln">
       <span class="top-pill-text" id="langSwitchLabel">DE</span>
       <svg class="top-pill-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
-    <div class="top-menu" id="langMenu" role="menu" hidden>
-      <button class="top-menu-item" type="button" role="menuitem" data-lang="de">Deutsch</button>
-      <button class="top-menu-item" type="button" role="menuitem" data-lang="en">English</button>
-      <button class="top-menu-item" type="button" role="menuitem" data-lang="tr">Türkçe</button>
+    <div class="top-menu" id="langMenu" hidden>
+      <button class="top-menu-item" type="button" data-lang="de">Deutsch</button>
+      <button class="top-menu-item" type="button" data-lang="en">English</button>
+      <button class="top-menu-item" type="button" data-lang="tr">Türkçe</button>
     </div>
   </div>
   <button class="theme-btn" id="themeBtn" type="button" aria-label="Farbschema wechseln"></button>
@@ -223,6 +223,6 @@
 
 <div id="installHint" hidden></div>
 
-<script src="./script.min.js?v=01617e59ef98"></script>
+<script src="./script.min.js?v=065a5b200e89"></script>
 </body>
 </html>
