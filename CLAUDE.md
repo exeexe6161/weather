@@ -2,6 +2,10 @@
 
 Kurze, dauerhafte Projektentscheidungen und Zustand. Reine Arbeitsregeln stehen global, hier nur Projektspezifisches.
 
+## Entscheidung: Niederschlag und Trockenheit
+
+„Niederschlag“ und „trocken“ beziehen sich auf relevante Niederschlagsarten. Regenwahrscheinlichkeit und Schneewahrscheinlichkeit bleiben getrennte Werte und werden nicht zu einer Gesamtwahrscheinlichkeit verrechnet. `precip_mm` und `totalprecip_mm` werden als allgemeine Niederschlagsmenge in Millimetern beschriftet, `snow_cm` als getrennte Schneemenge. Fehlende Werte bleiben unbekannt, echte Nullwerte bleiben erhalten. Regenspezifische Hinweise und der Favoritenvergleich nach Regenchance bleiben ausdrücklich regenspezifisch.
+
 ## Datenquelle
 
 Wetter, Pollen, Ortssuche und Warnungen laufen ausschließlich über WeatherAPI.com, serverseitig abgerufen (Key nur als Server Environment Variable `WEATHERAPI_KEY`, nie im Client). Kein Open Meteo mehr. Aktueller Tarif: Starter.

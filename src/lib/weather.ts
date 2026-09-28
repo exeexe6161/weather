@@ -3,6 +3,8 @@ import { RequestError } from "./loadError";
 
 export interface CurrentWeather {
   time: string;
+  timeEpoch?: number; // location.localtime_epoch in Sekunden; alte Caches ohne dieses Feld bleiben gültig
+  lastUpdatedEpoch?: number; // current.last_updated_epoch: nur Beobachtungszeit der aktuellen Werte
   temperature: number;
   apparentTemperature: number;
   humidity: number;
@@ -12,9 +14,11 @@ export interface CurrentWeather {
 }
 export interface HourlyEntry {
   time: string;
+  timeEpoch?: number; // hour.time_epoch in Sekunden; unterscheidet wiederholte Ortsstunden
   temperature: number;
   apparentTemperature: number;
-  precipitationProbability: number;
+  precipitationProbability: number | null; // % Regenchance; null: vom Provider nicht verfügbar
+  snowProbability?: number | null; // % chance_of_snow; alte Caches: unbekannt
   weatherCode: number;
   windSpeed?: number; // optional: Forecast-Caches vor dem Trockenfenster-Feature haben das Feld nicht
   // Reichere Stundendaten fürs spätere Stundendetail-Panel. Alle optional:
@@ -23,13 +27,13 @@ export interface HourlyEntry {
   // die Einheiten unabhängig vom aktiven Anbieter stabil.
   relativeHumidity?: number; // %
   dewPoint?: number; // °C
-  precipitation?: number; // mm (Summe der Vorstunde)
+  precipitation?: number; // mm (hour.precip_mm, allgemeine Niederschlagsmenge)
   windDirection?: number; // °
   windGusts?: number; // km/h (Max der Vorstunde)
   cloudCover?: number; // %
   pressure?: number; // hPa (pressure_msl)
   uvIndex?: number; // Index
-  snowfall?: number; // cm (Summe der Vorstunde)
+  snowfall?: number; // cm (hour.snow_cm, getrennte Schneemenge)
   visibility?: number; // m
 }
 export interface DailyEntry {
@@ -37,7 +41,8 @@ export interface DailyEntry {
   weatherCode: number;
   tempMax: number;
   tempMin: number;
-  precipitationProbabilityMax: number;
+  precipitationProbabilityMax: number | null; // % tägliche Regenchance; null: vom Provider nicht verfügbar
+  snowProbabilityMax?: number | null; // % daily_chance_of_snow; alte Caches: unbekannt
   sunrise: string | null; // ISO Zeit lokaler Stationszeit
   sunset: string | null;
   uvIndexMax: number | null;

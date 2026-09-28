@@ -41,6 +41,18 @@ export const weatherLabels: Record<string, Record<Lang, string>> = {
   wmo_thunderstorm:             { de: "Gewitter",             en: "Thunderstorm",         tr: "Gök gürültülü fırtına" },
   wmo_thunderstorm_hail_slight: { de: "Gewitter mit leichtem Hagel", en: "Thunderstorm with slight hail", tr: "Hafif dolu ile fırtına" },
   wmo_thunderstorm_hail_heavy:  { de: "Gewitter mit starkem Hagel",  en: "Thunderstorm with heavy hail",  tr: "Yoğun dolu ile fırtına" },
+  weather_sleet_possible:       { de: "Schneeregen möglich", en: "Sleet possible", tr: "Kar yağmuru olası" },
+  weather_sleet_light:          { de: "Leichter Schneeregen", en: "Light sleet", tr: "Hafif kar yağmuru" },
+  weather_sleet_heavy:          { de: "Mäßiger oder starker Schneeregen", en: "Moderate or heavy sleet", tr: "Orta veya şiddetli kar yağmuru" },
+  weather_ice_pellets:          { de: "Eiskörner", en: "Ice pellets", tr: "Buz tanecikleri" },
+  weather_sleet_showers_light:  { de: "Leichte Schneeregenschauer", en: "Light sleet showers", tr: "Hafif kar yağmuru sağanakları" },
+  weather_sleet_showers_heavy:  { de: "Mäßige oder starke Schneeregenschauer", en: "Moderate or heavy sleet showers", tr: "Orta veya şiddetli kar yağmuru sağanakları" },
+  weather_ice_pellet_showers_light: { de: "Leichte Eiskörnerschauer", en: "Light ice pellet showers", tr: "Hafif buz taneciği sağanakları" },
+  weather_ice_pellet_showers_heavy: { de: "Mäßige oder starke Eiskörnerschauer", en: "Moderate or heavy ice pellet showers", tr: "Orta veya şiddetli buz taneciği sağanakları" },
+  weather_thunder_rain_light:   { de: "Leichter Regen mit Gewitter", en: "Light rain with thunder", tr: "Gök gürültülü hafif yağmur" },
+  weather_thunder_rain_heavy:   { de: "Mäßiger oder starker Regen mit Gewitter", en: "Moderate or heavy rain with thunder", tr: "Gök gürültülü orta veya şiddetli yağmur" },
+  weather_thunder_snow_light:   { de: "Leichter Schnee mit Gewitter", en: "Light snow with thunder", tr: "Gök gürültülü hafif kar" },
+  weather_thunder_snow_heavy:   { de: "Mäßiger oder starker Schnee mit Gewitter", en: "Moderate or heavy snow with thunder", tr: "Gök gürültülü orta veya şiddetli kar" },
   wmo_unknown:                  { de: "Unbekannt",            en: "Unknown",              tr: "Bilinmiyor" },
 };
 
@@ -78,6 +90,8 @@ const shortLabels: Record<string, Record<Lang, string>> = {
   drizzle: { de: "Nieselregen", en: "Drizzle",  tr: "Çiseleme" },
   rain:    { de: "Regen",       en: "Rain",     tr: "Yağmur" },
   snow:    { de: "Schnee",      en: "Snow",     tr: "Kar" },
+  sleet:   { de: "Schneeregen", en: "Sleet",    tr: "Kar yağmuru" },
+  ice:     { de: "Eiskörner",   en: "Ice pellets", tr: "Buz tanecikleri" },
   showers: { de: "Schauer",     en: "Showers",  tr: "Sağanak" },
   thunder: { de: "Gewitter",    en: "Storm",    tr: "Fırtına" },
 };
@@ -111,6 +125,18 @@ const shortGroupByKey: Record<string, keyof typeof shortLabels> = {
   wmo_thunderstorm: "thunder",
   wmo_thunderstorm_hail_slight: "thunder",
   wmo_thunderstorm_hail_heavy: "thunder",
+  weather_sleet_possible: "sleet",
+  weather_sleet_light: "sleet",
+  weather_sleet_heavy: "sleet",
+  weather_ice_pellets: "ice",
+  weather_sleet_showers_light: "sleet",
+  weather_sleet_showers_heavy: "sleet",
+  weather_ice_pellet_showers_light: "ice",
+  weather_ice_pellet_showers_heavy: "ice",
+  weather_thunder_rain_light: "thunder",
+  weather_thunder_rain_heavy: "thunder",
+  weather_thunder_snow_light: "thunder",
+  weather_thunder_snow_heavy: "thunder",
 };
 
 // Ohne Kurzform (unbekannter Code) fällt der Titel auf die volle Beschreibung

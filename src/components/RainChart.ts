@@ -1,7 +1,7 @@
 // RainChart.ts — Niederschlagsmenge der naechsten 24 Stunden als ruhiges
 // Balkendiagramm. Schwester der TempCurve: gleiche Kartenbreite, gleiche
 // x-Geometrie (padL/padR/hoursSpan identisch), damit beide Diagramme zeitlich
-// DECKUNGSGLEICH untereinander sitzen. Regen ist stueckweise (mm je Stunde),
+// DECKUNGSGLEICH untereinander sitzen. Niederschlag ist stueckweise (mm je Stunde),
 // daher Balken statt Linie.
 //
 // Designentscheidungen:
@@ -26,7 +26,7 @@
 // und Hover feuern nie doppelt (pointerType-Gate). Tastatur: ein Tab-Stopp,
 // Pfeiltasten wechseln die Stunde, Enter/Space zeigt, Escape schliesst.
 //
-// SICHTBARKEIT: Das Diagramm zeigt sich NUR, wenn im Fenster nennenswerter Regen
+// SICHTBARKEIT: Das Diagramm zeigt sich NUR, wenn im Fenster eine nennenswerte mm Menge
 // vorkommt (peak >= VISIBLE_MIN_MM). Sonst versteckt es sich selbst
 // (container.hidden = true) — VOR jeder SVG-/Hitbox-Erzeugung, also kein Tooltip
 // moeglich. Ein dauerhaft leeres Regen-Diagramm waere schlechter als keins.
@@ -36,14 +36,13 @@ import { t } from "../i18n/ui";
 
 export interface RainChartInput {
   // Niederschlag (mm) fuer jetzt..+24h, dieselbe Fensterlaenge wie die TempCurve.
-  // Fehlende Werte (alte Caches ohne precipitation) sind als 0 zu uebergeben.
-  precip: number[];
+  // Fehlende Werte (auch aus alten Caches) bleiben unbekannt.
+  precip: Array<number | null | undefined>;
   // ISO-Stationszeit je Stunde (forecast.hourly[].time), Quelle fuer die Tooltip-
   // Uhrzeit ueber formatHour — identisch zum Stundenstreifen.
   times: string[];
-  // Ganzzahlige aktuelle Stunde in STATIONSZEIT (0..23) fuer die Achsenmarken.
-  // Ausserhalb 0..23 -> Marken zeigen nur Offsets ab "jetzt" (+Nh).
-  startHour: number;
+  // Legacy Eingabe alter Aufrufer. Die Achse benutzt ausschließlich times.
+  startHour?: number;
   // BCP-47 Locale fuer mm- und Uhrzeit-Formatierung (de-DE / en / tr).
   locale: string;
   // Aria-Label fuers SVG, i18n t("rain_aria").
@@ -60,7 +59,7 @@ const MIN_BAR = 2;              // px Mindesthoehe fuer v > 0 (Spur-Regen sichtb
 // ueberlebt jeden Re-Render); WeakMap/Set: kein Leak, kein Doppel-Listener.
 interface RcState {
   times: string[];
-  vals: number[];
+  vals: Array<number | null>;
   locale: string;
 }
 const rcData = new WeakMap<HTMLElement, RcState>();
@@ -72,17 +71,17 @@ const rcLastPointer = new WeakMap<HTMLElement, string>();
 
 export function renderRainChart(container: HTMLElement, input: RainChartInput): void {
   const raw = Array.isArray(input.precip) ? input.precip : [];
-  // Defensiv: jeder nicht-endliche Wert (undefined aus altem Cache, NaN) -> 0.
-  const vals = raw.map((v) => (Number.isFinite(v) && (v as number) > 0 ? (v as number) : 0));
+  // Nur echte Zahlen tragen zur Grafik bei; 0 bleibt von fehlend unterscheidbar.
+  const vals = raw.map((v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null));
   if (vals.length === 0) { hide(container); return; }
 
   // peak = hoechste Einzelstunde: skaliert die Balkenhoehen (hoechster Balken =
   // volle Hoehe) UND entscheidet die Sichtbarkeit. Die Summe unten ist NUR
   // Anzeige-Text und beeinflusst weder Hoehen noch Selbst-Hide.
-  const peak = Math.max(...vals);
+  const peak = Math.max(...vals.filter((v): v is number => v !== null));
   if (!(peak >= VISIBLE_MIN_MM)) { hide(container); return; } // deckt 0 und NaN-Peak
-  // Erwartete Gesamtmenge im Fenster (fehlende Werte sind oben schon 0 -> kein NaN).
-  const total = vals.reduce((a, b) => a + b, 0);
+  // Eine Summe ueber unvollstaendige Stunden waere keine 24-Stunden-Menge.
+  const total = vals.every((v) => v !== null) ? vals.reduce((a, b) => a + (b ?? 0), 0) : null;
 
   container.hidden = false;
   // Offenen Tooltip der alten Stadt/des alten Stands schliessen (Re-Render durch
@@ -115,18 +114,19 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   // .rc-base (alpha-basierter Token, theme-aware). Nicht-skalierender Hairline.
   const base = `<line x1="${padL.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${(W - padR).toFixed(2)}" y2="${baseY.toFixed(2)}" class="rc-base" vector-effect="non-scaling-stroke"/>`;
 
-  // Leer-Spur: an JEDER Stunde ein sehr leiser Sockel-Stummel auf der Grundlinie
+  // Leer-Spur: nur fuer bekannte Stunden ein Sockel-Stummel auf der Grundlinie
   // (auch bei precip 0). Erzeugt gleichmaessiges Raster/Rhythmus, ohne laut zu
   // werden; echte Balken ueberdecken ihren Sockel.
   const SOCKET_H = 3;
-  const sockets = vals.map((_v, i) => {
+  const sockets = vals.map((v, i) => {
+    if (v === null) return "";
     const x = xAt(i) - barW / 2;
     const y = baseY - SOCKET_H;
     return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barW.toFixed(2)}" height="${SOCKET_H.toFixed(2)}" rx="${rx.toFixed(2)}" class="rc-socket" data-rc-index="${i}"/>`;
   }).join("");
 
   const bars = vals.map((v, i) => {
-    if (v <= 0) return "";
+    if (v === null || v <= 0) return "";
     const h = Math.max(MIN_BAR, (plotH * v) / peak);
     const x = xAt(i) - barW / 2;
     const y = baseY - h;
@@ -140,15 +140,13 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
 
   // Fuenf gleichmaessig verteilte Zeitmarken (x nach Index, nicht nach Uhrzeit),
   // exakt wie die TempCurve — "jetzt" plus vier Uhrzeiten bzw. +Nh ohne timezone.
-  const startOk = Number.isFinite(input.startHour) && input.startHour >= 0 && input.startHour <= 23;
   const axis: string[] = [];
   for (let k = 0; k < MARKS; k++) {
     const idx = Math.round((k / (MARKS - 1)) * hoursSpan);
+    const time = input.times[idx];
     const label = k === 0
       ? t("nowShort")
-      : startOk
-        ? `${String((input.startHour + idx) % 24).padStart(2, "0")}:00`
-        : `+${idx}h`;
+      : time ? formatHour(time, input.locale) : `+${idx}h`;
     const anchor = idx === 0 ? "start" : idx === hoursSpan ? "end" : "middle";
     axis.push(`<text x="${xAt(idx).toFixed(2)}" y="${(H - 7).toFixed(2)}" class="rc-axis" text-anchor="${anchor}">${esc(label)}</text>`);
   }
@@ -156,8 +154,8 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   // Erwartete GESAMTSUMME oben rechts, beschriftet ("3,2 mm erwartet"), damit klar
   // ist, was die Zahl meint (nicht peak/Schnitt). Menge via fmtMm (locale-aware,
   // identisch zum Panel); Label i18n.
-  const totalLabel = t("rain_total").replace("{value}", fmtMm(total, input.locale));
-  const peakLabel = `<text x="${(W - padR).toFixed(2)}" y="11" class="rc-total" text-anchor="end">${esc(totalLabel)}</text>`;
+  const totalLabel = total === null ? "" : t("rain_total").replace("{value}", fmtMm(total, input.locale));
+  const peakLabel = totalLabel ? `<text x="${(W - padR).toFixed(2)}" y="11" class="rc-total" text-anchor="end">${esc(totalLabel)}</text>` : "";
 
   // Hitboxes: transparente Spalten ueber die VOLLE Hoehe (Balken+Gap), zentriert
   // auf den Stundenpunkt und an die Plotbreite geklemmt. Fokussierbar (Tab),
@@ -194,14 +192,14 @@ export function renderRainChart(container: HTMLElement, input: RainChartInput): 
   if (!rcBound.has(container)) { bindRainChart(container); rcBound.add(container); }
 }
 
-// Tooltip-Text einer Stunde: Uhrzeit (formatHour) · Menge (fmtMm) bzw. "kein
-// Regen" bei 0. Gleiche Formatierung wie Strip/Panel.
-function amountText(v: number, locale: string): string {
-  return v > 0 ? fmtMm(v, locale) : t("rc_dry");
+// Tooltip-Text einer Stunde: Uhrzeit (formatHour) · Niederschlagsmenge (fmtMm).
+// Null bleibt numerisch, da precip_mm keine reine Regenmenge ist.
+function amountText(v: number | null, locale: string): string {
+  return v === null ? "–" : fmtMm(v, locale);
 }
 function tipText(i: number, st: RcState): string {
   const time = formatHour(st.times[i] ?? "", st.locale);
-  return `${time} · ${amountText(st.vals[i] ?? 0, st.locale)}`;
+  return `${time} · ${amountText(st.vals[i] ?? null, st.locale)}`;
 }
 
 // Bindet Hover/Tap/Tastatur EINMAL pro Container (Delegation auf #rainChart, der

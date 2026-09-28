@@ -87,7 +87,7 @@ function bindAlertMore(el: HTMLElement): void {
 // Ohne sie rendert die Sektion blind aus dem Forecast Cache und würde nach einem
 // gescheiterten Refresh "Aktuell keine Wetterwarnungen" über alte Daten
 // schreiben. Die Abstufung selbst liegt in alertsSectionState.
-export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string, freshness: Freshness): void {
+export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alerts: WeatherAlert[] | undefined, timezone: string, freshness: Freshness, showRelativeStatus = true): void {
   bindAlertMore(el); // einmalig; delegiert das Auf- und Zuklappen
   // null statt 0, wenn der Stand gar kein Warnfeld hat (alter Cache): daraus
   // darf weder eine Warnung noch eine Entwarnung abgeleitet werden.
@@ -116,7 +116,7 @@ export function renderWeatherAlerts(el: HTMLElement, heading: HTMLElement, alert
     const title = alert.event || alert.headline;
     const detail = alert.headline && alert.headline !== title ? alert.headline : null;
     const severity = severityKey(alert.severity);
-    const statusKey = alertStatusKey(alert);
+    const statusKey = showRelativeStatus ? alertStatusKey(alert) : null;
     // Severe/Extreme wirken klarer als ein normaler Hinweis: rotes statt
     // orangefarbenes Symbol, zusätzlich die ausgeschriebene Stufe als Badge.
     const critical = severity === "severe" || severity === "extreme";

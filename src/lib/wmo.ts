@@ -45,9 +45,22 @@ export const wmoMap: Record<number, WmoInfo> = {
   95: { icon: "cloud-lightning",                             labelKey: "wmo_thunderstorm" },
   96: { icon: "cloud-hail",                                  labelKey: "wmo_thunderstorm_hail_slight" },
   99: { icon: "cloud-hail",                                  labelKey: "wmo_thunderstorm_hail_heavy" },
+  // Providerzustände ohne eindeutige WMO Entsprechung behalten ihren WeatherAPI Code.
+  1069: { icon: "cloud-snow", labelKey: "weather_sleet_possible" },
+  1204: { icon: "cloud-snow", labelKey: "weather_sleet_light" },
+  1207: { icon: "cloud-snow", labelKey: "weather_sleet_heavy" },
+  1237: { icon: "cloud-hail", labelKey: "weather_ice_pellets" },
+  1249: { icon: "cloud-snow", labelKey: "weather_sleet_showers_light" },
+  1252: { icon: "cloud-snow", labelKey: "weather_sleet_showers_heavy" },
+  1261: { icon: "cloud-hail", labelKey: "weather_ice_pellet_showers_light" },
+  1264: { icon: "cloud-hail", labelKey: "weather_ice_pellet_showers_heavy" },
+  1273: { icon: "cloud-lightning", labelKey: "weather_thunder_rain_light" },
+  1276: { icon: "cloud-lightning", labelKey: "weather_thunder_rain_heavy" },
+  1279: { icon: "cloud-lightning", labelKey: "weather_thunder_snow_light" },
+  1282: { icon: "cloud-lightning", labelKey: "weather_thunder_snow_heavy" },
 };
 
-const fallback: WmoInfo = { icon: "cloud", labelKey: "wmo_unknown" };
+const fallback: WmoInfo = { icon: "circle-question-mark", labelKey: "wmo_unknown" };
 
 export function getWmo(code: number): WmoInfo {
   return wmoMap[code] ?? fallback;
@@ -61,9 +74,17 @@ export function pickIcon(code: number, isDay: boolean): string {
 // Niederschlagscodes nach WMO: 51-99 (Niesel, Regen, gefrierender Regen,
 // Schnee, Schauer, Gewitter). Trockene Codes: 0-48.
 export function isPrecipCode(code: number): boolean {
-  return code >= 51 && code <= 99;
+  return (code >= 51 && code <= 99) || [1069, 1204, 1207, 1237, 1249, 1252, 1261, 1264, 1273, 1276, 1279, 1282].includes(code);
 }
 
 export function isThunderCode(code: number): boolean {
-  return code >= 95 && code <= 99;
+  return (code >= 95 && code <= 99) || [1273, 1276, 1279, 1282].includes(code);
+}
+
+export function isRainCode(code: number): boolean {
+  return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code === 1273 || code === 1276;
+}
+
+export function isSnowCode(code: number): boolean {
+  return (code >= 71 && code <= 77) || (code >= 85 && code <= 86) || [1069, 1204, 1207, 1249, 1252, 1279, 1282].includes(code);
 }

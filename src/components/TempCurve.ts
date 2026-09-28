@@ -25,14 +25,16 @@
 //  - Ruhige Tage (kleine Spanne) bleiben flach statt nervoes zu zacken (FLAT_RANGE).
 
 import { t } from "../i18n/ui";
+import { formatHour } from "../lib/format";
 
 export interface TempCurveInput {
   // Gefuehlte Temperatur fuer jetzt..+24h (idealerweise 25 Werte). Luecken werden
   // linear ueberbrueckt. Mindestens 13 gueltige Werte noetig, sonst versteckt.
   feels: (number | null)[];
-  // Ganzzahlige erste Forecast Stunde (0..23) fuer die Achsenbeschriftung.
-  // Ausserhalb 0..23 -> Marken zeigen nur Offsets ab "jetzt" ohne Uhrzeit.
-  startHour: number;
+  // Ortszeit jeder Forecast Stunde. Die Achse liest die markierten Eintraege
+  // direkt, damit Sommerzeitwechsel keine erfundene Stunde erzeugen.
+  times: string[];
+  locale: string;
   // Hinweis: Die sichtbare Ueberschrift ("GEFÜHLTE TEMPERATUR · 24 STUNDEN") wird
   // NICHT hier gezeichnet, sondern als normaler Kartentitel im HTML ueber der Karte
   // gesetzt — gleiches Muster wie "HEUTE ANZIEHEN" / "NÄCHSTE 24 STUNDEN". So bleiben
@@ -93,15 +95,13 @@ export function renderTempCurve(container: HTMLElement, input: TempCurveInput): 
   }).join('');
 
   // Fuenf gleichmaessig verteilte Markierungen (x nach Index, nicht nach Uhrzeit).
-  const startOk = Number.isFinite(input.startHour) && input.startHour >= 0 && input.startHour <= 23;
   const marks = [];
   for (let k = 0; k < MARKS; k++) {
     const idx = Math.round((k / (MARKS - 1)) * hoursSpan);
+    const time = input.times[idx];
     const label = k === 0
       ? t("nowShort")
-      : startOk
-        ? `${String((input.startHour + idx) % 24).padStart(2, '0')}:00`
-        : `+${idx}h`;
+      : time ? formatHour(time, input.locale) : `+${idx}h`;
     const anchor = idx === 0 ? 'start' : idx === hoursSpan ? 'end' : 'middle';
     marks.push({ idx, x: pts[idx].x, y: pts[idx].y, t: pts[idx].t, label, anchor });
   }

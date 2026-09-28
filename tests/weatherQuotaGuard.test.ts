@@ -27,7 +27,7 @@ interface QuotaDecision {
 }
 
 interface QuotaReservationAdapter {
-  reserve(request: QuotaReservationRequest): Promise<unknown>;
+  reserve(request: QuotaReservationRequest, signal?: AbortSignal): Promise<unknown>;
 }
 
 interface QuotaModule {
@@ -38,12 +38,13 @@ interface QuotaModule {
     fetchImplementation?: typeof fetch;
     timeoutMs?: number;
   }): QuotaReservationAdapter;
-  reserveWeatherProviderQuota(nowMs?: number): Promise<void>;
+  reserveWeatherProviderQuota(nowMs?: number, signal?: AbortSignal): Promise<void>;
   setQuotaReservationAdapterForTesting(adapter: QuotaReservationAdapter | null | undefined): void;
   utcMonthBucket(nowMs: number): string;
   WeatherQuotaProtectionError: new (...args: never[]) => Error;
   WeatherService: {
     getForecast(latitude: number, longitude: number): Promise<unknown>;
+    searchPlaces(query: string, language: string): Promise<unknown>;
   };
 }
 
@@ -132,6 +133,7 @@ function upstashResponse(result: unknown): Response {
 }
 
 const originalKey = process.env.WEATHERAPI_KEY;
+const originalDateNow = Date.now;
 let restoreNetwork: () => void;
 
 beforeEach(() => {
@@ -140,11 +142,29 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  Date.now = originalDateNow;
   quota.setQuotaReservationAdapterForTesting(null);
   if (originalKey === undefined) delete process.env.WEATHERAPI_KEY;
   else process.env.WEATHERAPI_KEY = originalKey;
   restoreNetwork();
 });
+
+async function withUpstashEnvironment(url: string | undefined, token: string | undefined, check: () => Promise<void>): Promise<void> {
+  const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+  else process.env.UPSTASH_REDIS_REST_URL = url;
+  if (token === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  else process.env.UPSTASH_REDIS_REST_TOKEN = token;
+  try {
+    await check();
+  } finally {
+    if (originalUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = originalUrl;
+    if (originalToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+  }
+}
 
 test('successful reservation uses the accepted technical policy and static keys', async () => {
   const adapter = new AtomicQuotaDouble();
@@ -240,6 +260,31 @@ test('Upstash timeout aborts the counter call and the product guard fails closed
   });
 });
 
+test('optional caller abort reaches the Upstash reservation transport', async () => {
+  const controller = new AbortController();
+  let started!: () => void;
+  const transportStarted = new Promise<void>((resolve) => { started = resolve; });
+  let transportAborted = false;
+  const adapter = quota.createUpstashQuotaReservationAdapter({
+    restUrl: 'https://quota.example.invalid',
+    restToken: 'test-rest-token',
+    fetchImplementation: async (_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        transportAborted = true;
+        reject(new DOMException('quota aborted', 'AbortError'));
+      }, { once: true });
+      started();
+    }),
+  });
+  quota.setQuotaReservationAdapterForTesting(adapter);
+
+  const reservation = quota.reserveWeatherProviderQuota(quotaRequest().nowMs, controller.signal);
+  await transportStarted;
+  controller.abort();
+  await assert.rejects(reservation, quota.WeatherQuotaProtectionError);
+  assert.equal(transportAborted, true);
+});
+
 test('invalid Upstash responses fail closed without exposing response details', async () => {
   const adapter = quota.createUpstashQuotaReservationAdapter({
     restUrl: 'https://quota.example.invalid',
@@ -304,6 +349,57 @@ test('unconfigured production guard sleeps instead of blocking weather requests'
     else process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
   }
 });
+
+for (const [name, url, token, checkProvider] of [
+  ['only URL', 'https://quota.example.invalid', undefined, true],
+  ['only token', undefined, 'synthetic-token', true],
+  ['URL with empty token', 'https://quota.example.invalid', '', false],
+  ['token with empty URL', '', 'synthetic-token', false],
+  ['URL with whitespace token', 'https://quota.example.invalid', '  \t  ', false],
+  ['token with whitespace URL', '  \t  ', 'synthetic-token', false],
+] as const) {
+  test(`partial production configuration fails closed before Redis or provider fetch: ${name}`, async () => {
+    await withUpstashEnvironment(url, token, async () => {
+      quota.setQuotaReservationAdapterForTesting(undefined);
+      let fetches = 0;
+      globalThis.fetch = async () => {
+        fetches++;
+        throw new Error('unexpected network request');
+      };
+
+      await assert.rejects(quota.reserveWeatherProviderQuota(quotaRequest().nowMs), (error: Error) => {
+        assert.equal(error.name, 'WeatherQuotaProtectionError');
+        assert.equal(error.message, 'Weather service is temporarily unavailable');
+        return true;
+      });
+      assert.equal(fetches, 0);
+
+      if (checkProvider) {
+        await assert.rejects(quota.WeatherService.searchPlaces(`partial-quota-${name}`, 'de'), quota.WeatherQuotaProtectionError);
+        assert.equal(fetches, 0);
+      }
+    });
+  });
+}
+
+for (const [name, url, token] of [
+  ['empty', '', ''],
+  ['whitespace', '  \t  ', '  \t  '],
+] as const) {
+  test(`both ${name} Upstash values keep the unconfigured production mode`, async () => {
+    await withUpstashEnvironment(url, token, async () => {
+      quota.setQuotaReservationAdapterForTesting(undefined);
+      let fetches = 0;
+      globalThis.fetch = async () => {
+        fetches++;
+        throw new Error('unexpected network request');
+      };
+
+      await quota.reserveWeatherProviderQuota(quotaRequest().nowMs);
+      assert.equal(fetches, 0);
+    });
+  });
+}
 
 test('production adapter reads only the approved server-side Upstash environment names', async () => {
   const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
@@ -428,6 +524,7 @@ test('reservation keys and payload never contain request or secret data', async 
 });
 
 test('WeatherService cache hit performs no additional reservation or provider fetch', async () => {
+  Date.now = () => Date.parse('2026-07-16T10:00:00Z');
   const adapter = new AtomicQuotaDouble();
   quota.setQuotaReservationAdapterForTesting(adapter);
   let fetches = 0;

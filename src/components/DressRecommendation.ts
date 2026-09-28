@@ -61,13 +61,16 @@ export function renderDressToday(el: HTMLElement, forecast: Forecast): void {
   // das Tagesmaximum über der Schwelle lag (Regen war am Vormittag), oder
   // komplett trockener Tag
   const todayMax = forecast.daily[0]?.precipitationProbabilityMax;
+  const rainKnown = hours.length > 0 && hours.every((h) => typeof h.precipitationProbability === "number" && Number.isFinite(h.precipitationProbability));
   const rainText = rain
     ? fill(t("rain_window"), { prob: formatPercent(rain.maxProb), from: rain.fromHour, to: rain.toHour })
     : thunder
       ? t("rain_thunder")
-      : typeof todayMax === "number" && todayMax >= RAIN_PROB_THRESHOLD
-        ? t("rain_none_more")
-        : t("rain_none");
+      : !rainKnown || typeof todayMax !== "number"
+        ? t("rain_unknown")
+        : todayMax >= RAIN_PROB_THRESHOLD
+          ? t("rain_none_more")
+          : t("rain_none");
 
   // Trockenes Fenster: seltener Hinweis, nur an gemischten Tagen mit
   // eigenständiger Information (dryWindowFor prüft alle Bedingungen inkl.

@@ -9,8 +9,12 @@ import type { CurrentWeather, Forecast } from "./weather";
 
 // Eigener WeatherAPI Cache Key, unabhängig von der reinen Favoriten Ortsliste
 // und dem Einzelort Vollforecast.
-const FAV_WEATHER_CACHE_KEY = "weather:weatherapi:favorites-weather";
-const LEGACY_FAV_WEATHER_CACHE_KEY = "weather:favorites-weather";
+// Auch Vollforecast-Spiegelungen konnten früher Ersatznullen enthalten. Nur
+// diesen Wettercache erneuern, niemals die gespeicherte Favoriten-Ortsliste.
+const FAV_WEATHER_CACHE_KEY = "weather:weatherapi:favorites-weather:rain-v2";
+const LEGACY_FAV_WEATHER_CACHE_KEYS = ["weather:favorites-weather", "weather:weatherapi:favorites-weather"];
+let favoriteBatchSeq = 0;
+const latestBatchById = new Map<number, number>();
 
 // Ab diesem Alter gilt ein Cache-Eintrag als veraltet und wird nachgeladen.
 // current-Werte ändern sich selten schneller; schont zugleich das Rate-Limit.
@@ -28,6 +32,9 @@ export interface FavWeather {
 // Cache-Eintrag = FavWeather plus Zeitstempel für die TTL-Prüfung.
 export interface FavWeatherEntry extends FavWeather {
   savedAt: string; // ISO-Zeit
+  // Optional für bestehende gespeicherte Einträge. Nur neue, zusammenhängende
+  // Snapshots sind bestätigt; alte können durch das frühere Merge gemischt sein.
+  snapshotVersion?: 1;
 }
 
 // ── A) Schlanker Multi-Location-Abruf ──────────────────────────────────────
@@ -58,9 +65,8 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
 // wird als leer behandelt (nie ein Crash). Record placeId → Eintrag.
 export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
   const map = new Map<number, FavWeatherEntry>();
-  if (typeof localStorage === "undefined") return map;
   try {
-    localStorage.removeItem(LEGACY_FAV_WEATHER_CACHE_KEY);
+    for (const key of LEGACY_FAV_WEATHER_CACHE_KEYS) localStorage.removeItem(key);
     const raw = localStorage.getItem(FAV_WEATHER_CACHE_KEY);
     if (!raw) return map;
     const parsed: unknown = JSON.parse(raw);
@@ -68,19 +74,22 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
     for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
       const id = Number(key);
       if (!Number.isInteger(id)) continue;
-      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; rainChance?: unknown; hasAlert?: unknown; savedAt?: unknown };
+      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; rainChance?: unknown; hasAlert?: unknown; savedAt?: unknown; snapshotVersion?: unknown };
       if (
         e && typeof e.temp === "number" && Number.isFinite(e.temp) &&
         typeof e.code === "number" && Number.isFinite(e.code) &&
         typeof e.savedAt === "string"
       ) {
         // Schema-Migration: Einträge aus der Zeit vor isDay haben das Feld nicht
-        // → Tag-Fallback. Beim nächsten TTL-Ablauf wird der Eintrag mit echtem
-        // isDay frisch überschrieben. Kein harter Bruch, keine Migration nötig.
+        // → Tag-Fallback. Ohne Snapshot-Kennzeichnung bleibt er als älterer
+        // Stand lesbar und wird regulär nachgeladen. Keine Datenmigration.
         const isDay = typeof e.isDay === "boolean" ? e.isDay : true;
         const rainChance = typeof e.rainChance === "number" && Number.isFinite(e.rainChance) ? e.rainChance : null;
         const hasAlert = typeof e.hasAlert === "boolean" ? e.hasAlert : false;
-        map.set(id, { temp: e.temp, code: e.code, isDay, rainChance, hasAlert, savedAt: e.savedAt });
+        map.set(id, {
+          temp: e.temp, code: e.code, isDay, rainChance, hasAlert, savedAt: e.savedAt,
+          ...(e.snapshotVersion === 1 ? { snapshotVersion: 1 as const } : {}),
+        });
       }
     }
   } catch {
@@ -92,7 +101,6 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
 // Schreibt den Cache zurück. localStorage-Fehler (Quota, privater Modus) werden
 // geschluckt — der Cache ist nur Beschleunigung, kein kritischer Zustand.
 export function writeFavWeatherCache(cache: Map<number, FavWeatherEntry>): void {
-  if (typeof localStorage === "undefined") return;
   const record: Record<string, FavWeatherEntry> = {};
   for (const [id, entry] of cache) record[String(id)] = entry;
   try {
@@ -102,9 +110,10 @@ export function writeFavWeatherCache(cache: Map<number, FavWeatherEntry>): void 
   }
 }
 
-// Ist ein Eintrag älter als die TTL (oder fehlt/ungültig)? Dann muss er neu.
+// Fehlende, ungültige oder nicht als zusammenhängend bestätigte Altbestände
+// sowie Einträge jenseits der unveränderten TTL müssen nachgeladen werden.
 export function isFavWeatherStale(entry: FavWeatherEntry | undefined, nowMs = Date.now()): boolean {
-  if (!entry) return true;
+  if (!entry || entry.snapshotVersion !== 1) return true;
   const savedMs = Date.parse(entry.savedAt);
   if (!Number.isFinite(savedMs)) return true;
   return nowMs - savedMs > FAV_WEATHER_TTL_MIN * 60_000;
@@ -120,6 +129,33 @@ export function getStaleOrMissingFavorites(
   return places.filter((p) => isFavWeatherStale(cache.get(p.id), now));
 }
 
+// Nächster Zeitpunkt, an dem ein bisher frischer Chip veraltet ist. Nur ein
+// Anzeige-Timer, kein Polling und kein zusätzlicher Providerabruf.
+export function nextFavWeatherExpiry(entries: Iterable<FavWeatherEntry>, nowMs = Date.now()): number | null {
+  let next: number | null = null;
+  for (const entry of entries) {
+    if (isFavWeatherStale(entry, nowMs)) continue;
+    const expiresAt = Date.parse(entry.savedAt) + FAV_WEATHER_TTL_MIN * 60_000 + 1;
+    if (next === null || expiresAt < next) next = expiresAt;
+  }
+  return next;
+}
+
+// Jeder neue Stand ersetzt alle Chip-Werte gemeinsam. Fehlende optionale Werte
+// bedeuten keine anzeigbare Regenzahl/kein bestätigtes Warnsignal in diesem
+// Stand; sie dürfen niemals aus dem vorherigen Snapshot ergänzt werden.
+function favoriteSnapshot(weather: FavWeather, savedAt: string): FavWeatherEntry {
+  return {
+    temp: weather.temp,
+    code: weather.code,
+    isDay: weather.isDay,
+    rainChance: weather.rainChance ?? null,
+    hasAlert: weather.hasAlert ?? false,
+    savedAt,
+    snapshotVersion: 1,
+  };
+}
+
 // Einzel-Eintrag spiegeln ("Gratis-Update"): wenn ohnehin der volle Forecast
 // eines Favoriten geladen wurde, dessen current direkt in den Cache schreiben —
 // der Chip ist damit sofort frisch und fällt im nächsten Batch als nicht-stale
@@ -131,16 +167,11 @@ export function getStaleOrMissingFavorites(
 // reguläre Nachladelauf bleibt aus — der Chip zeigte dann einen alten Wert als
 // aktuellen. Ohne Angabe bleibt es beim bisherigen Verhalten.
 export function cacheFavoriteWeather(id: number, weather: FavWeather, savedAt: string = new Date().toISOString()): void {
+  // Eine direkte Forecast-Spiegelung ist neuer als jeder laufende Batch für
+  // denselben Favoriten, auch wenn dessen Antwort erst danach eintrifft.
+  latestBatchById.delete(id);
   const cache = readFavWeatherCache();
-  const previous = cache.get(id);
-  cache.set(id, {
-    temp: weather.temp,
-    code: weather.code,
-    isDay: weather.isDay,
-    rainChance: weather.rainChance ?? previous?.rainChance ?? null,
-    hasAlert: weather.hasAlert ?? previous?.hasAlert ?? false,
-    savedAt,
-  });
+  cache.set(id, favoriteSnapshot(weather, savedAt));
   writeFavWeatherCache(cache);
 }
 
@@ -148,11 +179,9 @@ export function cacheFavoriteWeather(id: number, weather: FavWeather, savedAt: s
 // Reduziert einen Vollforecast auf die schlanke Chip-Form. KEIN Netzzugriff:
 // die Werte stehen bereits auf dem Bildschirm, sie werden nur übernommen.
 //
-// Fehlende Werte werden bewusst als `undefined` zurückgegeben und NICHT als
-// null oder false: cacheFavoriteWeather behält bei `undefined` den vorherigen
-// Wert. Ein Forecast aus der Zeit vor den Warnungen (`alerts` ist optional,
-// s. weather.ts) darf keine Entwarnung erzeugen — "Feld nicht vorhanden" und
-// "keine Warnung" sind zwei verschiedene Aussagen.
+// Fehlende Werte bleiben hier `undefined`. Der neue Snapshot zeigt dafür
+// keine Regenzahl und kein Warnsignal, übernimmt aber auch keinen alten Wert.
+// Das Fehlen eines Warnsignals ist keine bestätigte Entwarnung.
 //
 // null, wenn Temperatur oder Wettercode fehlen: ein Chip ohne diese beiden
 // Werte hätte nichts zu zeigen, dann ist der reguläre Abruf der richtige Weg.
@@ -171,6 +200,13 @@ export function favWeatherFromForecast(forecast: Forecast | null | undefined): F
     rainChance: typeof rain === "number" && Number.isFinite(rain) ? rain : undefined,
     hasAlert: Array.isArray(forecast?.alerts) ? forecast.alerts.length > 0 : undefined,
   };
+}
+
+// Gemeinsamer Produktionspfad für Ortswahl und Refresh: sämtliche Chip-Werte
+// aus demselben Vollforecast mit dessen bereits gesetztem Abrufzeitpunkt.
+export function cacheFavoriteForecast(id: number, forecast: Forecast, savedAt: string): void {
+  const weather = favWeatherFromForecast(forecast);
+  if (weather !== null) cacheFavoriteWeather(id, weather, savedAt);
 }
 
 export interface FavoriteMirror {
@@ -196,7 +232,7 @@ export function mirrorForNewFavorite(
   if (weather === null || !Number.isFinite(Date.parse(updatedAt))) {
     return { entry: null, needsFetch: true };
   }
-  const entry: FavWeatherEntry = { ...weather, savedAt: updatedAt };
+  const entry: FavWeatherEntry = { ...weather, savedAt: updatedAt, snapshotVersion: 1 };
   return { entry, needsFetch: isFavWeatherStale(entry, nowMs) };
 }
 
@@ -206,6 +242,9 @@ export function mirrorForNewFavorite(
 export function pruneFavWeatherCache(validIds: number[]): Map<number, FavWeatherEntry> {
   const cache = readFavWeatherCache();
   const valid = new Set(validIds);
+  for (const id of latestBatchById.keys()) {
+    if (!valid.has(id)) latestBatchById.delete(id);
+  }
   let changed = false;
   for (const id of [...cache.keys()]) {
     if (!valid.has(id)) {
@@ -219,40 +258,41 @@ export function pruneFavWeatherCache(validIds: number[]): Map<number, FavWeather
 
 // ── C) Orchestrierung (reine Funktion, in dieser Etappe noch nicht verdrahtet) ─
 // Liest den Cache, lädt NUR die veralteten/fehlenden Orte in einem Batch-Call
-// nach, merged das Ergebnis in den Cache und gibt die vollständige Map zurück.
+// nach, ersetzt deren Snapshots und gibt die vollständige Map zurück.
 // Ist nichts veraltet → kein Call. Bei Netz-/API-Fehler bleiben die bisherigen
 // Cache-Werte erhalten (leises Scheitern), kein Crash.
 export async function refreshFavoritesWeather(places: Place[]): Promise<Map<number, FavWeatherEntry>> {
   const validIds = places.map((p) => p.id);
-  const cache = readFavWeatherCache();
+  // Nur vor dem Await auf die zu diesem Zeitpunkt übergebenen Favoriten
+  // begrenzen. Ein späterer alter Batch darf neu hinzugefügte Orte nicht löschen.
+  const cache = pruneFavWeatherCache(validIds);
 
   // Nur laden, wenn es Favoriten gibt und etwas veraltet/fehlt — sonst kein Call.
   if (places.length > 0) {
     const stale = getStaleOrMissingFavorites(places, cache);
     if (stale.length > 0) {
+      const batchSeq = ++favoriteBatchSeq;
+      for (const place of stale) latestBatchById.set(place.id, batchSeq);
       try {
         const fresh = await fetchFavoritesWeather(stale);
         const savedAt = new Date().toISOString();
+        const current = readFavWeatherCache();
+        let changed = false;
         for (const [id, w] of fresh) {
-          const previous = cache.get(id);
-          cache.set(id, {
-            temp: w.temp,
-            code: w.code,
-            isDay: w.isDay,
-            rainChance: w.rainChance ?? previous?.rainChance ?? null,
-            hasAlert: w.hasAlert ?? previous?.hasAlert ?? false,
-            savedAt,
-          });
+          if (latestBatchById.get(id) !== batchSeq) continue;
+          current.set(id, favoriteSnapshot(w, savedAt));
+          changed = true;
         }
-        writeFavWeatherCache(cache);
+        if (changed) writeFavWeatherCache(current);
       } catch {
         // Netz/API-Fehler: bestehende Cache-Werte behalten, nicht löschen.
+      } finally {
+        for (const place of stale) {
+          if (latestBatchById.get(place.id) === batchSeq) latestBatchById.delete(place.id);
+        }
       }
     }
   }
 
-  // Immer aufräumen: Cache auf die aktuellen Favoriten beschränken. Fängt auch die
-  // Race-Altlast ab (Etappe 3), falls der Batch einen inzwischen entfernten Ort
-  // zurückgab, und leert bei leeren Favoriten den Cache vollständig.
-  return pruneFavWeatherCache(validIds);
+  return readFavWeatherCache();
 }

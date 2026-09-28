@@ -19,6 +19,7 @@ interface ForecastFixtureOptions {
   alerts?: unknown[];
   country?: string;
   rainChance?: number;
+  snowChance?: number;
   region?: string;
   temp?: number;
 }
@@ -28,6 +29,7 @@ export function forecastFixture(options: ForecastFixtureOptions = {}): JsonRecor
     alerts = [],
     country = "Germany",
     rainChance = 42,
+    snowChance = 0,
     region = "Hessen",
     temp = 23,
   } = options;
@@ -38,6 +40,7 @@ export function forecastFixture(options: ForecastFixtureOptions = {}): JsonRecor
     humidity: 55,
     wind_kph: 12,
     chance_of_rain: rainChance,
+    chance_of_snow: snowChance,
     condition: { code: 1000 },
     dewpoint_c: 12,
     precip_mm: 0.4,
@@ -71,6 +74,7 @@ export function forecastFixture(options: ForecastFixtureOptions = {}): JsonRecor
           maxtemp_c: 26,
           mintemp_c: 15,
           daily_chance_of_rain: rainChance,
+          daily_chance_of_snow: snowChance,
           uv: 5,
           maxwind_kph: 24,
           totalprecip_mm: 1.2,

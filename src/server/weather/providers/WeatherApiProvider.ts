@@ -7,6 +7,8 @@ import type { AirQuality, DailyEntry, FavWeather, Forecast, Place, PollenLevels,
 const BASE_URL = "https://api.weatherapi.com/v1";
 const RESULT_COUNT = 5;
 const MAX_QUERY_LEN = 100;
+// History ist optional und soll vom 12-Sekunden-Clientbudget nur einen kleinen Teil nutzen.
+const HISTORY_BUDGET_MS = 3_000;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -24,6 +26,10 @@ function optionalNumber(value: unknown): number | undefined {
   if (value === null || value === undefined || value === "") return undefined;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function optionalProbability(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : undefined;
 }
 
 function requiredNumber(value: unknown, field: string): number {
@@ -67,12 +73,43 @@ export class ProviderHttpError extends Error {
   }
 }
 
-async function requestJson(path: string, params: Record<string, string>): Promise<unknown> {
+function abortError(): Error {
+  return new DOMException("Optional WeatherAPI request aborted", "AbortError");
+}
+
+function untilAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    void operation.catch(() => {});
+    return Promise.reject(abortError());
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener("abort", onAbort, { once: true });
+    operation.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        if (signal.aborted) reject(abortError());
+        else resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function requestJson(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<unknown> {
   const url = apiUrl(path, params);
-  await reserveWeatherProviderQuota();
-  const response = await fetchWithTimeout(url);
+  const reservation = signal ? reserveWeatherProviderQuota(Date.now(), signal) : reserveWeatherProviderQuota();
+  if (signal) await untilAbort(reservation, signal);
+  else await reservation;
+  if (signal?.aborted) throw abortError();
+  const response = signal ? await untilAbort(fetch(url, { signal }), signal) : await fetchWithTimeout(url);
+  if (signal?.aborted) throw abortError();
   if (!response.ok) throw new ProviderHttpError(response.status);
-  return response.json();
+  const body = response.json();
+  return signal ? untilAbort(body, signal) : body;
 }
 
 // WeatherAPI Conditions werden auf das bestehende interne WMO Modell
@@ -82,17 +119,18 @@ export function weatherApiCodeToWmo(code: number): number {
     1000: 0, 1003: 2, 1006: 3, 1009: 3,
     1012: 1012, 1015: 1015, 1018: 1018, 1021: 1021, 1024: 1024, 1027: 1027,
     1030: 45, 1033: 1033, 1036: 1036, 1039: 1039, 1042: 1042, 1045: 1045, 1048: 1048,
-    1063: 80, 1066: 85, 1069: 85, 1072: 56, 1087: 95,
+    1063: 80, 1066: 85, 1069: 1069, 1072: 56, 1087: 95,
     1114: 73, 1117: 75, 1135: 45, 1147: 48,
     1150: 51, 1153: 51, 1168: 56, 1171: 57,
     1180: 80, 1183: 61, 1186: 81, 1189: 63, 1192: 82, 1195: 65,
-    1198: 66, 1201: 67, 1204: 71, 1207: 73,
+    1198: 66, 1201: 67, 1204: 1204, 1207: 1207,
     1210: 85, 1213: 71, 1216: 85, 1219: 73, 1222: 86, 1225: 75,
-    1237: 77, 1240: 80, 1243: 81, 1246: 82,
-    1249: 85, 1252: 86, 1255: 85, 1258: 86, 1261: 85, 1264: 86,
-    1273: 95, 1276: 95, 1279: 96, 1282: 99,
+    1237: 1237, 1240: 80, 1243: 81, 1246: 82,
+    1249: 1249, 1252: 1252, 1255: 85, 1258: 86, 1261: 1261, 1264: 1264,
+    1273: 1273, 1276: 1276, 1279: 1279, 1282: 1282,
   };
-  return map[code] ?? 3;
+  // -1 bleibt im internen Zahlenmodell unbekannt; kein fremder Code wird zu WMO 3.
+  return map[code] ?? -1;
 }
 
 function conditionCode(value: unknown): number {
@@ -101,6 +139,23 @@ function conditionCode(value: unknown): number {
 
 function localIso(value: unknown): string {
   return stringValue(value).replace(" ", "T");
+}
+
+function epochSeconds(value: unknown): number | undefined {
+  const epoch = optionalNumber(value);
+  return epoch !== undefined && Number.isSafeInteger(epoch) ? epoch : undefined;
+}
+
+function hourTime(value: unknown): string {
+  const time = localIso(value);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(time)) {
+    throw new Error("WeatherAPI response missing hour.time");
+  }
+  const parsed = Date.parse(`${time}Z`);
+  if (!Number.isFinite(parsed) || new Date(parsed).toISOString().slice(0, time.length) !== time) {
+    throw new Error("WeatherAPI response missing hour.time");
+  }
+  return time;
 }
 
 function astroIso(date: string, value: unknown): string | null {
@@ -369,17 +424,21 @@ function yesterdayDate(localtime: string): string {
 }
 
 async function getYesterdayMax(latitude: number, longitude: number, localtime: string): Promise<number | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HISTORY_BUDGET_MS);
   try {
     const data = record(await requestJson("history.json", {
       q: `${latitude},${longitude}`,
       dt: yesterdayDate(localtime),
-    }));
+    }, controller.signal));
     const days = record(data.forecast).forecastday;
     if (!Array.isArray(days) || days.length === 0) return null;
     const value = optionalNumber(record(record(days[0]).day).maxtemp_c);
     return value ?? null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -399,6 +458,8 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
 
   const localtime = localIso(location.localtime);
   if (localtime.length < 16) throw new Error("WeatherAPI response missing location.localtime");
+  const currentEpoch = epochSeconds(location.localtime_epoch);
+  const lastUpdatedEpoch = epochSeconds(currentData.last_updated_epoch);
   const currentTemperature = requiredNumber(currentData.temp_c, "current.temp_c");
   const currentHumidity = requiredNumber(currentData.humidity, "current.humidity");
   const currentWind = requiredNumber(currentData.wind_kph, "current.wind_kph");
@@ -406,6 +467,8 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     // Fuer Tagesgrenzen und das rollende Stundenfenster zaehlt die aktuelle
     // Ortszeit. last_updated kann kurz nach Mitternacht noch am Vortag liegen.
     time: localtime,
+    ...(currentEpoch !== undefined ? { timeEpoch: currentEpoch } : {}),
+    ...(lastUpdatedEpoch !== undefined ? { lastUpdatedEpoch } : {}),
     temperature: currentTemperature,
     apparentTemperature: apparentTemperature(currentTemperature, currentHumidity, currentWind),
     humidity: currentHumidity,
@@ -415,21 +478,35 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
   };
 
   const currentHour = `${localtime.slice(0, 13)}:00`;
-  const hourly = forecastDays
-    .flatMap((rawDay) => {
-      const hours = record(rawDay).hour;
-      return Array.isArray(hours) ? hours : [];
-    })
+  const selectedHours: unknown[] = [];
+  hourSelection: for (const rawDay of forecastDays) {
+    const hours = record(rawDay).hour;
+    if (!Array.isArray(hours)) continue;
+    for (const rawHour of hours) {
+      const hour = record(rawHour);
+      const time = hourTime(hour.time);
+      const epoch = epochSeconds(hour.time_epoch);
+      if (currentEpoch !== undefined && epoch !== undefined
+        ? epoch + 3600 <= currentEpoch
+        : time < currentHour) continue;
+      selectedHours.push(rawHour);
+      if (selectedHours.length === 25) break hourSelection;
+    }
+  }
+  const hourly = selectedHours
     .map((rawHour) => {
       const hour = record(rawHour);
       const temperature = requiredNumber(hour.temp_c, "hour.temp_c");
       const humidity = requiredNumber(hour.humidity, "hour.humidity");
       const windSpeed = requiredNumber(hour.wind_kph, "hour.wind_kph");
+      const timeEpoch = epochSeconds(hour.time_epoch);
       return {
         time: localIso(hour.time),
+        ...(timeEpoch !== undefined ? { timeEpoch } : {}),
         temperature,
         apparentTemperature: apparentTemperature(temperature, humidity, windSpeed),
-        precipitationProbability: finiteNumber(hour.chance_of_rain),
+        precipitationProbability: optionalNumber(hour.chance_of_rain) ?? null,
+        snowProbability: optionalProbability(hour.chance_of_snow) ?? null,
         weatherCode: conditionCode(hour.condition),
         windSpeed,
         relativeHumidity: humidity,
@@ -443,9 +520,12 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         snowfall: optionalNumber(hour.snow_cm),
         visibility: optionalNumber(hour.vis_km) === undefined ? undefined : finiteNumber(hour.vis_km) * 1000,
       };
-    })
-    .filter((hour) => hour.time >= currentHour)
-    .slice(0, 25);
+    });
+  // Mit vollständigen Epochwerten auch die wiederholte Ortsstunde absolut
+  // ordnen; bei alten/teilweisen Antworten bleibt die Providerreihenfolge.
+  if (hourly.every((hour) => hour.timeEpoch !== undefined)) {
+    hourly.sort((a, b) => a.timeEpoch! - b.timeEpoch!);
+  }
 
   const daily: DailyEntry[] = forecastDays
     .slice(0, 7)
@@ -459,7 +539,8 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         weatherCode: conditionCode(day.condition),
         tempMax: requiredNumber(day.maxtemp_c, "day.maxtemp_c"),
         tempMin: requiredNumber(day.mintemp_c, "day.mintemp_c"),
-        precipitationProbabilityMax: finiteNumber(day.daily_chance_of_rain),
+        precipitationProbabilityMax: optionalNumber(day.daily_chance_of_rain) ?? null,
+        snowProbabilityMax: optionalProbability(day.daily_chance_of_snow) ?? null,
         sunrise: astroIso(date, astro.sunrise),
         sunset: astroIso(date, astro.sunset),
         uvIndexMax: optionalNumber(day.uv) ?? null,
@@ -497,6 +578,12 @@ function stablePlaceId(place: JsonRecord): number {
   return Math.abs(hash) || 1;
 }
 
+function providerPlaceId(value: unknown): number | undefined {
+  if (typeof value !== "number" && (typeof value !== "string" || !/^[1-9]\d*$/.test(value))) return undefined;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+}
+
 async function searchPlaces(query: string, _language: string): Promise<Place[]> {
   const q = query.trim().slice(0, MAX_QUERY_LEN);
   if (q.length < 3) return [];
@@ -507,8 +594,10 @@ async function searchPlaces(query: string, _language: string): Promise<Place[]> 
     const latitude = optionalNumber(place.lat);
     const longitude = optionalNumber(place.lon);
     if (latitude === undefined || longitude === undefined || stringValue(place.name) === "") return [];
+    const providerId = providerPlaceId(place.id);
     return [{
       id: stablePlaceId(place),
+      ...(providerId === undefined ? {} : { providerId }),
       name: stringValue(place.name),
       latitude,
       longitude,

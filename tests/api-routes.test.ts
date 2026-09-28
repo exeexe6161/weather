@@ -33,6 +33,7 @@ const originalApiKey = process.env.WEATHERAPI_KEY;
 const originalGetForecast = WeatherService.getForecast;
 const originalGetPollen = WeatherService.getPollen;
 const originalGetCurrentBatch = WeatherService.getCurrentBatch;
+const originalDateNow = Date.now;
 
 function request(
   method: string,
@@ -82,6 +83,7 @@ function jsonRequest(method: string, body: unknown): ApiRequest {
 }
 
 afterEach(() => {
+  Date.now = originalDateNow;
   globalThis.fetch = originalFetch;
   if (originalApiKey === undefined) delete process.env.WEATHERAPI_KEY;
   else process.env.WEATHERAPI_KEY = originalApiKey;
@@ -216,6 +218,7 @@ test("geocoding remains GET only", async () => {
 });
 
 test("GET and POST weather share the service cache key", async () => {
+  Date.now = () => Date.parse("2099-07-15T12:00:00Z");
   let providerCalls = 0;
   process.env.WEATHERAPI_KEY = "fixture-key";
   globalThis.fetch = async () => {

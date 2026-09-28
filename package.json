@@ -8,11 +8,13 @@
     "node": "24.x"
   },
   "scripts": {
-    "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > styles-pages.min.css",
-    "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --target=es2020 --outfile=script.min.js",
-    "build:dist": "rm -rf dist && mkdir -p dist && cp index.html impressum.html impressum-en.html impressum-tr.html datenschutz.html datenschutz-en.html datenschutz-tr.html 404.html 404.css 404.js theme-init.js sw.js site.webmanifest browserconfig.xml robots.txt sitemap.xml LICENSES.md favicon.ico favicon.svg favicon-*.png safari-pinned-tab.svg apple-touch-icon.png icon-*.png mstile-150x150.png og-image-*.png styles-app.min.css styles-pages.min.css script.min.js dist/ && cp -R fonts dist/fonts && cp -R logos dist/logos && cp -R licenses dist/licenses",
+    "build:prepare": "rm -rf dist && mkdir -p dist",
+    "build:css": "esbuild styles-app.css --minify --legal-comments=inline --target=es2020 > dist/styles-app.min.css && esbuild styles-pages.css --minify --legal-comments=inline --target=es2020 > dist/styles-pages.min.css",
+    "build:js": "esbuild src/main.ts --bundle --minify --legal-comments=inline --target=es2020 --outfile=dist/script.min.js",
+    "build:dist": "cp impressum.html impressum-en.html impressum-tr.html datenschutz.html datenschutz-en.html datenschutz-tr.html 404.html 404.css 404.js theme-init.js site.webmanifest browserconfig.xml robots.txt sitemap.xml LICENSES.md favicon.ico favicon.svg favicon-*.png safari-pinned-tab.svg apple-touch-icon.png icon-*.png mstile-150x150.png og-image-*.png dist/ && cp -R fonts dist/fonts && cp -R logos dist/logos && cp -R licenses dist/licenses",
     "build:sw": "node build-sw.mjs",
-    "build": "npm run build:css && npm run build:js && npm run build:sw && npm run build:dist",
+    "build:legal-css": "node build-legal-css.mjs",
+    "build": "npm run build:prepare && npm run build:css && npm run build:js && npm run build:sw && npm run build:dist && npm run build:legal-css",
     "build:ios": "npm run build && npx cap sync ios",
     "test": "node tests/run.mjs",
     "typecheck": "tsc --noEmit"

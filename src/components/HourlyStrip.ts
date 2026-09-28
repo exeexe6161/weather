@@ -1,5 +1,5 @@
 import type { Forecast, HourlyEntry } from "../lib/weather";
-import { pickIcon, getWmo } from "../lib/wmo";
+import { pickIcon, getWmo, isSnowCode } from "../lib/wmo";
 import { nightSpans, isNightAt } from "../lib/daylight";
 import { weatherLabel } from "../i18n/weather-labels";
 import { formatHour, formatTemp, formatPercent, formatWind, fmtMm, compassPointFor } from "../lib/format";
@@ -29,6 +29,26 @@ function hourIsDay(iso: string, spans: Spans): boolean {
 // Forecast, sodass ein Klick nach Stadtwechsel/Refresh immer die GERADE
 // angezeigte Stunde auflöst. WeakMap: kein Leak, kein Doppel-Listener.
 const stripForecasts = new WeakMap<HTMLElement, Forecast>();
+
+export function currentHourIndex(forecast: Forecast): number {
+  const currentEpoch = forecast.current.timeEpoch;
+  if (typeof currentEpoch === "number" && Number.isFinite(currentEpoch)) {
+    const containsNow = forecast.hourly.findIndex((hour) =>
+      typeof hour.timeEpoch === "number" && Number.isFinite(hour.timeEpoch) &&
+      hour.timeEpoch <= currentEpoch && currentEpoch < hour.timeEpoch + 3600);
+    if (containsNow >= 0) return containsNow;
+    const next = forecast.hourly.findIndex((hour) =>
+      typeof hour.timeEpoch === "number" && Number.isFinite(hour.timeEpoch) && hour.timeEpoch > currentEpoch);
+    if (next >= 0) return next;
+  }
+  // Alte Forecast-Caches kennen Epoch nicht; ihre bisherige Reihenfolge und
+  // der lokale Stundenvergleich bleiben als Fallback erhalten.
+  const stamp = forecast.current.time.slice(0, 13);
+  const sameHour = forecast.hourly.findIndex((hour) => hour.time.slice(0, 13) === stamp);
+  if (sameHour >= 0) return sameHour;
+  const next = forecast.hourly.findIndex((hour) => hour.time >= forecast.current.time);
+  return next >= 0 ? next : 0;
+}
 
 export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen = false): boolean {
   // Die Zellen werden gleich neu erzeugt → ein offenes Panel gehört zur alten
@@ -80,14 +100,9 @@ export function renderHourlyStrip(el: HTMLElement, forecast: Forecast, autoOpen 
   let didAutoOpen = false;
   if (autoOpen && forecast.hourly.length > 0) {
     // Aktuelle Stunde = die Stunde, die "jetzt" enthält (z. B. 03:12 → 03:00),
-    // nicht die nächste volle Stunde. Verglichen wird der Stundenstempel
-    // YYYY-MM-DDTHH. Der Provider filtert hourly ohnehin ab der laufenden Stunde,
-    // daher ist das im Normalfall Index 0; der Stempelvergleich bleibt robust
-    // gegen alte Caches. Kein Treffer → erster verfügbarer Eintrag (Index 0).
-    const nowHourStamp = forecast.current.time.slice(0, 13);
-    let autoIdx = forecast.hourly.findIndex((h) => h.time.slice(0, 13) === nowHourStamp);
-    if (autoIdx < 0) autoIdx = forecast.hourly.findIndex((h) => h.time >= forecast.current.time);
-    if (autoIdx < 0) autoIdx = 0;
+    // nicht die nächste volle Stunde. Epoch unterscheidet die doppelte Stunde
+    // im Herbst; alte Caches fallen auf den lokalen Stundenstempel zurück.
+    const autoIdx = currentHourIndex(forecast);
     const autoHour = forecast.hourly[autoIdx];
     const autoBtn = el.querySelector<HTMLButtonElement>(`.hour-cell[data-hour-index="${autoIdx}"]`);
     if (autoBtn) {
@@ -315,16 +330,18 @@ const SICHT_GRENZE = 5000; // Meter
 function buildPanelHtml(hour: HourlyEntry, icon: string, time: string, label: string, locale: string): string {
   const primaryRows: string[] = [];
   const advancedRows: string[] = [];
-  // Basis: Temperatur, Gefühlt und Niederschlagswahrscheinlichkeit liegen immer
-  // vor (Pflichtfelder bzw. Default 0).
+  // Basis: Temperatur, Gefühlt und Regenwahrscheinlichkeit. Für eine fehlende
+  // Wahrscheinlichkeit zeigt der gemeinsame Formatter den Platzhalter.
   primaryRows.push(metaRow(t("temperature"), formatTemp(hour.temperature)));
   primaryRows.push(metaRow(t("feelsLike"), formatTemp(hour.apparentTemperature)));
   primaryRows.push(metaRow(t("precipProbability"), formatPercent(hour.precipitationProbability)));
+  if (isSnowCode(hour.weatherCode) || (isNum(hour.snowProbability) && hour.snowProbability > 0)) {
+    primaryRows.push(metaRow(t("snowProbability"), formatPercent(hour.snowProbability)));
+  }
   // Optionale Felder: Zeile NUR bei echtem Zahlenwert, sonst weglassen (kein NaN,
   // kein "undefined"; alte Caches ohne diese Felder zeigen nur die Basis).
   if (isNum(hour.precipitation) && hour.precipitation > 0) primaryRows.push(metaRow(t("precipAmount"), fmtMm(hour.precipitation, locale)));
-  // Schnee nahe dem Niederschlag: nur wenn in dieser Stunde wirklich Schnee fällt
-  // (Sommer/snowfall 0 → Zeile entfällt, genau so gewollt).
+  // Schneemenge getrennt von der mm Niederschlagsmenge, nur bei positivem Wert.
   if (isNum(hour.snowfall) && hour.snowfall > 0) primaryRows.push(metaRow(t("snow"), fmtCm(hour.snowfall, locale)));
   if (isNum(hour.windSpeed)) primaryRows.push(metaRow(t("wind"), formatWind(hour.windSpeed)));
   if (isNum(hour.relativeHumidity)) primaryRows.push(metaRow(t("humidity"), formatPercent(hour.relativeHumidity)));

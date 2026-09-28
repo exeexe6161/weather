@@ -49,10 +49,11 @@ export async function getOrSet<T>(
   key: string,
   ttlMs: number,
   load: () => Promise<T>,
-  shouldCache: (value: T) => boolean = () => true
+  shouldCache: (value: T) => boolean = () => true,
+  isCachedValid: (value: T) => boolean = () => true
 ): Promise<T> {
   const cached = get<T>(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined && isCachedValid(cached)) return cached;
   const existing = pending.get(key) as Promise<T> | undefined;
   if (existing) return existing;
   const request = load()

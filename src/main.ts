@@ -5,6 +5,8 @@ import { initApp } from "./app";
 import { initInstallHint } from "./components/InstallHint";
 import { renderIcons } from "./icons";
 import { isNativeApp } from "./lib/platform";
+import { showToast } from "./lib/toast";
+import { watchServiceWorkerUpdates } from "./lib/serviceWorkerUpdate";
 
 // Sprachwahl als Disclosure, nicht als ARIA-Menü: der Auslöser trägt
 // aria-expanded und aria-controls, das Popup ist ein schlichtes div, die
@@ -138,6 +140,25 @@ function registerServiceWorker(): void {
   // wirkungslos, das Web-Bundle wird lokal aus dem App-Container geladen.
   if (isNativeApp()) return;
   if (!("serviceWorker" in navigator)) return;
+  let updateVisible = false;
+  let reloadAction: () => void = () => {};
+  const showUpdate = (): void => {
+    if (!updateVisible) return;
+    showToast(t("updateAvailable"), {
+      label: t("reloadApp"),
+      persistent: true,
+      onAction: reloadAction,
+    });
+  };
+  document.addEventListener("weather:langchange", showUpdate);
+  watchServiceWorkerUpdates(navigator.serviceWorker, (reload) => {
+    updateVisible = true;
+    reloadAction = () => {
+      updateVisible = false;
+      reload();
+    };
+    showUpdate();
+  }, () => window.location.reload());
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });

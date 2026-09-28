@@ -45,6 +45,7 @@ export interface StageSegment {
   stage: StageKey;
   fromHour: number;
   toHour: number; // exklusiv: Startstunde des nächsten Segments bzw. Tagesende
+  durationHours?: number; // Anzahl tatsächlicher Forecast Stunden, auch bei Zeitumstellung
 }
 
 // Aufeinanderfolgende Stunden gleicher Stufe zu Segmenten zusammenfassen
@@ -54,8 +55,10 @@ export function segmentsFor(hours: HourlyEntry[]): StageSegment[] {
     const stage = stageFor(h.apparentTemperature);
     const hour = hourOf(h.time);
     const last = segments[segments.length - 1];
-    if (last && last.stage === stage) last.toHour = hour + 1;
-    else segments.push({ stage, fromHour: hour, toHour: hour + 1 });
+    if (last && last.stage === stage) {
+      last.toHour = hour + 1;
+      last.durationHours = (last.durationHours ?? 0) + 1;
+    } else segments.push({ stage, fromHour: hour, toHour: hour + 1, durationHours: 1 });
   }
   return segments;
 }
@@ -82,7 +85,7 @@ const STAGE_ORDER: StageKey[] = [
 ];
 const stageRank = (stage: StageKey): number => STAGE_ORDER.indexOf(stage);
 const stageGap = (a: StageKey, b: StageKey): number => Math.abs(stageRank(a) - stageRank(b));
-const durationOf = (s: StageSegment): number => s.toHour - s.fromHour;
+const durationOf = (s: StageSegment): number => s.durationHours ?? s.toHour - s.fromHour;
 
 // Verschmilzt zwei benachbarte Segmente; das längere bestimmt die Stufe (bei
 // Gleichstand die wärmere, also frühere im STAGE_ORDER).
@@ -91,7 +94,8 @@ function mergeSegments(a: StageSegment, b: StageSegment): StageSegment {
     durationOf(a) > durationOf(b) ? a.stage
     : durationOf(b) > durationOf(a) ? b.stage
     : stageRank(a.stage) <= stageRank(b.stage) ? a.stage : b.stage;
-  return { stage, fromHour: a.fromHour, toHour: b.toHour };
+  return { stage, fromHour: a.fromHour, toHour: b.toHour,
+    durationHours: a.durationHours !== undefined || b.durationHours !== undefined ? durationOf(a) + durationOf(b) : undefined };
 }
 
 // Aufeinanderfolgende Segmente gleicher Stufe zusammenziehen
@@ -99,7 +103,8 @@ function coalesceSegments(segments: StageSegment[]): StageSegment[] {
   const out: StageSegment[] = [];
   for (const seg of segments) {
     const last = out[out.length - 1];
-    if (last && last.stage === seg.stage) out[out.length - 1] = { ...last, toHour: seg.toHour };
+    if (last && last.stage === seg.stage) out[out.length - 1] = { ...last, toHour: seg.toHour,
+      durationHours: last.durationHours !== undefined || seg.durationHours !== undefined ? durationOf(last) + durationOf(seg) : undefined };
     else out.push({ ...seg });
   }
   return out;
@@ -135,6 +140,7 @@ function mergeNuances(segments: StageSegment[]): StageSegment[] {
   interface Group {
     fromHour: number;
     toHour: number;
+    durationHours?: number;
     minRank: number;
     maxRank: number;
     hoursByStage: Map<StageKey, number>;
@@ -144,6 +150,9 @@ function mergeNuances(segments: StageSegment[]): StageSegment[] {
     const rank = stageRank(seg.stage);
     const last = groups[groups.length - 1];
     if (last && Math.max(last.maxRank, rank) - Math.min(last.minRank, rank) < STAGE_DISTINCT_GAP) {
+      if (last.durationHours !== undefined || seg.durationHours !== undefined) {
+        last.durationHours = (last.durationHours ?? last.toHour - last.fromHour) + durationOf(seg);
+      }
       last.toHour = seg.toHour;
       last.minRank = Math.min(last.minRank, rank);
       last.maxRank = Math.max(last.maxRank, rank);
@@ -152,6 +161,7 @@ function mergeNuances(segments: StageSegment[]): StageSegment[] {
       groups.push({
         fromHour: seg.fromHour,
         toHour: seg.toHour,
+        durationHours: seg.durationHours,
         minRank: rank,
         maxRank: rank,
         hoursByStage: new Map([[seg.stage, durationOf(seg)]]),
@@ -167,7 +177,7 @@ function mergeNuances(segments: StageSegment[]): StageSegment[] {
         best = h;
       }
     }
-    return { stage, fromHour: g.fromHour, toHour: g.toHour };
+    return { stage, fromHour: g.fromHour, toHour: g.toHour, durationHours: g.durationHours };
   });
 }
 
@@ -232,7 +242,7 @@ export interface RainWindow {
 export function rainWindowFor(hours: HourlyEntry[]): RainWindow | null {
   let window: RainWindow | null = null;
   for (const h of hours) {
-    if (h.precipitationProbability >= RAIN_PROB_THRESHOLD) {
+    if (typeof h.precipitationProbability === "number" && h.precipitationProbability >= RAIN_PROB_THRESHOLD) {
       const hour = hourOf(h.time);
       if (!window) window = { maxProb: h.precipitationProbability, fromHour: hour, toHour: hour + 1 };
       else {

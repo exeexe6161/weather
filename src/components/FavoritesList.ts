@@ -1,5 +1,5 @@
 import type { Place } from "../lib/geocoding";
-import type { FavWeather } from "../lib/favoritesWeather";
+import { isFavWeatherStale, type FavWeatherEntry } from "../lib/favoritesWeather";
 import { pickIcon, getWmo } from "../lib/wmo";
 import { weatherLabel } from "../i18n/weather-labels";
 import { formatTemp } from "../lib/format";
@@ -23,7 +23,8 @@ export function renderFavoritesList(
   // so springt die Zeile beim Nachladen nicht (kein Shimmer, nur reservierter
   // Platz). Wettercode → Zustand-Label wie in CurrentWeather, Code+isDay → Icon
   // über dieselbe pickIcon-Zuordnung wie überall sonst.
-  weather: ReadonlyMap<number, FavWeather> = new Map()
+  weather: ReadonlyMap<number, FavWeatherEntry> = new Map(),
+  nowMs = Date.now()
 ): void {
   const section = el.closest("section");
   if (section) (section as HTMLElement).hidden = favorites.length === 0;
@@ -33,7 +34,7 @@ export function renderFavoritesList(
   const showMove = favorites.length > 1;
   const comparable = favorites.flatMap((place) => {
     const wx = weather.get(place.id);
-    return wx ? [{ place, wx }] : [];
+    return wx && !isFavWeatherStale(wx, nowMs) ? [{ place, wx }] : [];
   });
   const temperatureSpread = comparable.length > 1
     ? Math.max(...comparable.map((item) => item.wx.temp)) - Math.min(...comparable.map((item) => item.wx.temp))
@@ -51,9 +52,10 @@ export function renderFavoritesList(
     .map((p, i) => {
       const active = p.id === activeId;
       const wx = weather.get(p.id);
+      const stale = wx !== undefined && isFavWeatherStale(wx, nowMs);
       const condition = wx ? weatherLabel(getWmo(wx.code).labelKey, lang) : "";
       const rain = wx && typeof wx.rainChance === "number" ? `${Math.round(wx.rainChance)} %` : "";
-      const sub = wx ? esc([condition, rain ? `${rain} ${t("favRain")}` : ""].filter(Boolean).join(" · ")) : "";
+      const sub = wx ? esc([stale ? t("favStale") : "", condition, rain ? `${rain} ${t("favRain")}` : ""].filter(Boolean).join(" · ")) : "";
       const vals = wx
         ? `${wx.hasAlert ? `<i data-lucide="triangle-alert" class="fav-row-alert" aria-hidden="true"></i>` : ""}<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-row-wx-ico"></i><span class="fav-row-temp">${esc(formatTemp(wx.temp))}</span>`
         : "";
@@ -79,7 +81,7 @@ export function renderFavoritesList(
         : "";
       // data-id: app.ts hebt nach dem Umsortieren die bewegte Zeile darüber hervor.
       return `<li class="fav-row${active ? " fav-row--active" : ""}" data-id="${p.id}">
-        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${wx?.hasAlert ? `. ${esc(t("favAlert"))}` : ""}">
+        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${stale ? `. ${esc(t("favStale"))}` : ""}${wx?.hasAlert ? `. ${esc(t("favAlert"))}` : ""}">
           <span class="fav-row-id">
             <span class="fav-row-name">${esc(p.name)}</span>
             <span class="fav-row-sub">${sub}</span>

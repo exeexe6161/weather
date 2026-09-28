@@ -3,7 +3,7 @@
 // Dieses Modul liefert nur i18n Keys (Ebene 1: fertiger Satz, Ebene 2:
 // Bausteine); die sichtbare Copy entsteht in der Komponente über die uiLabels.
 import type { Forecast } from "./weather";
-import { isPrecipCode, isThunderCode } from "./wmo";
+import { getWmo, isPrecipCode, isRainCode, isThunderCode } from "./wmo";
 import { todayHours, rainWindowFor, hourOf, RAIN_PROB_THRESHOLD } from "./clothing";
 import { UV_SHOW_THRESHOLD } from "./uv";
 
@@ -31,7 +31,7 @@ export const NIGHT_UNTIL = 6; // exklusiv: ab 6 Uhr wieder Tag
 export type TimeOfDay = "day" | "evening" | "night";
 
 type Band = "frosty" | "cold" | "cool" | "mild" | "warm" | "hot";
-type Sky = "sunny" | "friendly" | "cloudy" | "overcast" | "grey" | "rain" | "thunder";
+type Sky = "sunny" | "friendly" | "cloudy" | "overcast" | "grey" | "rain" | "precip" | "thunder";
 
 export type Summary =
   | { kind: "fixed"; key: string }
@@ -79,7 +79,8 @@ function skyFor(code: number): Sky {
   if (code === 45 || code === 48) return "grey";
   if (code >= 1012 && code <= 1048) return "grey";
   if (isThunderCode(code)) return "thunder";
-  return "rain"; // 51-94: Niesel, Regen, Schnee, Schauer
+  if (isRainCode(code)) return "rain";
+  return "precip"; // Schnee, Schneeregen und Eiskörner sind kein Regen.
 }
 
 // Wählt zuerst eine Ebene 1 Lage (fertiger Satz), sonst Ebene 2 (Bausteine).
@@ -91,6 +92,7 @@ export function summaryFor(forecast: Forecast): Summary | null {
   if (
     typeof c?.apparentTemperature !== "number" ||
     typeof c?.weatherCode !== "number" ||
+    getWmo(c.weatherCode).labelKey === "wmo_unknown" ||
     typeof c?.time !== "string"
   ) {
     return null;
@@ -113,16 +115,28 @@ export function summaryFor(forecast: Forecast): Summary | null {
   const rest = todayHours(forecast.hourly ?? [], c.time);
   const nowHour = localHour(forecast.timezone);
   const soon = (startHour: number): boolean => nowHour !== null && startHour - nowHour <= RAIN_SOON_HOURS;
-  const rainNow = isPrecipCode(c.weatherCode) && sky !== "thunder";
+  const rainNow = isRainCode(c.weatherCode);
   const rw = rainWindowFor(rest);
   const rainLater = !rainNow && rw !== null && soon(rw.fromHour);
   const thunderStart = rest.find((h) => typeof h.weatherCode === "number" && isThunderCode(h.weatherCode));
   const thunderLater = thunderStart !== undefined && soon(hourOf(thunderStart.time));
+  const thunderRainLater = thunderLater && thunderStart !== undefined && isRainCode(thunderStart.weatherCode);
   const todayMax = forecast.daily?.[0]?.precipitationProbabilityMax;
-  // Regen war heute, Rest trocken (gleiche Logik wie die Anziehempfehlung)
+  const rainKnown = rest.length > 0 && rest.every((h) => typeof h.precipitationProbability === "number" && Number.isFinite(h.precipitationProbability));
+  const precipKnown = rainKnown && rest.every((h) =>
+    typeof h.snowProbability === "number" && Number.isFinite(h.snowProbability)
+  );
+  const precipLater = rest.some((h) =>
+    isPrecipCode(h.weatherCode) ||
+    (typeof h.precipitation === "number" && h.precipitation > 0) ||
+    (typeof h.snowfall === "number" && h.snowfall > 0) ||
+    (typeof h.precipitationProbability === "number" && h.precipitationProbability >= RAIN_PROB_THRESHOLD) ||
+    (typeof h.snowProbability === "number" && h.snowProbability >= RAIN_PROB_THRESHOLD)
+  );
+  // Regen war heute, der bekannte Rest ist ohne Regen oder Schnee.
   const rainWasOver =
-    !rainNow && !rainLater && typeof todayMax === "number" && todayMax >= RAIN_PROB_THRESHOLD;
-  const dry = !rainNow && !rainLater;
+    !precipLater && !isPrecipCode(c.weatherCode) && precipKnown && typeof todayMax === "number" && todayMax >= RAIN_PROB_THRESHOLD;
+  const dry = !isPrecipCode(c.weatherCode) && !precipLater && precipKnown;
 
   // Abendstunden (EVENING_FROM bis NIGHT_FROM, Ortszeit) aus dem heutigen Rest.
   // Das Minimum der gefühlten Temperatur entscheidet, ob der "abends kühler"
@@ -151,11 +165,11 @@ export function summaryFor(forecast: Forecast): Summary | null {
     // Übriger klarer Himmel (cool/heiß) außerhalb der Nacht-Sätze: "sonnig" wäre
     // nachts Unsinn, also Zeile weglassen. Bewölkte Lagen sind zeitneutral → Ebene 2.
     if (clearish) return null;
-    return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh: false, tod, isDay: c.isDay });
+    return modular(band, sky, { rainNow, rainLater, thunderLater, thunderRainLater, windy, uvHigh: false, tod, isDay: c.isDay });
   }
 
   // ── Ebene 1, geordnete Liste: erster Treffer gewinnt
-  if (thunderLater && humid) return { kind: "fixed", key: "sum1_thunder_humid" };
+  if (thunderRainLater && humid) return { kind: "fixed", key: "sum1_thunder_humid" };
   if (rainNow && band === "mild") return { kind: "fixed", key: "sum1_rain_mild" };
   if (tod === "evening" && band === "mild" && rainWasOver) return { kind: "fixed", key: "sum1_rain_over_evening" };
   if (band === "hot" && humid) return { kind: "fixed", key: "sum1_hot_humid" };
@@ -187,13 +201,14 @@ export function summaryFor(forecast: Forecast): Summary | null {
   if (band === "frosty" && clearish && dry) return { kind: "fixed", key: "sum1_frosty_clear" };
 
   // ── Ebene 2, modular
-  return modular(band, sky, { rainNow, rainLater, thunderLater, windy, uvHigh, tod, isDay: c.isDay });
+  return modular(band, sky, { rainNow, rainLater, thunderLater, thunderRainLater, windy, uvHigh, tod, isDay: c.isDay });
 }
 
 interface ModularContext {
   rainNow: boolean;
   rainLater: boolean;
   thunderLater: boolean;
+  thunderRainLater: boolean;
   windy: boolean;
   uvHigh: boolean;
   tod: TimeOfDay;
@@ -202,9 +217,9 @@ interface ModularContext {
 
 function modular(band: Band, sky: Sky, ctx: ModularContext): Summary | null {
   // Laufender Niederschlag/Gewitter hat kein eigenes Himmelswort in den
-  // Bausteinen; "grau" plus Schirm-Schluss trägt die Information.
+  // Bausteinen; der genaue Zustand steht bereits in der Wetterkarte.
   const skyKey =
-    sky === "rain" || sky === "thunder"
+    sky === "rain" || sky === "precip" || sky === "thunder"
       ? "sum_s_grey"
       : sky === "sunny"
         ? ctx.isDay ? "sum_s_sunny" : "sum_s_clear" // nach Sonnenuntergang "klar" statt "sonnig"
@@ -228,7 +243,7 @@ function modular(band: Band, sky: Sky, ctx: ModularContext): Summary | null {
   // Schluss: nur wenn handlungsrelevant und tageszeitlich passend, höchstens
   // einer (Schirm vor Sonnenschutz vor warm anziehen)
   const closer =
-    ctx.rainNow || ctx.rainLater || ctx.thunderLater
+    ctx.rainNow || ctx.rainLater || ctx.thunderRainLater
       ? "sum_c_umbrella"
       : ctx.uvHigh && ctx.tod === "day" && (sky === "sunny" || sky === "friendly")
         ? "sum_c_sun"

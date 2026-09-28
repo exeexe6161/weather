@@ -4,37 +4,37 @@
 import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { classifyLoadError, failTitleKey, type LoadErrorKind } from "./lib/loadError";
-import { decideLinkResolution } from "./lib/linkResolution";
+import { decideLinkResolution, decideProviderLinkResolution, placeLinkUrl, readPlaceLink, type PlaceLink } from "./lib/linkResolution";
 import { fetchPollen, POLLEN_LOADING, type PollenResult } from "./lib/pollen";
 import type { Freshness } from "./lib/sectionState";
 import { renderPollenList } from "./components/PollenList";
 import { renderAirQuality } from "./components/AirQuality";
 import { renderWeatherAlerts } from "./components/WeatherAlerts";
 import { renderTodayHighlights } from "./components/TodayHighlights";
-import { MAX_FAVORITES, getFavorites, isFavorite, addFavorite, removeFavorite, insertFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
+import { MAX_FAVORITES, getFavorites, readFavoritesForMutation, isPlace, isFavorite, addFavorite, removeFavorite, insertFavorite, moveFavorite, pruneGeoFavorites } from "./lib/favorites";
 import { getLang, getLocale, t, type Lang } from "./i18n/ui";
 import { showToast } from "./lib/toast";
 import { getWmo } from "./lib/wmo";
 import { weatherLabel, weatherLabelShort } from "./i18n/weather-labels";
 import { shareText, shareImage, decideSharePath, type ShareCapabilities } from "./lib/share";
 import { renderWeatherCard } from "./lib/shareImage";
-import { formatTemp, formatStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
+import { formatTemp, formatStampInZone, formatObservationStampInZone, formatHour, formatWeekdayLong } from "./lib/format";
 import { initSearchBar, closeSearch } from "./components/SearchBar";
 import { renderCurrentWeather, stopLocalTimeTicker } from "./components/CurrentWeather";
 import { renderDressToday } from "./components/DressRecommendation";
 import { renderHourlyStrip } from "./components/HourlyStrip";
-import { renderTempCurve, forecastStartHour, type TempCurveInput } from "./components/TempCurve";
+import { renderTempCurve, type TempCurveInput } from "./components/TempCurve";
 import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast, resetDailyPanelToToday } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
-import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, pruneFavWeatherCache, mirrorForNewFavorite } from "./lib/favoritesWeather";
-import { getUsableForecast, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
+import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, cacheFavoriteForecast, pruneFavWeatherCache, mirrorForNewFavorite, nextFavWeatherExpiry } from "./lib/favoritesWeather";
+import { getRecentForecast, isForecastEntryTooOld, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
+import { isForecastForCurrentLocalDay } from "./lib/forecastDay";
 import { bestWeatherDayKey } from "./lib/weekSummary";
 import { renderIcons } from "./icons";
 import { byId } from "./dom";
 
 const LAST_PLACE_KEY = "weather:last-place";
-const CITY_PARAM = "stadt"; // teilbare URL: ?stadt=trabzon
 const DEFAULT_FORECAST_DAYS = 7;
 
 // Frische der Anzeige: "fresh" = aktuelle Netzdaten, "stale" = Sofort-Anzeige
@@ -61,6 +61,15 @@ interface State {
 
 const state: State = { place: null, forecast: null, pollen: POLLEN_LOADING, freshness: "fresh", failReason: null, updatedAt: "" };
 
+// Asynchrone Ortsvorstufen dürfen nur die zuletzt begonnene Auswahl abschließen.
+// Der Wetterabruf nach selectPlace bleibt unabhängig durch loadSeq geschützt.
+let selectionIntent = 0;
+function beginSelectionIntent(): number {
+  closeSearch();
+  return ++selectionIntent;
+}
+function isCurrentSelectionIntent(intent: number): boolean { return intent === selectionIntent; }
+
 // Ist der Browser gerade online? navigator.onLine === false ist verlässlich für
 // "keine Verbindung"; true heißt nur, dass eine Schnittstelle aktiv ist, nicht
 // dass der Dienst erreichbar wäre. Genau diese Asymmetrie bildet
@@ -80,19 +89,33 @@ function isOnline(): boolean {
 // daher liegt das Flag hier. Startwert true = Auto-Open beim ersten Laden.
 let hourlyAutoOpenArmed = true;
 
-function readJson<T>(key: string): T | null {
-  if (typeof localStorage === "undefined") return null;
+export function readStoredLastPlace(): Place | null {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    const raw = localStorage.getItem(LAST_PLACE_KEY);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (isPlace(value) && value.id !== GEO_PLACE_ID) return value;
+    // Ungültige Altstände dürfen auch bei fehlgeschlagener Löschung nicht
+    // wieder als letzter Ort in den laufenden Start gelangen.
+    try { localStorage.removeItem(LAST_PLACE_KEY); } catch {}
   } catch {
-    return null;
+    // Speicher nicht lesbar oder JSON defekt: ohne letzten Ort starten.
   }
+  return null;
 }
 
 function writeJson(key: string, value: unknown): void {
-  if (typeof localStorage === "undefined") return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+// Optionaler lokaler Startzustand. Keine dieser Bereinigungen darf die Suche
+// oder das spätere Ausblenden des Splash Screens blockieren.
+export function prepareStoredStart(): Place | null {
+  pruneGeoFavorites();
+  const lastPlace = readStoredLastPlace();
+  pruneExpiredForecasts();
+  try { localStorage.removeItem("weather:forecast-days"); } catch {}
+  return lastPlace;
 }
 
 // Tab-Titel mit dem aktuellen Wetter, z. B. "14° Regen · WeatherPure" —
@@ -102,8 +125,12 @@ function writeJson(key: string, value: unknown): void {
 // bei State-Übergängen gesetzt (Ortswahl, frischer Abruf, Sprachwechsel),
 // nie in einer Schleife — kein Flackern. Die Sofort-Anzeige des letzten
 // Stands setzt ihn aus den Cache-Daten, der frische Abruf danach erneut.
-function updateDocTitle(): void {
+function updateDocTitle(calendarStale = false): void {
   if (!state.place || !state.forecast) return;
+  if (calendarStale) {
+    document.title = t("docTitle");
+    return;
+  }
   const c = state.forecast.current;
   const cond = weatherLabelShort(getWmo(c.weatherCode).labelKey, getLang());
   document.title = `${formatTemp(c.temperature)} ${cond}\u202F·\u202FWeatherPure`;
@@ -165,22 +192,24 @@ function showErrorView(titleKey: string, detail = ""): void {
   setView("error");
 }
 
-// Setzt die obere Zeitstempel-Caption ("Aktualisiert HH:MM" / "Stand HH:MM")
+// Setzt die obere Zeitstempel-Caption für aktuelle Beobachtungswerte oder den
+// gespeicherten WeatherPure Stand.
 // unter dem Aktualisieren-Button. Der Span steht statisch im Markup (nicht in
 // der Karte), darum aus dem State gefüllt — bei jedem Render und nach jedem
 // Refresh, in der Ortszeit des angezeigten Orts. Offline: keine Zeit (die Karte
 // zeigt dort ihren eigenen Verbindungshinweis), Caption leer + versteckt.
-function updateTopStamp(): void {
+function updateTopStamp(calendarStale: boolean): void {
   const span = document.getElementById("topStamp");
   if (!span) return;
   const f = state.forecast;
-  const time =
-    f && state.freshness !== "failed" && state.updatedAt
-      ? formatStampInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale())
-      : null;
+  const observationTime = f && !calendarStale && state.freshness === "fresh"
+    ? formatObservationStampInZone(f.current.lastUpdatedEpoch, f.timezone, getLocale()) : null;
+  const savedTime = f && state.freshness !== "failed" && state.updatedAt
+    ? formatStampInZone(f.timezone, getLocale(), new Date(state.updatedAt)) ?? formatHour(state.updatedAt, getLocale()) : null;
+  const time = observationTime ?? savedTime;
   if (time) {
     span.hidden = false;
-    const text = t(state.freshness === "stale" ? "staleNote" : "freshNote").replace("{time}", time);
+    const text = t(observationTime ? "freshNote" : "staleNote").replace("{time}", time);
     if (span.textContent !== text) {
       span.textContent = text;
       // Neuer Stand: Caption kurz weich einblenden statt hart umzuspringen.
@@ -208,6 +237,14 @@ function focusFavoriteButton(placeId: number, cls: string): boolean {
   if (!btn || btn.disabled) return false;
   btn.focus();
   return true;
+}
+
+// Nach dem Entfernen den nächsten verbleibenden Ort wählen, sonst den
+// vorherigen. Die Position bestimmt nur den Nachbarn; fokussiert wird per ID.
+function focusFavoriteAfterRemoval(remaining: Place[], index: number): void {
+  const neighbor = remaining[index] ?? remaining[index - 1];
+  if (neighbor && focusFavoriteButton(neighbor.id, "fav-row-select")) return;
+  document.getElementById("citySearch")?.focus();
 }
 
 // renderFavoritesList ersetzt das gesamte innerHTML der Liste und zerstört
@@ -244,28 +281,41 @@ function renderFavorites(): void {
   withFavoritesFocus(paintFavorites);
 }
 
+export function removeFavoriteAndPruneWeather(id: number): Place[] | null {
+  const remaining = removeFavorite(id);
+  if (remaining === null) return null;
+  pruneFavWeatherCache(remaining.map((place) => place.id));
+  return remaining;
+}
+
+let favoritesExpiryTimer: ReturnType<typeof setTimeout> | undefined;
+
 function paintFavorites(): void {
   // Wetter NUR aus dem Cache (Etappe 2: keine Netzaufrufe hier — der Auto-Load,
   // der den Cache füllt, kommt in Etappe 3). Leerer Cache → leere Map → Chips
   // zeigen wie bisher nur den Namen.
   const weather = readFavWeatherCache();
-  renderFavoritesList(byId("favoritesList"), getFavorites(), state.place?.id ?? null, {
+  const favorites = getFavorites();
+  renderFavoritesList(byId("favoritesList"), favorites, state.place?.id ?? null, {
     onSelect: (place) => selectPlace(place),
     onRemove: (place) => {
       // Position VOR dem Entfernen merken: Rückgängig stellt die alte
       // Reihenfolge wieder her, nicht nur den Eintrag.
-      const idx = getFavorites().findIndex((p) => p.id === place.id);
-      removeFavorite(place.id);
-      // P1: Wetter-Eintrag des entfernten Favoriten sofort mit aufräumen.
-      pruneFavWeatherCache(getFavorites().map((p) => p.id));
+      const idx = favorites.findIndex((p) => p.id === place.id);
+      const remaining = removeFavoriteAndPruneWeather(place.id);
+      if (remaining === null) {
+        showToast(t("favSaveFailed"));
+        return;
+      }
       // Denselben Ort auch aus dem Forecast-Cache werfen. Der aktuell
       // angezeigte Ort bleibt dabei erhalten, auch wenn er gerade seinen
       // Favoritenstatus verloren hat: er ist der "+1"-Platz, und ohne ihn
       // stünde die offene Karte nach einem Neuladen wieder im Ladeskelett.
-      pruneForecastCache([...getFavorites().map((p) => p.id), ...(state.place ? [state.place.id] : [])]);
+      pruneForecastCache([...remaining.map((p) => p.id), ...(state.place ? [state.place.id] : [])]);
       renderFavorites();
       renderContent();
       renderIcons();
+      focusFavoriteAfterRemoval(remaining, idx);
       // Undo statt Bestätigungsdialog (UX Playbook): das Entfernen bleibt ein
       // Tipp, der Toast bietet den Rückweg. Kein Ortsname-Escaping nötig,
       // textContent im Toast.
@@ -273,17 +323,28 @@ function paintFavorites(): void {
         label: t("undo"),
         onAction: () => {
           const next = insertFavorite(place, idx);
+          if (next === null) {
+            showToast(t("favSaveFailed"));
+            // Der verbrauchte Undo Button ist bereits inert. Nur vorhandene
+            // Favoriten oder die Ortssuche sind noch sinnvolle Fokusziele.
+            focusFavoriteAfterRemoval(getFavorites(), idx);
+            return;
+          }
           // insertFavorite gibt die Liste unverändert zurück, wenn das Limit
           // inzwischen erreicht ist (der Nutzer hat nach dem Entfernen einen
           // anderen Favoriten hinzugefügt). Ohne diese Prüfung scheitert
           // Rückgängig lautlos und der Nutzer hält es für erledigt.
           if (!next.some((p) => p.id === place.id)) {
             showToast(t("favUndoFailed").replace("{place}", place.name));
+            focusFavoriteAfterRemoval(next, idx);
             return;
           }
           renderFavorites();
           renderContent();
           renderIcons();
+          if (!focusFavoriteButton(place.id, "fav-row-select")) {
+            document.getElementById("citySearch")?.focus();
+          }
           // Der Wetter-Cache-Eintrag wurde beim Entfernen gepruned; der
           // batched Call holt ihn für den wiederhergestellten Ort zurück.
           loadFavoritesWeather();
@@ -294,7 +355,10 @@ function paintFavorites(): void {
       // Nur die Reihenfolge ändert sich; aktive Stadt und Wetterinhalt bleiben.
       // Daher reicht ein frisches Listen-Render (liest getFavorites neu) plus
       // renderIcons für die neu eingefügten Lucide-Knoten — kein renderContent.
-      moveFavorite(place.id, dir);
+      if (moveFavorite(place.id, dir) === null) {
+        showToast(t("favSaveFailed"));
+        return;
+      }
       renderFavorites();
       renderIcons();
       // Fokus gezielt auf DENSELBEN logischen Pfeil derselben Zeile, damit
@@ -314,6 +378,17 @@ function paintFavorites(): void {
         ?.classList.add("fav-row--moved");
     },
   }, weather);
+  // Auch ohne neue Anfrage alte Werte rechtzeitig kennzeichnen und aus dem
+  // Vergleich nehmen. Bei jedem Render den einen bestehenden Timer ersetzen.
+  if (favoritesExpiryTimer !== undefined) clearTimeout(favoritesExpiryTimer);
+  const nextExpiry = nextFavWeatherExpiry(favorites.flatMap((place) => {
+    const entry = weather.get(place.id);
+    return entry ? [entry] : [];
+  }));
+  favoritesExpiryTimer = nextExpiry === null ? undefined : setTimeout(() => {
+    renderFavorites();
+    renderIcons();
+  }, Math.min(Math.max(0, nextExpiry - Date.now()), 2_147_483_647));
 }
 
 // Favoriten-Wetter im Hintergrund laden: refreshFavoritesWeather macht EINEN
@@ -327,6 +402,9 @@ function loadFavoritesWeather(): void {
   if (favs.length === 0) return; // kein Call ohne Favoriten
   refreshFavoritesWeather(favs)
     .then(() => {
+      // Während des Abrufs entfernte Favoriten nicht erneut im Cache behalten.
+      const current = readFavoritesForMutation();
+      if (current !== null) pruneFavWeatherCache(current.map((place) => place.id));
       renderFavorites(); // liest den jetzt gefüllten Cache
       renderIcons();     // neue data-lucide Wetter-Icons hydrieren
     })
@@ -354,13 +432,17 @@ function renderEmptyCities(): void {
     btn.className = "city-chip";
     btn.textContent = name;
     btn.addEventListener("click", () => {
+      const intent = beginSelectionIntent();
       setView("loading");
       searchCity(name, getLang())
         .then((places) => {
+          if (!isCurrentSelectionIntent(intent)) return;
           if (places.length) selectPlace(places[0]);
           else setView("empty");
         })
-        .catch(() => setView("empty"));
+        .catch(() => {
+          if (isCurrentSelectionIntent(intent)) setView("empty");
+        });
     });
     wrap.appendChild(btn);
   }
@@ -370,13 +452,16 @@ function renderPollen(): void {
   renderPollenList(byId("pollenList"), byId("pollenHeading"), state.pollen);
 }
 
-function renderStarterData(): void {
+function renderStarterData(calendarStale: boolean): void {
   if (!state.forecast) return;
-  renderTodayHighlights(byId("todayHighlights"), byId("todayHighlightsHeading"), state.forecast);
+  if (calendarStale) {
+    byId("todayHighlights").hidden = true;
+    byId("todayHighlightsHeading").hidden = true;
+  } else renderTodayHighlights(byId("todayHighlights"), byId("todayHighlightsHeading"), state.forecast);
   renderAirQuality(byId("airQuality"), byId("airQualityHeading"), state.forecast.airQuality);
   // freshness mitgeben: eine Entwarnung darf nur erscheinen, wenn der letzte
   // Abruf nicht gescheitert ist (siehe alertsSectionState).
-  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone, state.freshness);
+  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone, calendarStale ? "failed" : state.freshness, !calendarStale);
 }
 
 // Wochenüberblick-Aussage über der Tagesliste. Immer die nächsten ~7 Tage,
@@ -409,26 +494,26 @@ function buildTempCurveInput(forecast: Forecast): TempCurveInput {
   // (das ist die Momentbeobachtung der aktuellen Wetterkarte, ein eigener
   // Zeitpunkt); so bleibt der Wert deckungsgleich mit der aus hourly[0].time
   // gebildeten Zeitachse und mit dem Stundenpanel.
-  const window = forecast.hourly.slice(0, 25).map((h) => h.apparentTemperature);
+  const window = forecast.hourly.slice(0, 25);
   return {
-    feels: window,
-    startHour: forecastStartHour(forecast.hourly[0]?.time),
+    feels: window.map((h) => h.apparentTemperature),
+    times: window.map((h) => h.time),
+    locale: getLocale(),
     ariaLabel: t("tc_aria"),
   };
 }
 
 // Eingabe fürs Regen-Diagramm: dasselbe rollende 24-Stunden-Fenster wie die
 // TempCurve (slice(0,25) → deckungsgleiche x-Achse). precipitation ist optional
-// (alte Caches kennen das Feld nicht); fehlende Werte als 0, kein NaN. Ob die
+// (alte Caches kennen das Feld nicht); fehlende Werte bleiben unbekannt. Ob die
 // Sektion sichtbar wird, entscheidet RainChart selbst anhand der Spitze.
 function buildRainChartInput(forecast: Forecast): RainChartInput {
   const window = forecast.hourly.slice(0, 25);
-  const precip = window.map((h) => (typeof h.precipitation === "number" ? h.precipitation : 0));
+  const precip = window.map((h) => h.precipitation);
   const times = window.map((h) => h.time);
   return {
     precip,
     times,
-    startHour: forecastStartHour(window[0]?.time),
     locale: getLocale(),
     ariaLabel: t("rain_aria"),
   };
@@ -462,10 +547,11 @@ function settleCards(): void {
 
 function renderContent(): void {
   if (!state.place || !state.forecast) return;
-  updateDocTitle(); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
-  updateTopStamp(); // obere Zeitstempel-Caption (Ortswahl, Refresh, Sprachwechsel)
+  const calendarStale = !isForecastForCurrentLocalDay(state.forecast);
+  updateDocTitle(calendarStale); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
+  updateTopStamp(calendarStale); // obere Zeitstempel-Caption (Ortswahl, Refresh, Sprachwechsel)
   renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
-  renderStarterData();
+  renderStarterData(calendarStale);
   renderCurrentWeather(byId("currentWeather"), {
     place: state.place,
     forecast: state.forecast,
@@ -473,16 +559,22 @@ function renderContent(): void {
     canAddFavorite: getFavorites().length < MAX_FAVORITES,
     freshness: state.freshness,
     updatedAt: state.updatedAt,
+    calendarStale,
     failReason: state.failReason,
   });
   const current = state.forecast.current;
   const announcedPlace = state.place.id === GEO_PLACE_ID ? t("myLocation") : state.place.name;
-  byId("weatherAnnounce").textContent = t("weatherLoaded")
+  byId("weatherAnnounce").textContent = calendarStale ? "" : t("weatherLoaded")
     .replace("{place}", announcedPlace)
     .replace("{temp}", formatTemp(current.temperature))
     .replace("{condition}", weatherLabel(getWmo(current.weatherCode).labelKey, getLang()));
-  renderDressToday(byId("dressToday"), state.forecast);
-  const didAutoOpen = renderHourlyStrip(byId("hourlyStrip"), state.forecast, hourlyAutoOpenArmed);
+  byId("dressTodayHeading").hidden = calendarStale;
+  byId("dressToday").hidden = calendarStale;
+  if (!calendarStale) renderDressToday(byId("dressToday"), state.forecast);
+  byId("hourlyHeading").hidden = calendarStale;
+  byId("hourlyHint").hidden = calendarStale;
+  byId("hourlyWrap").hidden = calendarStale;
+  const didAutoOpen = renderHourlyStrip(byId("hourlyStrip"), state.forecast, !calendarStale && hourlyAutoOpenArmed);
   // Nach dem aufgelösten Erst-Ladeversuch entwaffnen. Der Cache-Render bleibt
   // "stale" (also armed), der darauffolgende Netz-Render desselben Orts öffnet
   // damit erneut (kein Blitzen), danach kein automatisches Öffnen mehr. Zusätzlich
@@ -495,12 +587,14 @@ function renderContent(): void {
   // Nachbarkarten) folgt der Sichtbarkeit des Diagramms — versteckt es sich bei
   // zu wenigen Daten, verschwindet auch der Titel (wie beim Pollen-Muster).
   const tempCurveEl = byId("tempCurve");
-  renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
+  if (calendarStale) tempCurveEl.hidden = true;
+  else renderTempCurve(tempCurveEl, buildTempCurveInput(state.forecast));
   byId("tempCurveHeading").hidden = tempCurveEl.hidden;
   // Regen-Diagramm direkt darunter, gleiches Hide-Muster: die Komponente
   // versteckt sich bei zu wenig Regen selbst, der äußere Titel folgt.
   const rainChartEl = byId("rainChart");
-  renderRainChart(rainChartEl, buildRainChartInput(state.forecast));
+  if (calendarStale) rainChartEl.hidden = true;
+  else renderRainChart(rainChartEl, buildRainChartInput(state.forecast));
   byId("rainChartHeading").hidden = rainChartEl.hidden;
   // Dynamische Überschrift "{n} Tage Vorhersage" (deckt Sprachwechsel mit ab,
   // da renderContent auch auf weather:langchange läuft). Das h2 trägt KEIN
@@ -510,11 +604,14 @@ function renderContent(): void {
   // renderDailyForecast, das intern slice(0, days) verwendet.
   const shownDays = Math.min(state.forecast.daily.length, DEFAULT_FORECAST_DAYS);
   byId("dailyHeading").textContent = t("dailyHeadingDays").replace("{n}", String(shownDays));
-  renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
+  if (calendarStale) {
+    byId("weekSummary").textContent = "";
+    byId("weekSummary").hidden = true;
+  } else renderWeekSummary(state.forecast.daily); // immer ~7 Tage, unabhängig vom Umschalter
   // Das Tagespanel merkt sich den offenen Tag selbst (openDayIndex in der
   // Komponente). Neue Wetterdaten setzen ihn per resetDailyPanelToToday() (in
   // selectPlace/refreshCurrentPlace) auf Heute; ein Re-Render bewahrt die Auswahl.
-  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS);
+  renderDailyForecast(byId("dailyForecast"), state.forecast.daily, DEFAULT_FORECAST_DAYS, calendarStale);
   // Für den Geolocation-Ort rendert CurrentWeather keinen Stern (Standort
   // darf laut Datenschutzzusage nicht gespeichert werden) — daher guarded.
   document.getElementById("favToggle")?.addEventListener("click", () => {
@@ -548,16 +645,23 @@ function renderContent(): void {
     // needsFetch, wenn der gespiegelte Stand dafür schon zu alt ist.
     let mirrorNeedsFetch = false;
     if (wasAdded) {
-      addFavorite(place);
+      if (addFavorite(place) === null) {
+        showToast(t("favSaveFailed"));
+        return;
+      }
       const mirror = mirrorForNewFavorite(state.forecast, state.updatedAt);
       if (mirror.entry !== null) cacheFavoriteWeather(place.id, mirror.entry, mirror.entry.savedAt);
       mirrorNeedsFetch = mirror.needsFetch;
     } else {
-      removeFavorite(place.id);
+      if (removeFavoriteAndPruneWeather(place.id) === null) {
+        showToast(t("favSaveFailed"));
+        return;
+      }
     }
     renderFavorites();
     renderContent();
     renderIcons();
+    if (state.place?.id === place.id) document.getElementById("favToggle")?.focus();
     if (wasAdded) {
       document.getElementById("favToggle")?.classList.add("fav-toggle--added");
       // Nur wenn nichts Frisches gespiegelt werden konnte. refreshFavoritesWeather
@@ -619,10 +723,7 @@ async function shareCurrentWeather(): Promise<void> {
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
   const text = `${name}: ${formatTemp(c.temperature)}, ${label}`;
   const base = "https://weatherpure.com/";
-  const url =
-    place.id === GEO_PLACE_ID
-      ? base
-      : `${base}?${CITY_PARAM}=${encodeURIComponent(place.name.toLowerCase())}`;
+  const url = placeLinkUrl(base, place).toString();
   const payload = { title: "WeatherPure", text, url };
 
   // Kein Weg zum Teilen: ehrlich melden statt still enden. Vor dem Sperren des
@@ -680,6 +781,8 @@ let refreshing = false;
 // (GEO_PLACE_ID = -1) trägt; zwei schnelle "Mein Standort"-Klicks wären sonst
 // nicht unterscheidbar. Der bestehende id-Guard bleibt zusätzlich erhalten.
 let loadSeq = 0;
+let pollenSeq = 0;
+let activeForecastRequestSeq: number | null = null;
 function refreshCurrentPlace(): void {
   const place = state.place;
   if (!place || refreshing) return;
@@ -689,6 +792,7 @@ function refreshCurrentPlace(): void {
   hourlyAutoOpenArmed = true;
   resetDailyPanelToToday();
   const mySeq = ++loadSeq;
+  activeForecastRequestSeq = mySeq;
   const btn = document.getElementById("topRefresh") as HTMLButtonElement | null;
   if (btn) {
     btn.disabled = true;
@@ -698,6 +802,7 @@ function refreshCurrentPlace(): void {
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
+      if (!isForecastForCurrentLocalDay(forecast)) throw new Error("Forecast day is no longer current");
       state.forecast = forecast;
       state.freshness = "fresh";
       state.failReason = null;
@@ -709,9 +814,9 @@ function refreshCurrentPlace(): void {
       }
       // Gratis-Update: aktueller Ort, wenn Favorit, ohne extra Call spiegeln.
       if (isFavorite(place.id)) {
-        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode, isDay: forecast.current.isDay });
+        cacheFavoriteForecast(place.id, forecast, state.updatedAt);
       }
-      renderContent(); // Karte frisch: neuer "Aktualisiert HH:MM"
+      renderContent(); // Beobachtungszeit oder neutraler gespeicherter Stand
       renderFavorites();
       renderIcons();
       settleCards(); // Refresh: kurzes Auffrischen statt voller Kaskade (die bleibt für Ortswechsel)
@@ -731,12 +836,13 @@ function refreshCurrentPlace(): void {
       }
     })
     .finally(() => {
+      if (activeForecastRequestSeq === mySeq) activeForecastRequestSeq = null;
       refreshing = false;
       // Button zurücksetzen (kein Dauerdrehen). Er liegt im statischen Markup,
       // wird also nicht durch renderContent neu gezeichnet — daher hier von Hand.
       const b = document.getElementById("topRefresh") as HTMLButtonElement | null;
       if (b) {
-        b.disabled = false;
+        if (mySeq === loadSeq) b.disabled = false;
         b.classList.remove("cw-refresh--spinning");
       }
     });
@@ -746,16 +852,15 @@ function refreshCurrentPlace(): void {
 // Ort entfernt den Parameter: Er hat keinen echten Namen, und der Standort
 // darf nie in einer teilbaren URL landen (Datenschutzzusage).
 function syncCityParam(place: Place): void {
-  const url = new URL(location.href);
-  if (place.id === GEO_PLACE_ID) url.searchParams.delete(CITY_PARAM);
-  else url.searchParams.set(CITY_PARAM, place.name.toLowerCase());
+  const url = placeLinkUrl(location.href, place);
   history.replaceState(history.state, "", url);
 }
 
 export function selectPlace(place: Place): void {
+  beginSelectionIntent();
   // Ein bewusst gewählter Ort beendet eine offene Linkauflösung: der Erneut-
   // Knopf darf danach nicht mehr die alte Linksuche wiederholen.
-  pendingCityQuery = "";
+  pendingCityLink = null;
   // Neuer Ort = neue Wetterdaten: Stundendetail wieder scharf schalten und das
   // Tages-Detail auf Heute zurücksetzen, damit beide direkt aufgeklappt erscheinen.
   hourlyAutoOpenArmed = true;
@@ -774,6 +879,8 @@ export function selectPlace(place: Place): void {
   // Diese Lade-Anforderung eindeutig markieren (s. loadSeq): nur ihre Antwort
   // darf später die Anzeige setzen, falls inzwischen neu geladen wurde.
   const mySeq = ++loadSeq;
+  activeForecastRequestSeq = mySeq;
+  const myPollenSeq = ++pollenSeq;
 
   // Sofort-Anzeige: liegt für genau diesen Ort ein letzter Stand vor, wird er
   // ohne Spinner gerendert ("Stand HH:MM"), während parallel IMMER frisch
@@ -781,11 +888,11 @@ export function selectPlace(place: Place): void {
   // Wahrheit. Seit dem Cache je Ort greift das auch beim Hin- und Herwechseln
   // zwischen Favoriten, wo vorher jeder Ort den anderen überschrieb.
   //
-  // Zu alte Stände liefert getUsableForecast nicht mehr: eine tagealte
+  // Zu alte Stände liefert getRecentForecast nicht mehr: eine tagealte
   // Vorhersage als "Stand" wäre irreführend. Dann greift online der frische
   // Abruf, offline der ehrliche Fehlerzustand. Für den Geo-Ort gibt es nie
   // einen Treffer, sein Standort wird nicht gespeichert (Datenschutzzusage).
-  const usableCache = getUsableForecast(place.id);
+  const usableCache = getRecentForecast(place.id);
   const showedFromCache = usableCache !== null;
   if (usableCache !== null) {
     state.forecast = usableCache.forecast;
@@ -798,6 +905,12 @@ export function selectPlace(place: Place): void {
     renderIcons();
     revealCards();
   } else {
+    // Ohne exakt passenden und noch nutzbaren Ortseintrag darf ein zuvor
+    // angezeigter Forecast nicht als Fehler-Fallback des neuen Orts dienen.
+    state.forecast = null;
+    state.freshness = "fresh";
+    state.failReason = null;
+    state.updatedAt = "";
     setView("loading");
   }
 
@@ -807,11 +920,10 @@ export function selectPlace(place: Place): void {
   // Werte vorliegen, keine verfügbar sind oder der Abruf gescheitert ist.
   // Zurückgesetzt wurde bereits ganz oben in dieser Funktion.
   fetchPollen(place.latitude, place.longitude).then((result) => {
-    // Referenzgleichheit statt nur id: der Geo-Ort trägt immer id -1, aber jeder
-    // "Mein Standort"-Klick erzeugt ein neues Place-Objekt. So wird eine überholte
-    // Pollen-Antwort verworfen, ohne dass ein bloßer Refresh (gleiches Objekt,
-    // kein erneuter Pollen-Abruf) die laufende Antwort fälschlich killt.
-    if (state.place !== place || state.place?.id !== place.id) return;
+    // Referenzgleichheit schützt neue Geo-Objekte; pollenSeq zusätzlich das
+    // erneute Laden desselben Place-Objekts über "Erneut". Ein bloßer Refresh
+    // startet keinen Pollen-Abruf und verändert pollenSeq deshalb nicht.
+    if (myPollenSeq !== pollenSeq || state.place !== place || state.place?.id !== place.id) return;
     state.pollen = result;
     renderPollen();
   });
@@ -819,6 +931,7 @@ export function selectPlace(place: Place): void {
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
+      if (!isForecastForCurrentLocalDay(forecast)) throw new Error("Forecast day is no longer current");
       state.forecast = forecast;
       state.freshness = "fresh";
       state.failReason = null;
@@ -826,10 +939,10 @@ export function selectPlace(place: Place): void {
       if (!isGeoPlace) {
         putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt);
       }
-      // Gratis-Update: ist der geladene Ort ein Favorit, dessen current direkt in
+      // Gratis-Update: ist der geladene Ort ein Favorit, dessen Forecast direkt in
       // den Favoriten-Cache spiegeln (kein extra Call; Geo-Ort ist nie Favorit).
       if (isFavorite(place.id)) {
-        cacheFavoriteWeather(place.id, { temp: forecast.current.temperature, code: forecast.current.weatherCode, isDay: forecast.current.isDay });
+        cacheFavoriteForecast(place.id, forecast, state.updatedAt);
       }
       // Lautloser Tausch: die Sektionen werden synchron in place neu gefüllt,
       // ohne Loading-Zwischenzustand — kein Flackern, kein Scroll-Sprung
@@ -855,6 +968,9 @@ export function selectPlace(place: Place): void {
         // die die tatsächliche Ursache benennt statt pauschal Offline.
         showErrorView(failTitleKey(kind));
       }
+    })
+    .finally(() => {
+      if (activeForecastRequestSeq === mySeq) activeForecastRequestSeq = null;
     });
 }
 
@@ -862,7 +978,17 @@ export function selectPlace(place: Place): void {
 // gescheitert ist. Solange er gesetzt ist, wiederholt der Erneut-Knopf GENAU
 // DIESE Suche. Ohne ihn wäre der Knopf im Linkfehler wirkungslos, weil
 // selectPlace nie lief und state.place damit leer ist.
-let pendingCityQuery = "";
+type ResolvablePlaceLink = Extract<PlaceLink, { kind: "legacy" | "provider" }>;
+let pendingCityLink: ResolvablePlaceLink | null = null;
+
+export function findLocalProviderPlace(link: PlaceLink, lastPlace: Place | null, favorites: Place[]): Place | null {
+  if (link.kind !== "provider") return null;
+  // Der letzte Ort hat Vorrang; niemals Namen oder interne Hash IDs als Ersatz verwenden.
+  for (const place of [lastPlace, ...favorites]) {
+    if (place?.providerId === link.providerId && place.id === link.providerId) return place;
+  }
+  return null;
+}
 
 // Löst einen geteilten Ortslink auf.
 //
@@ -870,17 +996,22 @@ let pendingCityQuery = "";
 // wäre fremdes Wetter, ausgegeben als das geteilte, ohne jeden Hinweis. Ein
 // nicht auflösbarer Link führt deshalb in die Fehleransicht, nicht in eine
 // andere Stadt.
-function resolveCityLink(query: string): void {
-  pendingCityQuery = query;
+function resolveCityLink(link: ResolvablePlaceLink): void {
+  const intent = beginSelectionIntent();
+  pendingCityLink = link;
   setView("loading");
+  const query = link.kind === "provider" ? `id:${link.providerId}` : link.name;
   searchCity(query, getLang())
     .then((places) => {
-      const decision = decideLinkResolution(places, query);
+      if (!isCurrentSelectionIntent(intent)) return;
+      const decision = link.kind === "provider"
+        ? decideProviderLinkResolution(places, link.providerId)
+        : decideLinkResolution(places, link.name);
       if (decision.kind === "none") {
-        showErrorView("errorLinkNotFound", query);
+        showErrorView("errorLinkNotFound", link.name);
         return;
       }
-      pendingCityQuery = "";
+      pendingCityLink = null;
       selectPlace(decision.place);
       if (decision.kind === "ambiguous") {
         // Mehrere gleichwertige Treffer: den tatsächlich gewählten Ort
@@ -896,31 +1027,50 @@ function resolveCityLink(query: string): void {
       }
     })
     .catch((err: unknown) => {
-      showErrorView(failTitleKey(classifyLoadError(err, isOnline())), query);
+      if (!isCurrentSelectionIntent(intent)) return;
+      showErrorView(failTitleKey(classifyLoadError(err, isOnline())), link.name);
     });
 }
 
 export function initApp(): void {
   // Altlasten aus früheren Versionen entfernen, in denen der Geolocation-Ort
   // noch in localStorage landen konnte (Favoriten, letzter Ort, Forecast-Cache).
-  pruneGeoFavorites();
-  if (readJson<Place>(LAST_PLACE_KEY)?.id === GEO_PLACE_ID) {
-    localStorage.removeItem(LAST_PLACE_KEY);
-  }
-  // Räumt in einem Zug die alten Einzelforecast-Schlüssel weg, verwirft
-  // Geo-Einträge und defekte Stände und entfernt abgelaufene Orte.
-  pruneExpiredForecasts();
-  localStorage.removeItem("weather:forecast-days");
+  const lastPlace = prepareStoredStart();
 
-  initSearchBar(byId("searchBar"), { onSelect: selectPlace });
+  initSearchBar(byId("searchBar"), {
+    onSelect: selectPlace,
+    onGeoStart: () => {
+      const intent = beginSelectionIntent();
+      return () => isCurrentSelectionIntent(intent);
+    },
+  });
   renderFavorites();
+  // Hintergrundtabs können Timer pausieren. Beim Wiederöffnen die Frische der
+  // Favoriten neu bewerten, ohne weitere Wetteranfragen auszulösen.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    renderFavorites();
+    renderIcons();
+    if (!state.place || !state.forecast || activeForecastRequestSeq !== null || refreshing) return;
+    if (isForecastForCurrentLocalDay(state.forecast)) return;
+    // Nach Ortsmitternacht ist ein offener Forecast kein heutiger Stand mehr.
+    // Der vorhandene Load Guard schützt auch diesen erneuten Abruf vor Ortsrennen.
+    if (isForecastEntryTooOld(state.updatedAt)) selectPlace(state.place);
+    else {
+      state.freshness = "stale";
+      state.failReason = null;
+      renderContent();
+      renderIcons();
+      refreshCurrentPlace();
+    }
+  });
   renderEmptyCities();
   renderIcons();
 
   byId("retryBtn").addEventListener("click", () => {
     // Vorrang für den Linkpfad: dort lief selectPlace nie, state.place ist
     // leer, und der Knopf täte ohne diesen Zweig gar nichts.
-    if (pendingCityQuery) resolveCityLink(pendingCityQuery);
+    if (pendingCityLink) resolveCityLink(pendingCityLink);
     else if (state.place) selectPlace(state.place);
   });
 
@@ -942,17 +1092,22 @@ export function initApp(): void {
   // Startreihenfolge: ?stadt= aus der URL hat Vorrang (teilbarer Link),
   // dann letzter Ort, sonst Empty State (Suche ist Default).
   const restoreLastPlace = (): void => {
-    const lastPlace = readJson<Place>(LAST_PLACE_KEY);
     if (lastPlace) selectPlace(lastPlace);
     else setView("empty");
   };
 
-  const cityQuery = new URLSearchParams(location.search).get(CITY_PARAM)?.trim();
-  if (cityQuery) {
+  const placeLink = readPlaceLink(location.search);
+  if (placeLink.kind === "provider") {
+    const localPlace = findLocalProviderPlace(placeLink, lastPlace, getFavorites());
+    if (localPlace) selectPlace(localPlace);
+    else resolveCityLink(placeLink);
+  } else if (placeLink.kind === "legacy") {
     // Geteilter Link: eigener Weg mit ehrlichem Fehlerzustand. Der stadt
     // Parameter bleibt dabei in der URL stehen, damit Neuladen und Erneut
     // denselben Link nochmals versuchen.
-    resolveCityLink(cityQuery);
+    resolveCityLink(placeLink);
+  } else if (placeLink.kind === "invalid") {
+    showErrorView("errorLinkNotFound", placeLink.name);
   } else {
     // Normalstart ohne Parameter bleibt unverändert.
     restoreLastPlace();

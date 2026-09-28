@@ -6,6 +6,7 @@
 import type { Forecast, HourlyEntry } from "./weather";
 import { RAIN_PROB_THRESHOLD, todayHours, hourOf, rainWindowFor } from "./clothing";
 import { localHour } from "./summary";
+import { isPrecipCode } from "./wmo";
 
 // ── Schwellen, kalibrierbar ──
 export const DRY_WINDOW_MIN_HOURS = 2;     // kürzere Lücken sind kein nutzbares Fenster
@@ -18,7 +19,20 @@ export interface DryWindow {
   untilSunset: boolean; // Fenster reicht bis Sonnenuntergang → "Ab {von} Uhr trocken."
 }
 
-const isDry = (h: HourlyEntry): boolean => h.precipitationProbability < RAIN_PROB_THRESHOLD;
+const knownProbability = (value: number | null | undefined): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const isDry = (h: HourlyEntry): boolean =>
+  knownProbability(h.precipitationProbability) && h.precipitationProbability < RAIN_PROB_THRESHOLD &&
+  knownProbability(h.snowProbability) && h.snowProbability < RAIN_PROB_THRESHOLD &&
+  !(typeof h.precipitation === "number" && h.precipitation > 0) &&
+  !(typeof h.snowfall === "number" && h.snowfall > 0) &&
+  !isPrecipCode(h.weatherCode);
+const isWet = (h: HourlyEntry): boolean =>
+  (knownProbability(h.precipitationProbability) && h.precipitationProbability >= RAIN_PROB_THRESHOLD) ||
+  (knownProbability(h.snowProbability) && h.snowProbability >= RAIN_PROB_THRESHOLD) ||
+  (typeof h.precipitation === "number" && h.precipitation > 0) ||
+  (typeof h.snowfall === "number" && h.snowfall > 0) ||
+  isPrecipCode(h.weatherCode);
 
 // Durchgehend sehr windig? Nur bewerten, wenn alle Stunden Windwerte tragen —
 // alte Forecast-Caches ohne windSpeed lassen das Kriterium schlicht aus.
@@ -42,13 +56,15 @@ export function dryWindowFor(forecast: Forecast): DryWindow | null {
 
   // Verbleibende Stunden von jetzt bis Sonnenuntergang (hourly beginnt bei jetzt)
   const dayHours = todayHours(forecast.hourly ?? [], c.time).filter(
-    (h) => typeof h.precipitationProbability === "number" && hourOf(h.time) < sunsetHour
+    (h) => hourOf(h.time) < sunsetHour
   );
   if (dayHours.length < DRY_WINDOW_MIN_REMAINING) return null;
 
   // Bedingung 1: gemischter Resttag. Ganz trocken → kein Mehrwert,
   // durchgehend nass → kein Fenster.
-  const hasWet = dayHours.some((h) => !isDry(h));
+  // Unbekannte Stunden bleiben im Verlauf und unterbrechen ein Trockenfenster,
+  // sind aber weder als trocken noch als bestätigter Regen zu bewerten.
+  const hasWet = dayHours.some(isWet);
   const hasDry = dayHours.some(isDry);
   if (!hasWet || !hasDry) return null;
 

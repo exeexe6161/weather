@@ -1,13 +1,15 @@
 // Transiente, dezente Rückmeldung am unteren Rand (aus share.ts hierher
 // gehoben, damit auch andere Stellen sie nutzen können). Genau ein Toast-Knoten
-// modulweit, role=status/aria-live für Screenreader, automatisch wieder
-// ausgeblendet. Optional mit EINER Aktion (z. B. Rückgängig): dann bleibt der
-// Toast länger stehen und wird klickbar (wp-toast--interactive; der Grund-
+// modulweit, role=status/aria-live für Screenreader. Gewöhnliche Hinweise
+// verschwinden automatisch; eine dauerhafte Updateaktion bleibt erreichbar.
+// Optional mit EINER Aktion (z. B. Rückgängig): dann wird der
+// Toast klickbar (wp-toast--interactive; der Grund-
 // zustand bleibt pointer-events:none, ein unsichtbarer Toast fängt nie Tipps
 // ab). Aufbau über DOM-APIs, kein innerHTML mit dynamischen Werten nötig.
 export interface ToastAction {
   label: string;
   onAction(): void;
+  persistent?: boolean;
 }
 
 const SHOW_MS = 2400;
@@ -26,8 +28,13 @@ let dropTimer: ReturnType<typeof setTimeout> | undefined;
 // ein längst verstrichenes Rückgängig später noch die gespeicherte
 // Favoritenliste verändern, ohne dass der Nutzer versteht, was er ausgelöst hat.
 let activeAction: ToastAction | null = null;
+let persistentToast: { message: string; action: ToastAction } | null = null;
 
 export function showToast(message: string, action?: ToastAction): void {
+  if (action?.persistent) {
+    persistentToast = { message, action };
+    if (toastTimer !== undefined) return; // Eine laufende Rückgängig Aktion nicht verdrängen.
+  }
   let el = document.getElementById("wpToast");
   if (!el) {
     el = document.createElement("div");
@@ -61,6 +68,7 @@ export function showToast(message: string, action?: ToastAction): void {
       // Die Aktion VOR dem Ausblenden festhalten: hideToast macht sie
       // ungültig, sonst wäre auch der legitime Klick wirkungslos.
       const pending = activeAction;
+      if (pending === persistentToast?.action) persistentToast = null;
       hideToast();
       if (pending === action) action.onAction();
     });
@@ -71,12 +79,13 @@ export function showToast(message: string, action?: ToastAction): void {
   void el.offsetWidth;
   el.classList.add("wp-toast--show");
   if (toastTimer !== undefined) clearTimeout(toastTimer);
-  toastTimer = setTimeout(hideToast, action ? SHOW_ACTION_MS : SHOW_MS);
+  toastTimer = action?.persistent ? undefined : setTimeout(hideToast, action ? SHOW_ACTION_MS : SHOW_MS);
 }
 
 function hideToast(): void {
   const el = document.getElementById("wpToast");
   if (!el) return;
+  const restore = activeAction !== persistentToast?.action ? persistentToast : null;
   // Zuerst ungültig machen, dann ausblenden: ab hier löst nichts mehr aus.
   activeAction = null;
   if (toastTimer !== undefined) {
@@ -101,4 +110,5 @@ function hideToast(): void {
   el.addEventListener("transitionend", dropAction, { once: true });
   if (dropTimer !== undefined) clearTimeout(dropTimer);
   dropTimer = setTimeout(dropAction, DROP_ACTION_MS);
+  if (restore) showToast(restore.message, restore.action);
 }

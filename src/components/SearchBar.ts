@@ -9,6 +9,7 @@ import { renderIcons } from "../icons";
 
 export interface SearchBarOptions {
   onSelect(place: Place): void;
+  onGeoStart(): () => boolean;
 }
 
 const DEBOUNCE_MS = 500;
@@ -64,7 +65,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   preventIosSafariFocusZoom(input);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let lastQuery = "";
+  let searchSeq = 0;
   // Enter vor Eintreffen der Ergebnisse: die nächste Antwort wählt direkt den
   // ersten Treffer (Tippen-und-Enter-Flow), statt nur die Liste zu zeigen.
   let selectFirstOnResults = false;
@@ -81,6 +82,14 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     input.removeAttribute("aria-busy");
   }
 
+  function invalidateSearch(): void {
+    searchSeq++;
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    selectFirstOnResults = false;
+    closeList();
+  }
+
   // Leeren-Knopf nur zeigen, wenn Text im Feld steht ([hidden] sonst).
   function syncClear(): void {
     clearBtn.hidden = input.value === "";
@@ -92,7 +101,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     input.value = "";
     syncClear();
     input.blur();
-    closeList();
+    invalidateSearch();
     opts.onSelect(place);
   }
 
@@ -121,15 +130,10 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
     showStatus(outcome.kind === "results" ? text.replace("{n}", String(outcome.count)) : text);
   }
 
-  // Wartende Suche abbrechen und lastQuery leeren: sonst würde ein laufender
-  // Debounce die Liste gleich wieder öffnen bzw. eine noch fliegende Antwort
-  // durchrutschen (runSearch verwirft alles, was nicht mehr lastQuery ist).
+  // Wartende Suche und ihre Antworten entwerten, bevor sie die Liste erneut öffnen.
   // Der eingegebene Text bleibt stehen, damit weitergetippt werden kann.
   closeSearchImpl = (): void => {
-    if (timer) clearTimeout(timer);
-    lastQuery = "";
-    selectFirstOnResults = false;
-    closeList();
+    invalidateSearch();
     showStatus("");
   };
 
@@ -191,16 +195,17 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   }
 
   function runSearch(query: string): void {
-    lastQuery = query;
+    const mySeq = ++searchSeq;
+    timer = undefined;
     input.setAttribute("aria-busy", "true");
     showOutcome({ kind: "loading" });
     searchCity(query, getLang())
       .then((places) => {
-        if (query !== lastQuery) return; // veraltete Antwort verwerfen
+        if (mySeq !== searchSeq) return;
         renderResults(places);
       })
       .catch(() => {
-        if (query !== lastQuery) return;
+        if (mySeq !== searchSeq) return;
         closeList(); // räumt auch aria-busy und aria-expanded ab
         showOutcome({ kind: "error" });
       });
@@ -209,14 +214,11 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
   input.addEventListener("input", () => {
     const q = input.value.trim();
     syncClear();
-    selectFirstOnResults = false; // neues Tippen hebt eine wartende Enter-Wahl auf
-    if (timer) clearTimeout(timer);
+    invalidateSearch(); // schon vor dem Debounce sind alte Treffer ungültig
     // Unter der Mindestlänge wird weiterhin NICHT gesucht (kein Netzaufruf),
     // aber der Nutzer erfährt jetzt den Grund, statt vor einem stummen Feld zu
     // sitzen. Bei komplett leerem Feld bleibt die Region leer.
     if (!shouldSearch(q.length)) {
-      lastQuery = "";
-      closeList();
       showOutcome({ kind: "typing", length: q.length });
       return;
     }
@@ -226,7 +228,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeList();
+      invalidateSearch();
       showStatus("");
     } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !list.hidden) {
       e.preventDefault();
@@ -252,17 +254,14 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
 
   clearBtn.addEventListener("click", () => {
     input.value = "";
-    lastQuery = "";
-    selectFirstOnResults = false;
-    if (timer) clearTimeout(timer);
-    closeList();
+    invalidateSearch();
     showStatus("");
     syncClear();
     input.focus(); // direkt weitertippen können
   });
 
   document.addEventListener("click", (e) => {
-    if (!root.contains(e.target as Node)) closeList();
+    if (!root.contains(e.target as Node)) invalidateSearch();
   });
 
   geoBtn.addEventListener("click", () => {
@@ -270,10 +269,14 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       showStatus(t("geoUnsupported"));
       return;
     }
+    invalidateSearch();
+    showStatus("");
+    const isCurrentIntent = opts.onGeoStart();
     geoBtn.disabled = true;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         geoBtn.disabled = false;
+        if (!isCurrentIntent()) return;
         showStatus("");
         opts.onSelect({
           id: GEO_PLACE_ID, // nie persistiert: dieselbe Identität, an der alle Geo-Guards hängen
@@ -290,6 +293,7 @@ export function initSearchBar(root: HTMLElement, opts: SearchBarOptions): void {
       },
       (err) => {
         geoBtn.disabled = false;
+        if (!isCurrentIntent()) return;
         showStatus(err.code === err.PERMISSION_DENIED ? t("geoDenied") : t("geoFailed"));
       },
       { timeout: 10000, maximumAge: 60000 }

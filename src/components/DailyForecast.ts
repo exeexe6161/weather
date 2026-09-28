@@ -1,12 +1,12 @@
 import type { DailyEntry } from "../lib/weather";
-import { pickIcon, getWmo, isPrecipCode } from "../lib/wmo";
+import { pickIcon, getWmo, isRainCode, isSnowCode } from "../lib/wmo";
 import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
 import { formatWeekday, formatDayMonth, formatTemp, formatPercent, formatWind, formatHour, fmtMm } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { esc } from "../dom";
 
 // Regenwahrscheinlichkeit erst ab dieser Schwelle (Prozent) zeigen; bei
-// Niederschlagscodes (isPrecipCode) immer, sonst stünde ein Regensymbol ohne
+// Regencodes (isRainCode) immer, sonst stünde ein Regensymbol ohne
 // Wert da. Darunter bleibt der Slot leer (feste Spalte, Zeile verspringt nicht)
 export const RAIN_SHOW_THRESHOLD = 30;
 
@@ -73,7 +73,7 @@ function bindDayPanels(el: HTMLElement): void {
 // Öffnet beim Rendern den in openDayIndex gemerkten Tag (Standard nach neuen
 // Wetterdaten: Heute, Index 0), sofern er Detailwerte hat. Der Zustand liegt
 // modulweit, daher braucht der Aufrufer kein Flag und keine Rückgabe.
-export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number): void {
+export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: number, calendarStale = false): void {
   bindDayPanels(el); // einmalig; delegiert das Auf- und Zuklappen
   const locale = getLocale();
 
@@ -105,7 +105,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
 
   el.innerHTML = visible
     .map((d, i) => {
-      const isToday = i === 0;
+      const isToday = i === 0 && !calendarStale;
       // Der aktuelle Zustand steht bereits in der grossen Karte. In der
       // Tagesliste soll auch bei "Heute" die Prognose fuer den ganzen Tag stehen.
       const code = d.weatherCode;
@@ -116,7 +116,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
       // typeof Check fängt alte Forecast Caches ohne das Feld ab
       const rain =
         typeof d.precipitationProbabilityMax === "number" &&
-        (isPrecipCode(d.weatherCode) || d.precipitationProbabilityMax >= RAIN_SHOW_THRESHOLD)
+        (isRainCode(d.weatherCode) || d.precipitationProbabilityMax >= RAIN_SHOW_THRESHOLD)
           ? d.precipitationProbabilityMax
           : null;
       const outlook = i >= OUTLOOK_FROM;
@@ -131,7 +131,7 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
       const rowInner = `<div class="day-name"><span class="day-dow">${day}</span><span class="day-date">${dateLabel}</span></div>
         <i data-lucide="${icon}" class="day-ico" role="img" aria-label="${esc(label)}"></i>
         <div class="day-label">${esc(label)}</div>
-        <div class="day-rain">${rain !== null ? `<i data-lucide="droplets" class="day-rain-ico"></i><span>${formatPercent(rain)}</span>` : ""}</div>
+        <div class="day-rain">${rain !== null ? `<i data-lucide="droplets" class="day-rain-ico" aria-hidden="true"></i><span class="sr-only">${esc(t("precipProbability"))}: </span><span>${formatPercent(rain)}</span>` : ""}</div>
         <div class="day-temps">
           <span class="day-max">${formatTemp(d.tempMax)}</span>
           <span class="day-min">${formatTemp(d.tempMin)}</span>
@@ -143,6 +143,9 @@ export function renderDailyForecast(el: HTMLElement, daily: DailyEntry[], days: 
       const tiles: string[] = [];
       if (isNum(d.windMax)) tiles.push(metaTile("wind", t("day_wind_max"), formatWind(d.windMax)));
       if (isNum(d.precipTotal) && d.precipTotal > 0) tiles.push(metaTile("cloud-rain", t("day_precip_total"), fmtMm(d.precipTotal, locale)));
+      if (isSnowCode(d.weatherCode) || (isNum(d.snowProbabilityMax) && d.snowProbabilityMax > 0)) {
+        tiles.push(metaTile("cloud-snow", t("snowProbability"), formatPercent(d.snowProbabilityMax)));
+      }
       if (isNum(d.humidityAvg)) tiles.push(metaTile("droplets", t("humidity"), formatPercent(d.humidityAvg)));
       if (isNum(d.uvIndexMax) && Math.round(d.uvIndexMax) >= 1) tiles.push(metaTile("sun", t("uv_label"), String(Math.round(d.uvIndexMax))));
 

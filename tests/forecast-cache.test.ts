@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { MAX_FAVORITES } from "../src/lib/favorites.ts";
-import { GEO_PLACE_ID } from "../src/lib/geocoding.ts";
+import { GEO_PLACE_ID, type Place } from "../src/lib/geocoding.ts";
+import { findLocalProviderPlace } from "../src/app.ts";
+import { readPlaceLink } from "../src/lib/linkResolution.ts";
 import type { Forecast } from "../src/lib/weather.ts";
+import { localDateAt, isForecastForCurrentLocalDay } from "../src/lib/forecastDay.ts";
 import {
   MAX_FORECAST_CACHE_AGE_MS,
   MAX_FORECAST_CACHE_ENTRIES,
   getUsableForecast,
+  getRecentForecast,
+  forecastCacheState,
   pruneExpiredForecasts,
   pruneForecastCache,
   putForecast,
@@ -15,7 +20,7 @@ import {
   type ForecastCacheEntry,
 } from "../src/lib/forecastCache.ts";
 
-const CACHE_KEY = "weather:weatherapi:forecasts";
+const CACHE_KEY = "weather:weatherapi:forecasts:rain-v2";
 const LEGACY_KEY = "weather:weatherapi:last-forecast";
 const OLDER_LEGACY_KEY = "weather:last-forecast";
 
@@ -63,7 +68,7 @@ function forecast(temperature: number): Forecast {
       isDay: true,
     },
     hourly: [],
-    daily: [],
+    daily: [{ date: "2099-07-15", tempMax: 25, tempMin: 15, weatherCode: 1000, precipitationProbabilityMax: null, sunrise: null, sunset: null, uvIndexMax: null }],
     timezone: "Europe/Berlin",
     yesterdayTempMax: temperature - 2,
   };
@@ -72,6 +77,82 @@ function forecast(temperature: number): Forecast {
 function seed(id: number, savedAt: string, temperature = 20): void {
   putForecast(id, 52.52, 13.405, forecast(temperature), savedAt);
 }
+
+function linkedPlace(id: number): Place {
+  return { id, providerId: id, name: "Köln", latitude: 52.52, longitude: 13.405, country: "Deutschland", countryCode: "DE" };
+}
+
+test("provider link reaches only a fresh forecast for its locally known place", () => {
+  const link = readPlaceLink("?stadt=K%C3%B6ln&placeId=17");
+  const local = findLocalProviderPlace(link, linkedPlace(17), [linkedPlace(28)]);
+  assert.equal(local?.id, 17);
+  seed(17, stamp(0), 21);
+  seed(28, stamp(0), 15);
+  assert.equal(getUsableForecast(local!.id, NOW)?.forecast.current.temperature, 21);
+});
+
+test("foreign, missing and expired forecasts cannot fill a provider link", () => {
+  const link = readPlaceLink("?stadt=K%C3%B6ln&placeId=17");
+  const local = findLocalProviderPlace(link, linkedPlace(17), []);
+  assert.equal(local?.id, 17);
+  assert.equal(getUsableForecast(local!.id, NOW), null);
+  seed(28, stamp(0), 15);
+  assert.equal(getUsableForecast(local!.id, NOW), null);
+  seed(17, stamp(-MAX_FORECAST_CACHE_AGE_MS - 1000), 21);
+  assert.equal(getUsableForecast(local!.id, NOW), null);
+});
+
+test("forecast cache alone cannot supply an unknown provider linked place", () => {
+  seed(17, stamp(0), 21);
+  const link = readPlaceLink("?stadt=K%C3%B6ln&placeId=17");
+  assert.equal(findLocalProviderPlace(link, null, [linkedPlace(28)]), null);
+});
+
+test("missing and real zero rain probabilities survive the forecast storage round trip", () => {
+  const data = forecast(20);
+  data.hourly = [{ time: "2099-07-15T12:00", temperature: 20, apparentTemperature: 21, weatherCode: 2, precipitationProbability: null }];
+  data.daily = [{ date: "2099-07-15", tempMax: 25, tempMin: 15, weatherCode: 2, precipitationProbabilityMax: null, sunrise: null, sunset: null, uvIndexMax: null }];
+  putForecast(7, 50, 8, data, stamp(0));
+  assert.equal(getUsableForecast(7, NOW)?.forecast.hourly[0].precipitationProbability, null);
+  assert.equal(getUsableForecast(7, NOW)?.forecast.daily[0].precipitationProbabilityMax, null);
+  data.hourly[0].precipitationProbability = 0;
+  data.daily[0].precipitationProbabilityMax = 0;
+  putForecast(7, 50, 8, data, stamp(0));
+  assert.equal(getUsableForecast(7, NOW)?.forecast.hourly[0].precipitationProbability, 0);
+  assert.equal(getUsableForecast(7, NOW)?.forecast.daily[0].precipitationProbabilityMax, 0);
+});
+
+test("provider ID keeps the existing internal forecast cache key", () => {
+  const providerId = 2801268;
+  seed(providerId, stamp(0));
+  assert.equal(getUsableForecast(providerId, NOW)?.placeId, providerId);
+  assert.equal(readForecastCache().has(providerId), true);
+});
+
+test("snow probabilities remain optional in old forecasts and preserve zero in new forecasts", () => {
+  const data = forecast(20);
+  data.hourly = [{ time: "2099-07-15T12:00", temperature: 20, apparentTemperature: 21, weatherCode: 0, precipitationProbability: 0 }];
+  data.daily = [{ date: "2099-07-15", tempMax: 20, tempMin: 10, weatherCode: 0, precipitationProbabilityMax: 0, sunrise: null, sunset: null, uvIndexMax: null }];
+  putForecast(7, 50, 8, data, stamp(0));
+  assert.equal(getUsableForecast(7, NOW)?.forecast.hourly[0].snowProbability, undefined);
+  assert.equal(getUsableForecast(7, NOW)?.forecast.daily[0].snowProbabilityMax, undefined);
+  data.hourly[0].snowProbability = 0;
+  data.daily[0].snowProbabilityMax = 65;
+  putForecast(7, 50, 8, data, stamp(0));
+  assert.equal(getUsableForecast(7, NOW)?.forecast.hourly[0].snowProbability, 0);
+  assert.equal(getUsableForecast(7, NOW)?.forecast.daily[0].snowProbabilityMax, 65);
+});
+
+test("only the ambiguous legacy weather cache is invalidated, user choices remain intact", () => {
+  const userValues = { "weather:favorites": "favorite fixture", "weather:last-place": "last place fixture", "weather:theme": "dark", "weather:lang": "tr" };
+  for (const [key, value] of Object.entries(userValues)) storage.setItem(key, value);
+  const old = forecast(20);
+  storage.setItem("weather:weatherapi:forecasts", JSON.stringify({ 7: { placeId: 7, latitude: 50, longitude: 8, savedAt: stamp(0), forecast: old } }));
+
+  assert.equal(getUsableForecast(7, NOW), null);
+  assert.equal(storage.has("weather:weatherapi:forecasts"), false);
+  for (const [key, value] of Object.entries(userValues)) assert.equal(storage.getItem(key), value);
+});
 
 beforeEach(() => {
   storage = new MemoryStorage();
@@ -206,6 +287,66 @@ test("treats corrupted localStorage data as an empty cache", () => {
 
   assert.equal(readForecastCache().size, 0);
   assert.equal(getUsableForecast(1, NOW), null);
+});
+
+test("rejects valid JSON with an unusable forecast shape", () => {
+  const envelope = { placeId: 1, latitude: 52.52, longitude: 13.405, savedAt: stamp(0) };
+  storage.setItem(CACHE_KEY, JSON.stringify({ 1: { ...envelope, forecast: {} } }));
+  assert.equal(getUsableForecast(1, NOW), null);
+  storage.setItem(CACHE_KEY, JSON.stringify({ 1: { ...envelope, forecast: { current: {}, hourly: [], daily: [] } } }));
+  assert.equal(getUsableForecast(1, NOW), null);
+  storage.setItem(CACHE_KEY, JSON.stringify({ 1: { ...envelope, forecast: { ...forecast(20), hourly: [null] } } }));
+  assert.equal(getUsableForecast(1, NOW), null);
+});
+
+test("accepts the minimal rendered forecast shape without newer optional fields", () => {
+  const minimal = {
+    current: {
+      time: "2099-07-15T12:00", temperature: 20, apparentTemperature: 21,
+      humidity: 50, windSpeed: 10, weatherCode: 1000, isDay: true,
+    },
+    hourly: [],
+    daily: [{ date: "2099-07-15", tempMax: 25, tempMin: 15, weatherCode: 1000 }],
+  };
+  storage.setItem(CACHE_KEY, JSON.stringify({
+    1: { placeId: 1, latitude: 52.52, longitude: 13.405, savedAt: stamp(0), forecast: minimal },
+  }));
+  assert.equal(getUsableForecast(1, NOW), null);
+  assert.equal(getRecentForecast(1, NOW)?.forecast.current.temperature, 20);
+  assert.equal(getRecentForecast(1, NOW)?.forecast.current.lastUpdatedEpoch, undefined);
+});
+
+test("same day cached forecast remains fresh for its exact place", () => {
+  seed(17, stamp(-30 * 60_000));
+  const entry = getRecentForecast(17, NOW)!;
+  assert.equal(forecastCacheState(entry, NOW), "fresh");
+  assert.equal(getUsableForecast(17, NOW)?.placeId, 17);
+  assert.equal(getUsableForecast(18, NOW), null);
+});
+
+test("Tokyo midnight changes calendar validity without extending the 60 minute cache", () => {
+  const saved = Date.parse("2099-07-15T14:40:00Z"); // 23:40 in Tokyo
+  const now = Date.parse("2099-07-15T15:10:00Z"); // 00:10 next day in Tokyo
+  const data = { ...forecast(20), timezone: "Asia/Tokyo" };
+  putForecast(7, 35.7, 139.7, data, new Date(saved).toISOString());
+  const entry = getRecentForecast(7, now)!;
+  assert.equal(localDateAt(data.timezone, saved), "2099-07-15");
+  assert.equal(localDateAt(data.timezone, now), "2099-07-16");
+  assert.equal(forecastCacheState(entry, now), "calendar-stale");
+  assert.equal(getUsableForecast(7, now), null);
+  assert.equal(getRecentForecast(7, now)?.placeId, 7);
+  assert.equal(getRecentForecast(7, saved + MAX_FORECAST_CACHE_AGE_MS + 1), null);
+  assert.equal(forecastCacheState(entry, saved + MAX_FORECAST_CACHE_AGE_MS + 1), "expired");
+});
+
+test("Los Angeles and Tokyo calendar days ignore the device calendar", () => {
+  const berlinMidnight = Date.parse("2099-07-15T22:10:00Z");
+  assert.equal(localDateAt("Europe/Berlin", berlinMidnight), "2099-07-16");
+  assert.equal(localDateAt("America/Los_Angeles", berlinMidnight), "2099-07-15");
+  assert.equal(localDateAt("Asia/Tokyo", berlinMidnight), "2099-07-16");
+  assert.equal(isForecastForCurrentLocalDay({ ...forecast(20), timezone: "America/Los_Angeles" }, berlinMidnight), true);
+  assert.equal(isForecastForCurrentLocalDay({ ...forecast(20), timezone: "Asia/Tokyo" }, berlinMidnight), false);
+  assert.equal(localDateAt("invalid/timezone", berlinMidnight), null);
 });
 
 test("removes the old single forecast keys on read", () => {

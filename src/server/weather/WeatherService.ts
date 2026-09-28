@@ -8,6 +8,7 @@ import type { WeatherProvider, ProviderId, BatchPlace } from "./WeatherProvider.
 import { weatherApiProvider } from "./providers/WeatherApiProvider.js";
 import type { Forecast, Place, PollenLevels, FavWeather } from "./types.js";
 import { getOrSet, get, set, roundCoord, buildCacheKey, TTL } from "./cache.js";
+import { isForecastForCurrentLocalDay } from "../../lib/forecastDay.js";
 
 const PROVIDERS: Record<ProviderId, WeatherProvider> = {
   WEATHER_API: weatherApiProvider,
@@ -56,7 +57,11 @@ export const WeatherService = {
   getForecast(latitude: number, longitude: number): Promise<Forecast> {
     const provider = activeProvider();
     const key = buildCacheKey(provider.id, ["forecast", roundCoord(latitude), roundCoord(longitude)]);
-    return getOrSet(key, TTL.WEATHER_MS, () => provider.getForecast(latitude, longitude));
+    return getOrSet(key, TTL.WEATHER_MS, async () => {
+      const forecast = await provider.getForecast(latitude, longitude);
+      if (!isForecastForCurrentLocalDay(forecast)) throw new Error("Provider forecast has no current local day");
+      return forecast;
+    }, undefined, isForecastForCurrentLocalDay);
   },
 
   getPollen(latitude: number, longitude: number): Promise<PollenLevels | null> {

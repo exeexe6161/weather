@@ -13,14 +13,17 @@
 import { GEO_PLACE_ID } from "./geocoding";
 import { MAX_FAVORITES } from "./favorites";
 import type { Forecast } from "./weather";
+import { isForecastForCurrentLocalDay } from "./forecastDay";
 
-const FORECAST_CACHE_KEY = "weather:weatherapi:forecasts";
+// Frühere Forecasts können fehlende Regenwahrscheinlichkeiten als 0 enthalten.
+// Wiederbeschaffbaren Wettercache erneuern, echte 0 niemals umdeuten.
+const FORECAST_CACHE_KEY = "weather:weatherapi:forecasts:rain-v2";
 
 // Einzelforecast-Schlüssel früherer Versionen. Beide werden bei jedem Lesen
 // entfernt, damit kein toter Datensatz mit Koordinaten liegen bleibt. Ihre
 // Inhalte werden bewusst NICHT übernommen: ein einzelner Ort ist beim ersten
 // Abruf ohnehin sofort wieder da, eine Migration wäre reine Altlastpflege.
-const LEGACY_FORECAST_CACHE_KEYS = ["weather:weatherapi:last-forecast", "weather:last-forecast"];
+const LEGACY_FORECAST_CACHE_KEYS = ["weather:weatherapi:last-forecast", "weather:last-forecast", "weather:weatherapi:forecasts"];
 
 // Unverändert aus app.ts übernommen: ein Stand, der älter ist, wird nicht mehr
 // als Sofort-Anzeige gezeigt. Eine tagealte Vorhersage als "Stand" wäre
@@ -40,18 +43,42 @@ export interface ForecastCacheEntry {
   forecast: Forecast;
 }
 
-// Strukturprüfung der Hülle. Der Forecast selbst wird nicht tief geprüft: seine
-// Felder sind durchgehend optional-tolerant ausgelegt (s. weather.ts), damit
-// ältere Stände ohne Migration weiter angezeigt werden können.
+// Nur die unmittelbar gerenderten Pflichtstrukturen prüfen. Zusätzliche Wetter-
+// felder bleiben optional, damit ältere Cacheeinträge weiter lesbar sind.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isUsableForecast(value: unknown): value is Forecast {
+  if (!isRecord(value) || !isRecord(value.current) || !Array.isArray(value.hourly) || !Array.isArray(value.daily)) return false;
+  const current = value.current;
+  return (
+    typeof current.time === "string" &&
+    isFiniteNumber(current.temperature) && isFiniteNumber(current.apparentTemperature) &&
+    isFiniteNumber(current.humidity) && isFiniteNumber(current.windSpeed) &&
+    isFiniteNumber(current.weatherCode) && typeof current.isDay === "boolean" &&
+    value.hourly.every((hour: unknown) => isRecord(hour) &&
+      typeof hour.time === "string" && isFiniteNumber(hour.temperature) &&
+      isFiniteNumber(hour.apparentTemperature) && isFiniteNumber(hour.weatherCode)) &&
+    value.daily.every((day: unknown) => isRecord(day) &&
+      typeof day.date === "string" && isFiniteNumber(day.tempMax) &&
+      isFiniteNumber(day.tempMin) && isFiniteNumber(day.weatherCode))
+  );
+}
+
 function isEntry(value: unknown, id: number): value is ForecastCacheEntry {
-  if (value === null || typeof value !== "object") return false;
+  if (!isRecord(value)) return false;
   const e = value as Partial<ForecastCacheEntry>;
   return (
     e.placeId === id &&
     typeof e.latitude === "number" && Number.isFinite(e.latitude) && e.latitude >= -90 && e.latitude <= 90 &&
     typeof e.longitude === "number" && Number.isFinite(e.longitude) && e.longitude >= -180 && e.longitude <= 180 &&
     typeof e.savedAt === "string" && Number.isFinite(Date.parse(e.savedAt)) &&
-    e.forecast !== null && typeof e.forecast === "object"
+    isUsableForecast(e.forecast)
   );
 }
 
@@ -60,7 +87,6 @@ function isEntry(value: unknown, id: number): value is ForecastCacheEntry {
 // parsebare Zeitstempel und der Geolocation-Ort (Datenschutzzusage). Wirft nie.
 export function readForecastCache(): Map<number, ForecastCacheEntry> {
   const map = new Map<number, ForecastCacheEntry>();
-  if (typeof localStorage === "undefined") return map;
   try {
     for (const key of LEGACY_FORECAST_CACHE_KEYS) localStorage.removeItem(key);
     const raw = localStorage.getItem(FORECAST_CACHE_KEY);
@@ -83,7 +109,6 @@ export function readForecastCache(): Map<number, ForecastCacheEntry> {
 // Schreibt den Cache zurück. localStorage-Fehler (Quota, privater Modus) werden
 // geschluckt — ohne Cache ist die App langsamer, aber vollständig funktionsfähig.
 export function writeForecastCache(cache: Map<number, ForecastCacheEntry>): void {
-  if (typeof localStorage === "undefined") return;
   const record: Record<string, ForecastCacheEntry> = {};
   for (const [id, entry] of cache) record[String(id)] = entry;
   try {
@@ -99,14 +124,29 @@ export function isForecastEntryTooOld(savedAt: string, nowMs = Date.now()): bool
   return nowMs - savedMs > MAX_FORECAST_CACHE_AGE_MS;
 }
 
+export type ForecastCacheState = "fresh" | "calendar-stale" | "expired";
+
+export function forecastCacheState(entry: ForecastCacheEntry, nowMs = Date.now()): ForecastCacheState {
+  if (isForecastEntryTooOld(entry.savedAt, nowMs)) return "expired";
+  return isForecastForCurrentLocalDay(entry.forecast, nowMs) ? "fresh" : "calendar-stale";
+}
+
 // Der Stand, der für diesen Ort sofort angezeigt werden darf — oder null.
 // Für den Geolocation-Ort immer null: sein Standort wird nicht gespeichert und
 // darf deshalb auch nicht aus einem Cache zurückkommen.
 export function getUsableForecast(placeId: number, nowMs = Date.now()): ForecastCacheEntry | null {
   if (placeId === GEO_PLACE_ID) return null;
   const entry = readForecastCache().get(placeId);
-  if (!entry || isForecastEntryTooOld(entry.savedAt, nowMs)) return null;
+  if (!entry || forecastCacheState(entry, nowMs) !== "fresh") return null;
   return entry;
+}
+
+// Innerhalb der bisherigen TTL bleibt ein alter Ortstag als letzter bekannter
+// Stand lesbar. Der Aufrufer darf ihn nur ohne relative Heute-Aussagen zeigen.
+export function getRecentForecast(placeId: number, nowMs = Date.now()): ForecastCacheEntry | null {
+  if (placeId === GEO_PLACE_ID) return null;
+  const entry = readForecastCache().get(placeId);
+  return entry && forecastCacheState(entry, nowMs) !== "expired" ? entry : null;
 }
 
 // Legt den Stand eines Orts ab. Der Geolocation-Ort wird nie geschrieben

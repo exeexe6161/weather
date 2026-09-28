@@ -28,7 +28,7 @@ export interface QuotaReservationDecision {
 // genau einer global atomaren Operation. Diese Schnittstelle bietet bewusst
 // keine lokale Produktionsimplementierung und keine Rueckbuchung.
 export interface QuotaReservationAdapter {
-  reserve(request: QuotaReservationRequest): Promise<unknown>;
+  reserve(request: QuotaReservationRequest, signal?: AbortSignal): Promise<unknown>;
 }
 
 export interface UpstashQuotaReservationAdapterOptions {
@@ -158,9 +158,12 @@ export function createUpstashQuotaReservationAdapter(
   options: UpstashQuotaReservationAdapterOptions = {},
 ): QuotaReservationAdapter {
   return {
-    async reserve(request) {
+    async reserve(request, signal) {
       const { restUrl, restToken, fetchImplementation, timeoutMs } = adapterConfiguration(options);
+      if (signal?.aborted) throw new WeatherQuotaProtectionError();
       const controller = new AbortController();
+      const abort = () => controller.abort();
+      signal?.addEventListener("abort", abort, { once: true });
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetchImplementation(restUrl, {
@@ -189,6 +192,7 @@ export function createUpstashQuotaReservationAdapter(
         return redisDecision(await response.json());
       } finally {
         clearTimeout(timeout);
+        signal?.removeEventListener("abort", abort);
       }
     },
   };
@@ -254,15 +258,20 @@ function validDecision(value: unknown, request: QuotaReservationRequest): value 
 // Die beiden Upstash Variablen sind der bewusste Schalter für den Schutz:
 // fehlen BEIDE Konfigurationswerte, ist der Guard nicht eingerichtet und legt
 // sich schlafen, statt jede Wetteranfrage zu blockieren (sonst wäre die App
-// nach einem Deploy ohne Upstash Setup komplett down). Sobald konfiguriert,
-// bleibt jeder Fehlerpfad unverändert Fail Closed. Test Doubles über
+// nach einem Deploy ohne Upstash Setup komplett down). Fehlt genau einer,
+// ist die Konfiguration fehlerhaft und der Guard bleibt geschlossen. Bei
+// vollständiger Konfiguration bleibt jeder Fehlerpfad Fail Closed. Test Doubles über
 // setQuotaReservationAdapterForTesting sind davon nie betroffen.
 function quotaProtectionConfigured(): boolean {
   const environment = runtimeEnvironment();
-  return Boolean(environment.UPSTASH_REDIS_REST_URL?.trim() && environment.UPSTASH_REDIS_REST_TOKEN?.trim());
+  const hasUrl = Boolean(environment.UPSTASH_REDIS_REST_URL?.trim());
+  const hasToken = Boolean(environment.UPSTASH_REDIS_REST_TOKEN?.trim());
+  if (hasUrl !== hasToken) throw new WeatherQuotaProtectionError();
+  return hasUrl;
 }
 
-export async function reserveWeatherProviderQuota(nowMs = Date.now()): Promise<void> {
+export async function reserveWeatherProviderQuota(nowMs = Date.now(), signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new WeatherQuotaProtectionError();
   const adapter = testAdapter === undefined ? productionAdapter : testAdapter;
   if (adapter === null) throw new WeatherQuotaProtectionError();
   if (testAdapter === undefined && !quotaProtectionConfigured()) return;
@@ -270,10 +279,12 @@ export async function reserveWeatherProviderQuota(nowMs = Date.now()): Promise<v
   const request = reservationRequest(nowMs);
   let decision: unknown;
   try {
-    decision = await adapter.reserve(request);
+    decision = await adapter.reserve(request, signal);
   } catch {
     throw new WeatherQuotaProtectionError();
   }
+
+  if (signal?.aborted) throw new WeatherQuotaProtectionError();
 
   if (!validDecision(decision, request) || decision.status !== "reserved") {
     throw new WeatherQuotaProtectionError();

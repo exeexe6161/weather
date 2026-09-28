@@ -212,7 +212,7 @@ test('selectPlace setzt Pollen VOR dem Cache-Render zurueck', () => {
   const source = readFileSync(fileURLToPath(new URL('../src/app.ts', import.meta.url)), 'utf8');
   const selectPlaceAt = source.indexOf('export function selectPlace');
   const resetAt = source.indexOf('state.pollen = POLLEN_LOADING', selectPlaceAt);
-  const cacheReadAt = source.indexOf('const usableCache = getUsableForecast(', selectPlaceAt);
+  const cacheReadAt = source.indexOf('const usableCache = getRecentForecast(', selectPlaceAt);
 
   assert.ok(selectPlaceAt !== -1, 'selectPlace muss in app.ts existieren');
   assert.ok(resetAt !== -1, 'selectPlace muss state.pollen auf POLLEN_LOADING zuruecksetzen');
@@ -226,7 +226,7 @@ test('app.ts reicht den Frischezustand an die Warnungen durch', () => {
   // Semikolon zu lesen trifft genau einen Aufruf. Gezaehlt statt nur gematcht,
   // damit ein zusaetzlicher Aufruf OHNE freshness nicht durchrutscht.
   const calls = source.match(/renderWeatherAlerts\(/g) ?? [];
-  const withFreshness = source.match(/renderWeatherAlerts\([^;]*state\.freshness\)/g) ?? [];
+  const withFreshness = source.match(/renderWeatherAlerts\([^;]*state\.freshness[^;]*\);/g) ?? [];
   assert.ok(calls.length > 0, 'app.ts muss renderWeatherAlerts aufrufen');
   assert.equal(withFreshness.length, calls.length, 'jeder renderWeatherAlerts-Aufruf muss state.freshness mitgeben');
 });

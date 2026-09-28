@@ -5,7 +5,7 @@ import { summaryFor } from "../lib/summary";
 import { tempCompareKey } from "../lib/tempCompare";
 import { pickIcon, getWmo } from "../lib/wmo";
 import { weatherLabel, moonPhaseLabel } from "../i18n/weather-labels";
-import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone, compassPointFor } from "../lib/format";
+import { formatTemp, formatWind, formatHour, formatPercent, formatTimeInZone, formatStampInZone, formatObservationStampInZone, compassPointFor } from "../lib/format";
 import { t, getLang, getLocale } from "../i18n/ui";
 import { failNoteKey, type LoadErrorKind } from "../lib/loadError";
 import { esc } from "../dom";
@@ -17,10 +17,11 @@ export interface CurrentWeatherProps {
   canAddFavorite: boolean;
   // "stale": Sofort-Anzeige des letzten Stands, Netzabruf läuft noch ("Stand
   // HH:MM"); "failed": Abruf gescheitert, gespeicherte Daten bleiben stehen;
-  // "fresh": frisch geladen ("Aktualisiert HH:MM") — die Frische ist
+  // "fresh": erfolgreich geladen, Beobachtungszeit nur falls vorhanden
   // durchgehend transparent
   freshness: "fresh" | "stale" | "failed";
   updatedAt: string; // ISO Zeitpunkt des letzten erfolgreichen Abrufs
+  calendarStale?: boolean;
   // Grund des gescheiterten Abrufs, nur bei freshness "failed" gesetzt. Ohne
   // ihn stünde hier pauschal "Keine Verbindung", auch bei Serverfehler,
   // Ratenbegrenzung oder Zeitüberschreitung.
@@ -102,7 +103,7 @@ function summaryText(forecast: Forecast): string | null {
 
 export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps): void {
   stopLocalTimeTicker();
-  const { place, forecast, isFav, canAddFavorite, freshness, updatedAt, failReason } = props;
+  const { place, forecast, isFav, canAddFavorite, freshness, updatedAt, failReason, calendarStale = false } = props;
   const c = forecast.current;
   const icon = pickIcon(c.weatherCode, c.isDay);
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
@@ -110,7 +111,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
 
   // Heutiger Daily Eintrag; typeof Checks fangen Forecast Caches aus
   // localStorage ab, die die Felder noch nicht kennen (dann einzeln ausblenden)
-  const today = forecast.daily[0];
+  const today = calendarStale ? undefined : forecast.daily[0];
   const rainProb = typeof today?.precipitationProbabilityMax === "number" ? today.precipitationProbabilityMax : null;
   const sunrise = typeof today?.sunrise === "string" ? today.sunrise : null;
   const sunset = typeof today?.sunset === "string" ? today.sunset : null;
@@ -155,7 +156,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   // Lokale Ortszeit; null ohne timezone (alte Caches) → Zeile entfällt einfach
   const localTime = formatTimeInZone(forecast.timezone, locale);
   // Tageszusammenfassung; null wenn kein sinnvoller Satz möglich → Zeile entfällt
-  const summary = summaryText(forecast);
+  const summary = calendarStale ? null : summaryText(forecast);
   // Vergleich zu gestern; null bei fehlendem gestrigen Wert (API-Lücke, alte
   // Caches) oder Differenz unter der Spürbarkeitsschwelle → Zeile entfällt
   const compareKey = tempCompareKey(today?.tempMax, forecast.yesterdayTempMax);
@@ -187,6 +188,13 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
   const tempHtml = tempText.endsWith("°")
     ? `${tempText.slice(0, -1)}<span class="cw-deg">°</span>`
     : tempText;
+  const observationTime = formatObservationStampInZone(c.lastUpdatedEpoch, forecast.timezone, locale);
+  const savedTime = updatedAt
+    ? formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)
+    : null;
+  const failedTime = !calendarStale && observationTime
+    ? `${t("updatedAt")} ${observationTime}`
+    : savedTime ? t("staleNote").replace("{time}", savedTime) : "";
 
   // Favoritenstern bei erreichtem Limit: aria-disabled statt echtem disabled.
   // Ein disabled Button feuert kein click, ist nicht fokussierbar und zeigt sein
@@ -282,7 +290,7 @@ export function renderCurrentWeather(el: HTMLElement, props: CurrentWeatherProps
         <span class="cw-sun-val">${moonSetText}</span>
       </div>` : ""}
     </div>` : ""}
-    ${freshness === "failed" ? `<div class="cw-offline" role="status">${t(failNoteKey(failReason ?? "unknown"))} ${t("updatedAt")}: ${formatStampInZone(forecast.timezone, locale, new Date(updatedAt)) ?? formatHour(updatedAt, locale)}</div>` : ""}
+    ${freshness === "failed" ? `<div class="cw-offline" role="status">${t(failNoteKey(failReason ?? "unknown"))} ${failedTime}</div>` : ""}
   `;
 
   const timeSpan = el.querySelector<HTMLElement>(".cw-local-time");

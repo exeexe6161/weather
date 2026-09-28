@@ -7,7 +7,7 @@ import type { DailyEntry } from "./weather";
 
 // ── Schwellen, kalibrierbar ──
 export const WARM_MIN = 18; // Grad: darunter ist kein Tag "schön"
-export const DRY_MAX = 30;  // Prozent Regenwahrscheinlichkeit: darunter gilt "trocken"
+export const DRY_MAX = 30;  // Beide Niederschlagsarten müssen getrennt darunter liegen.
 export const WEEK_DAYS = 7;  // nur die nächsten ~7 Tage, nicht die unsicheren 16
 
 export interface BestDay {
@@ -40,6 +40,7 @@ export function bestWeatherDayKey(days: DailyEntry[]): BestDay | null {
     if (
       typeof d.tempMax !== "number" || !Number.isFinite(d.tempMax) ||
       typeof d.precipitationProbabilityMax !== "number" || !Number.isFinite(d.precipitationProbabilityMax) ||
+      typeof d.snowProbabilityMax !== "number" || !Number.isFinite(d.snowProbabilityMax) ||
       typeof d.weatherCode !== "number"
     ) {
       continue;
@@ -50,6 +51,7 @@ export function bestWeatherDayKey(days: DailyEntry[]): BestDay | null {
     const qualifies =
       d.tempMax >= WARM_MIN &&
       d.precipitationProbabilityMax < DRY_MAX &&
+      d.snowProbabilityMax < DRY_MAX &&
       clear >= 1;
     if (!qualifies) continue;
 

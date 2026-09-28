@@ -36,3 +36,14 @@ test('placeholder tokens match across all three languages', () => {
     }
   }
 });
+
+test('freshness copy identifies current conditions in all three languages', () => {
+  assert.deepEqual(ui.uiLabels.freshNote, {
+    de: 'Aktuelle Werte von {time}',
+    en: 'Current conditions as of {time}',
+    tr: 'Güncel hava verileri: {time}',
+  });
+  assert.deepEqual(ui.uiLabels.staleNote, {
+    de: 'Stand {time}', en: 'As of {time}', tr: '{time} itibarıyla',
+  });
+});

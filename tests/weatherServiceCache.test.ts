@@ -143,8 +143,9 @@ test('cache respects shouldCache for valid empty provider results', async () => 
 });
 
 test('forecast service normalizes cache coordinates and avoids duplicate provider calls', async () => {
+  Date.now = () => Date.parse('2026-07-15T12:00:00Z');
   const calls: Array<[number, number]> = [];
-  const forecast = { current: { temperature: 17 } };
+  const forecast = { current: { temperature: 17 }, timezone: 'Europe/Berlin', daily: [{ date: '2026-07-15' }] };
   service.weatherApiProvider.getForecast = async (latitude, longitude) => {
     calls.push([latitude, longitude]);
     return forecast;
@@ -160,15 +161,47 @@ test('forecast service normalizes cache coordinates and avoids duplicate provide
 });
 
 test('forecast service does not cache a provider rejection', async () => {
+  Date.now = () => Date.parse('2026-07-15T12:00:00Z');
   let calls = 0;
   service.weatherApiProvider.getForecast = async () => {
     calls++;
     if (calls === 1) throw new Error('temporary forecast failure');
-    return { recovered: true };
+    return { recovered: true, timezone: 'Europe/Berlin', daily: [{ date: '2026-07-15' }] };
   };
 
   await assert.rejects(service.WeatherService.getForecast(41.111, 9.111), /temporary forecast failure/);
-  assert.deepEqual(await service.WeatherService.getForecast(41.111, 9.111), { recovered: true });
+  assert.deepEqual(await service.WeatherService.getForecast(41.111, 9.111), { recovered: true, timezone: 'Europe/Berlin', daily: [{ date: '2026-07-15' }] });
+  assert.equal(calls, 2);
+});
+
+test('forecast cache misses across local midnight even within its 15 minute TTL', async () => {
+  let now = Date.parse('2099-07-15T14:58:00Z'); // Tokyo 23:58
+  Date.now = () => now;
+  let calls = 0;
+  service.weatherApiProvider.getForecast = async () => ({
+    timezone: 'Asia/Tokyo', daily: [{ date: ++calls === 1 ? '2099-07-15' : '2099-07-16' }],
+  });
+  const first = await service.WeatherService.getForecast(35.711, 139.711);
+  now = Date.parse('2099-07-15T15:05:00Z'); // Tokyo 00:05
+  const next = await service.WeatherService.getForecast(35.711, 139.711);
+  assert.equal((first as any).daily[0].date, '2099-07-15');
+  assert.equal((next as any).daily[0].date, '2099-07-16');
+  assert.equal(calls, 2);
+  assert.strictEqual(await service.WeatherService.getForecast(35.711, 139.711), next);
+  assert.equal(calls, 2);
+});
+
+test('invalid midnight cache never becomes a successful fallback after provider failure', async () => {
+  let now = Date.parse('2099-07-15T14:58:00Z');
+  Date.now = () => now;
+  let calls = 0;
+  service.weatherApiProvider.getForecast = async () => {
+    if (++calls === 1) return { timezone: 'Asia/Tokyo', daily: [{ date: '2099-07-15' }] };
+    throw new Error('provider unavailable');
+  };
+  await service.WeatherService.getForecast(35.722, 139.722);
+  now = Date.parse('2099-07-15T15:05:00Z');
+  await assert.rejects(service.WeatherService.getForecast(35.722, 139.722), /provider unavailable/);
   assert.equal(calls, 2);
 });
 
@@ -344,7 +377,7 @@ test('geocoding service passes unsupported exonyms through without alias handlin
 
 test('geocoding service handles an already mangled query exactly as before', async () => {
   // Ein geteilter Link aus der Zeit vor dieser Korrektur koennte die zerlegte
-  // Form tragen, weil syncCityParam den Ortsnamen kleinschreibt. Frueher machte
+  // Form tragen, weil fruehere Ortslinks den Namen kleinschrieben. Frueher machte
   // der Server daraus per toLowerCase denselben String, heute reicht er ihn
   // unveraendert durch. Beide Wege sind identisch, es gibt also keine
   // Regression fuer bestehende Links.

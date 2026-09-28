@@ -109,6 +109,12 @@ test("geocoding client remains GET on the web API path", async () => {
   assert.equal(new Headers(calls[0].init?.headers).has("Content-Type"), false);
 });
 
+test("provider ID lookup uses the existing geocoding API path", async () => {
+  captureFetch([]);
+  await searchCity("id:2801268", "tr");
+  assert.equal(String(calls[0].input), "/api/geocoding?q=id%3A2801268&lang=tr");
+});
+
 test("client error behavior remains compatible", async () => {
   globalThis.fetch = async () => new Response(null, { status: 503 });
   await assert.rejects(fetchWeather(50, 8), /Weather request failed: 503/);

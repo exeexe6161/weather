@@ -1,5 +1,20 @@
 export function formatHour(iso: string, locale = "de-DE"): string {
-  return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  // WeatherAPI liefert Stunden und Sonnenzeiten als Ortswandzeit ohne Offset.
+  // UTC dient hier nur als zonenfreier Kalenderanker für die Localeformatierung.
+  const local = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(iso);
+  if (local) {
+    const [, year, month, day, hour, minute, second] = local;
+    const value = new Date(Date.UTC(+year, +month - 1, +day, +hour, +minute, +(second ?? 0)));
+    if (value.getUTCFullYear() !== +year || value.getUTCMonth() + 1 !== +month ||
+        value.getUTCDate() !== +day || value.getUTCHours() !== +hour ||
+        value.getUTCMinutes() !== +minute || value.getUTCSeconds() !== +(second ?? 0)) return "–";
+    return value.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  }
+  // Absolute ISO-Zeitstempel mit Z/Offset kommen nur aus älteren Fallbackpfaden.
+  // Andere zonenlose Formen bleiben neutral, statt als Gerätezeit zu rutschen.
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(iso)) return "–";
+  const absolute = new Date(iso);
+  return Number.isNaN(absolute.getTime()) ? "–" : absolute.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 // Date-only Strings ("YYYY-MM-DD", Stationszeit-Kalendertag) zonenfrei verankern:
 // Komponenten parsen und über Date.UTC bauen — dieselbe Mechanik wie daylight.ts
@@ -96,6 +111,13 @@ export function formatStampInZone(
   } catch {
     return null;
   }
+}
+
+// Nur für den Datenstand der aktuellen Wetterbeobachtung. Der Epochwert ist
+// eindeutig; ohne gültige Ortszeitzone wird keine Beobachtungszeit behauptet.
+export function formatObservationStampInZone(epoch: unknown, timezone: unknown, locale = "de-DE", nowMs = Date.now()): string | null {
+  if (typeof epoch !== "number" || !Number.isSafeInteger(epoch) || epoch < 0) return null;
+  return formatStampInZone(timezone, locale, new Date(epoch * 1000), new Date(nowMs));
 }
 export function formatDayMonth(iso: string, locale = "de-DE"): string {
   const d = utcCalendarDate(iso);

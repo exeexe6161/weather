@@ -9,6 +9,7 @@ export const GEO_PLACE_ID = -1;
 
 export interface Place {
   id: number;
+  providerId?: number;
   name: string;
   latitude: number;
   longitude: number;
