@@ -9,14 +9,13 @@
 import type { Forecast } from "./weather";
 import { getWmo, pickIcon } from "./wmo";
 import { weatherLabel } from "../i18n/weather-labels";
-import { t, type Lang } from "../i18n/ui";
+import { t, uiLabels, type Lang } from "../i18n/ui";
+import { weatherAge } from "./weatherAge";
 import {
   formatTemp,
   formatPercent,
   formatWind,
   formatWeekday,
-  formatWeekdayLong,
-  formatDayMonth,
   formatTimeInZone,
 } from "./format";
 import {
@@ -130,12 +129,38 @@ export interface WeatherCardInput {
   forecast: Forecast;
   locale: string;
   lang: Lang;
+  now?: () => number; // dieselbe F06-Uhr wie im aufrufenden Shareflow
+}
+
+// Datum und Uhrzeit gehören zum unveränderten Providerabruf, nicht zur
+// Beobachtung oder Bilderzeugung. Ohne absolute Herkunft/Ortszone kein PNG.
+export function weatherCardTimestamp(
+  forecast: Pick<Forecast, "sourceFetchedAt" | "timezone">,
+  locale: string,
+  lang: Lang,
+  nowMs = Date.now(),
+): string | null {
+  const source = forecast.sourceFetchedAt;
+  if (typeof source !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(source) ||
+      weatherAge(source, nowMs) === "expired") return null;
+  const at = new Date(source);
+  const time = formatTimeInZone(forecast.timezone, locale, at);
+  if (!time) return null;
+  const date = new Intl.DateTimeFormat(locale, {
+    timeZone: forecast.timezone,
+    weekday: "long",
+    day: locale.startsWith("en") ? "numeric" : "2-digit",
+    month: locale.startsWith("en") ? "short" : "2-digit",
+  }).format(at);
+  return `${date} · ${uiLabels.share_dataStamp[lang].replace("{time}", time)}`;
 }
 
 // Zeichnet die Karte und gibt ein PNG-Blob zurück. null bei einem Fehler
 // (z. B. kein 2D-Kontext, toBlob scheitert) → Aufrufer fällt auf Text-Teilen.
 export async function renderWeatherCard(input: WeatherCardInput): Promise<Blob | null> {
-  const { name, forecast, locale, lang } = input;
+  const { name, forecast, locale, lang, now = Date.now } = input;
+  const dateStr = weatherCardTimestamp(forecast, locale, lang, now());
+  if (!dateStr) return null;
 
   // Fonts sicher laden, bevor gezeichnet wird (sonst System-Fallback im Canvas).
   try {
@@ -150,6 +175,7 @@ export async function renderWeatherCard(input: WeatherCardInput): Promise<Blob |
   } catch {
     /* notfalls mit Fallback-Font weiterzeichnen statt abzubrechen */
   }
+  if (weatherAge(forecast.sourceFetchedAt, now()) === "expired") return null;
 
   const cvs = document.createElement("canvas");
   cvs.width = W;
@@ -164,12 +190,8 @@ export async function renderWeatherCard(input: WeatherCardInput): Promise<Blob |
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
 
-  // ── Kopf: Ort + Datum/Uhrzeit (Ortszeit) ───────────────────────────────
+  // ── Kopf: Ort + Datenstand des Providerabrufs in Ortszeit ──────────────
   drawText(ctx, name, W / 2, 230, { size: 76, weight: 800, color: FG, maxWidth: inner });
-  const localTime = formatTimeInZone(forecast.timezone, locale);
-  const dateStr =
-    `${formatWeekdayLong(c.time, locale)}, ${formatDayMonth(c.time, locale)}` +
-    (localTime ? ` · ${localTime}` : "");
   drawText(ctx, dateStr, W / 2, 296, { size: 34, weight: 500, color: MUTED, maxWidth: inner });
 
   // ── Hero: Icon + Temperatur + Wetterlage ────────────────────────────────
@@ -235,7 +257,8 @@ export async function renderWeatherCard(input: WeatherCardInput): Promise<Blob |
   drawWordmark(ctx, W / 2, 1812);
   drawText(ctx, "weatherpure.com", W / 2, 1864, { size: 30, weight: 400, color: MUTED });
 
-  return await new Promise<Blob | null>((resolve) => cvs.toBlob((b) => resolve(b), "image/png"));
+  const blob = await new Promise<Blob | null>((resolve) => cvs.toBlob((b) => resolve(b), "image/png"));
+  return weatherAge(forecast.sourceFetchedAt, now()) === "expired" ? null : blob;
 }
 
 // Wie drawText, aber respektiert eine zuvor gesetzte textBaseline ("middle" in

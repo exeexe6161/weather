@@ -738,8 +738,11 @@ function readShareCapabilities(): ShareCapabilities {
 let sharing = false;
 async function shareCurrentWeather(): Promise<void> {
   if (sharing || !state.place || !state.forecast) return;
+  if (expireCurrentWeather()) return;
+  if (!state.forecast) return;
   const place = state.place;
   const forecast = state.forecast;
+  const isDataUsable = (): boolean => weatherAge(forecast.sourceFetchedAt, weatherNow()) !== "expired";
   const c = forecast.current;
   const name = place.id === GEO_PLACE_ID ? t("myLocation") : place.name;
   const label = weatherLabel(getWmo(c.weatherCode).labelKey, getLang());
@@ -768,19 +771,24 @@ async function shareCurrentWeather(): Promise<void> {
       // voraus). Das catch ist nötig, damit eine Ablehnung nicht am Toast vorbei
       // nach oben durchschlägt und das Teilen still enden lässt.
       const blob = await withTimeout(
-        renderWeatherCard({ name, forecast, locale: getLocale(), lang: getLang() }).catch(() => null),
+        renderWeatherCard({ name, forecast, locale: getLocale(), lang: getLang(), now: weatherNow }).catch(() => null),
         SHARE_IMAGE_TIMEOUT_MS
       );
+      // Fonts/toBlob dürfen die F06-Grenze weder für Bild noch Text verlängern.
+      if (weatherAge(forecast.sourceFetchedAt, weatherNow()) === "expired") {
+        showToast(t("share_failed"));
+        return;
+      }
       if (blob) {
         const file = new File([blob], "weatherpure.png", { type: "image/png" });
-        await shareImage(payload, file);
+        await shareImage(payload, file, isDataUsable);
         return;
       }
     }
     // "native-text", "clipboard" und der Rückfall aus dem Bildpfad: shareText
     // nimmt den nativen Dialog, wenn es ihn gibt, sonst die Zwischenablage, und
     // meldet jeden Ausgang selbst (kopiert, gescheitert, Abbruch bleibt stumm).
-    await shareText(payload);
+    await shareText(payload, isDataUsable);
   } finally {
     sharing = false;
     if (btn) { btn.disabled = false; btn.classList.remove("cw-share--busy"); }

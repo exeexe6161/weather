@@ -42,7 +42,16 @@ export function decideSharePath(caps: ShareCapabilities): SharePath {
   return "unsupported";
 }
 
-export async function shareText(payload: SharePayload): Promise<void> {
+// Auch nach einem offenen nativen Dialog darf ein Rückfall keine inzwischen
+// abgelaufenen Wetterdaten erneut teilen oder herunterladen.
+function shareDataUsable(isDataUsable: () => boolean): boolean {
+  if (isDataUsable()) return true;
+  showToast(t("share_failed"));
+  return false;
+}
+
+export async function shareText(payload: SharePayload, isDataUsable = () => true): Promise<void> {
+  if (!shareDataUsable(isDataUsable)) return;
   const { title, text, url } = payload;
   if (navigator.share) {
     try {
@@ -53,6 +62,7 @@ export async function shareText(payload: SharePayload): Promise<void> {
       if ((err as DOMException)?.name === "AbortError") return;
     }
   }
+  if (!shareDataUsable(isDataUsable)) return;
   // Fallback (kein navigator.share ODER ein anderer Fehler): Text samt URL in die
   // Zwischenablage. Fehlt navigator.clipboard ganz, wirft schon der Zugriff und
   // landet im selben catch — beide Fälle sind für den Nutzer dasselbe: es hat
@@ -72,7 +82,8 @@ export async function shareText(payload: SharePayload): Promise<void> {
 // Kann das Gerät gar keine Dateien teilen (kein canShare(files), z. B. Desktop),
 // fällt es auf Text-Teilen aus Etappe 1 zurück — nützlicher als ein Zwangs-
 // Download. AbortError (Nutzer bricht ab) ist in keiner Stufe ein Fehler.
-export async function shareImage(payload: SharePayload, file: File): Promise<void> {
+export async function shareImage(payload: SharePayload, file: File, isDataUsable = () => true): Promise<void> {
+  if (!shareDataUsable(isDataUsable)) return;
   const { title, text, url } = payload;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
@@ -80,11 +91,13 @@ export async function shareImage(payload: SharePayload, file: File): Promise<voi
       return;
     } catch (err) {
       if ((err as DOMException)?.name === "AbortError") return;
+      if (!shareDataUsable(isDataUsable)) return;
       try {
         await navigator.share({ files: [file], title, text });
         return;
       } catch (err2) {
         if ((err2 as DOMException)?.name === "AbortError") return;
+        if (!shareDataUsable(isDataUsable)) return;
         // Letzte Stufe: das Bild landet im Download-Ordner. Ohne Rückmeldung
         // sähe das aus, als wäre nichts passiert.
         downloadBlob(file, file.name);
@@ -99,7 +112,7 @@ export async function shareImage(payload: SharePayload, file: File): Promise<voi
   // (Größen- oder Typgrenzen), landen wir hier. Dann bleibt Text-Teilen, das
   // seinen Ausgang selbst meldet. Deckt zusätzlich einen künftigen Aufrufer ab,
   // der ohne Vorprüfung kommt (gleiches Muster wie der Geo-Guard in favorites.ts).
-  await shareText(payload);
+  await shareText(payload, isDataUsable);
 }
 
 function downloadBlob(blob: Blob, name: string): void {

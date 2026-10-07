@@ -43,6 +43,7 @@ const directTests = [
   "weatherQuotaGuard.test.ts",
   "weatherServiceCache.test.ts",
   "uiLabels.test.ts",
+  "shareImage.test.ts",
 ].map((name) => resolve(testsDir, name));
 const outputDir = await mkdtemp(join(tmpdir(), "weatherpure-tests-"));
 

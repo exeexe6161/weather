@@ -79,6 +79,7 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   // Der bewusste Abbruch des nativen Dialogs bleibt bewusst ohne Rückmeldung.
   share_failed:    { de: "Teilen ist hier nicht möglich", en: "Sharing is not available here", tr: "Burada paylaşım mümkün değil" },
   share_downloaded: { de: "Bild gespeichert", en: "Image saved", tr: "Görsel kaydedildi" },
+  share_dataStamp: { de: "Datenstand: {time}", en: "Data as of: {time}", tr: "Veri zamanı: {time}" },
   emptyTitle:      { de: "Suche eine Stadt für die Vorhersage", en: "Search a city to see the forecast", tr: "Tahmin için bir şehir ara" },
   emptySub:        { de: "Oder nutze deinen Standort über die Schaltfläche oben.", en: "Or use your location via the button above.", tr: "Veya yukarıdaki düğmeyle konumunu kullan." },
   loading:         { de: "Lade Wetterdaten…", en: "Loading weather data…", tr: "Hava verileri yükleniyor…" },
