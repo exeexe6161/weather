@@ -2,6 +2,7 @@
 // STRIKT getrennt von fetchWeather/normalize (weather.ts) und favorites.ts:
 // eigener, schlanker Endpoint (aktuelle Temperatur, Wettercode sowie kompakte
 // Tageswerte für Vergleich und Warnsignal), eigener localStorage-Cache.
+import { weatherAge, nextWeatherExpiry, WEATHER_FRESH_MS } from "./weatherAge";
 import { fetchWithTimeout, apiUrl } from "./http";
 import type { Place } from "./geocoding";
 // Nur Typen, zur Laufzeit bleibt dieses Modul unabhängig von weather.ts.
@@ -18,10 +19,12 @@ const latestBatchById = new Map<number, number>();
 
 // Ab diesem Alter gilt ein Cache-Eintrag als veraltet und wird nachgeladen.
 // current-Werte ändern sich selten schneller; schont zugleich das Rate-Limit.
-export const FAV_WEATHER_TTL_MIN = 15;
+export const FAV_WEATHER_TTL_MIN = WEATHER_FRESH_MS / 60_000;
 
 // Schlankes Ergebnis pro Ort (nur was Favoritenzeile und Vergleich brauchen).
 export interface FavWeather {
+  // Optional nur, damit nicht verifizierte Altbestände erkannt werden können.
+  sourceFetchedAt?: string;
   temp: number;
   code: number;
   isDay: boolean; // für die Tag-/Nacht-Variante des Icons (pickIcon)
@@ -31,7 +34,7 @@ export interface FavWeather {
 
 // Cache-Eintrag = FavWeather plus Zeitstempel für die TTL-Prüfung.
 export interface FavWeatherEntry extends FavWeather {
-  savedAt: string; // ISO-Zeit
+  savedAt: string; // Kompatibilitätsfeld, bei neuen Einträgen identisch mit sourceFetchedAt
   // Optional für bestehende gespeicherte Einträge. Nur neue, zusammenhängende
   // Snapshots sind bestätigt; alte können durch das frühere Merge gemischt sein.
   snapshotVersion?: 1;
@@ -53,9 +56,9 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Favorites weather request failed: ${res.status}`);
-  const data: Array<{ id: number; temp: number; code: number; isDay: boolean; rainChance: number | null; hasAlert: boolean }> = await res.json();
+  const data: Array<{ id: number; temp: number; code: number; isDay: boolean; rainChance: number | null; hasAlert: boolean; sourceFetchedAt?: string }> = await res.json();
   for (const entry of data) {
-    out.set(entry.id, { temp: entry.temp, code: entry.code, isDay: entry.isDay, rainChance: entry.rainChance, hasAlert: entry.hasAlert });
+    out.set(entry.id, { sourceFetchedAt: entry.sourceFetchedAt, temp: entry.temp, code: entry.code, isDay: entry.isDay, rainChance: entry.rainChance, hasAlert: entry.hasAlert });
   }
   return out;
 }
@@ -63,7 +66,7 @@ export async function fetchFavoritesWeather(places: Place[]): Promise<Map<number
 // ── B) Cache mit TTL ───────────────────────────────────────────────────────
 // Liest den Favoriten-Wetter-Cache aus localStorage. Korrupter/fremder Inhalt
 // wird als leer behandelt (nie ein Crash). Record placeId → Eintrag.
-export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
+export function readFavWeatherCache(nowMs = Date.now()): Map<number, FavWeatherEntry> {
   const map = new Map<number, FavWeatherEntry>();
   try {
     for (const key of LEGACY_FAV_WEATHER_CACHE_KEYS) localStorage.removeItem(key);
@@ -74,24 +77,24 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
     for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
       const id = Number(key);
       if (!Number.isInteger(id)) continue;
-      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; rainChance?: unknown; hasAlert?: unknown; savedAt?: unknown; snapshotVersion?: unknown };
+      const e = val as { temp?: unknown; code?: unknown; isDay?: unknown; rainChance?: unknown; hasAlert?: unknown; savedAt?: unknown; sourceFetchedAt?: unknown; snapshotVersion?: unknown };
       if (
         e && typeof e.temp === "number" && Number.isFinite(e.temp) &&
         typeof e.code === "number" && Number.isFinite(e.code) &&
-        typeof e.savedAt === "string"
+        typeof e.sourceFetchedAt === "string" && weatherAge(e.sourceFetchedAt, nowMs) !== "expired"
       ) {
-        // Schema-Migration: Einträge aus der Zeit vor isDay haben das Feld nicht
-        // → Tag-Fallback. Ohne Snapshot-Kennzeichnung bleibt er als älterer
-        // Stand lesbar und wird regulär nachgeladen. Keine Datenmigration.
+        // Nur ein nachweisbarer Providerstand darf weiterverwendet werden.
         const isDay = typeof e.isDay === "boolean" ? e.isDay : true;
         const rainChance = typeof e.rainChance === "number" && Number.isFinite(e.rainChance) ? e.rainChance : null;
         const hasAlert = typeof e.hasAlert === "boolean" ? e.hasAlert : false;
         map.set(id, {
-          temp: e.temp, code: e.code, isDay, rainChance, hasAlert, savedAt: e.savedAt,
+          temp: e.temp, code: e.code, isDay, rainChance, hasAlert, savedAt: e.sourceFetchedAt, sourceFetchedAt: e.sourceFetchedAt,
           ...(e.snapshotVersion === 1 ? { snapshotVersion: 1 as const } : {}),
         });
       }
     }
+    // Auch ungültige/abgelaufene Altbestände physisch bereinigen, wenn möglich.
+    if (JSON.stringify(parsed) !== JSON.stringify(Object.fromEntries(map))) writeFavWeatherCache(map, nowMs);
   } catch {
     // defektes JSON → leere Map
   }
@@ -100,9 +103,11 @@ export function readFavWeatherCache(): Map<number, FavWeatherEntry> {
 
 // Schreibt den Cache zurück. localStorage-Fehler (Quota, privater Modus) werden
 // geschluckt — der Cache ist nur Beschleunigung, kein kritischer Zustand.
-export function writeFavWeatherCache(cache: Map<number, FavWeatherEntry>): void {
+export function writeFavWeatherCache(cache: Map<number, FavWeatherEntry>, nowMs = Date.now()): void {
   const record: Record<string, FavWeatherEntry> = {};
-  for (const [id, entry] of cache) record[String(id)] = entry;
+  for (const [id, entry] of cache) {
+    if (weatherAge(entry.sourceFetchedAt, nowMs) !== "expired") record[String(id)] = entry;
+  }
   try {
     localStorage.setItem(FAV_WEATHER_CACHE_KEY, JSON.stringify(record));
   } catch {
@@ -113,29 +118,26 @@ export function writeFavWeatherCache(cache: Map<number, FavWeatherEntry>): void 
 // Fehlende, ungültige oder nicht als zusammenhängend bestätigte Altbestände
 // sowie Einträge jenseits der unveränderten TTL müssen nachgeladen werden.
 export function isFavWeatherStale(entry: FavWeatherEntry | undefined, nowMs = Date.now()): boolean {
-  if (!entry || entry.snapshotVersion !== 1) return true;
-  const savedMs = Date.parse(entry.savedAt);
-  if (!Number.isFinite(savedMs)) return true;
-  return nowMs - savedMs > FAV_WEATHER_TTL_MIN * 60_000;
+  return !entry || entry.snapshotVersion !== 1 || weatherAge(entry.sourceFetchedAt, nowMs) !== "fresh";
 }
 
 // Liefert genau die Orte, deren Cache-Eintrag fehlt ODER veraltet ist — die
 // Liste, die nachgeladen werden muss. Frische Orte bleiben außen vor.
 export function getStaleOrMissingFavorites(
   places: Place[],
-  cache: Map<number, FavWeatherEntry>
+  cache: Map<number, FavWeatherEntry>,
+  now = Date.now()
 ): Place[] {
-  const now = Date.now();
   return places.filter((p) => isFavWeatherStale(cache.get(p.id), now));
 }
 
-// Nächster Zeitpunkt, an dem ein bisher frischer Chip veraltet ist. Nur ein
-// Anzeige-Timer, kein Polling und kein zusätzlicher Providerabruf.
+// Nächster Wechsel zu älterem oder abgelaufenem Stand. Nur ein Anzeige-Timer,
+// kein Polling und kein zusätzlicher Providerabruf.
 export function nextFavWeatherExpiry(entries: Iterable<FavWeatherEntry>, nowMs = Date.now()): number | null {
   let next: number | null = null;
   for (const entry of entries) {
-    if (isFavWeatherStale(entry, nowMs)) continue;
-    const expiresAt = Date.parse(entry.savedAt) + FAV_WEATHER_TTL_MIN * 60_000 + 1;
+    const expiresAt = nextWeatherExpiry(entry.sourceFetchedAt, nowMs);
+    if (expiresAt === null) continue;
     if (next === null || expiresAt < next) next = expiresAt;
   }
   return next;
@@ -144,35 +146,31 @@ export function nextFavWeatherExpiry(entries: Iterable<FavWeatherEntry>, nowMs =
 // Jeder neue Stand ersetzt alle Chip-Werte gemeinsam. Fehlende optionale Werte
 // bedeuten keine anzeigbare Regenzahl/kein bestätigtes Warnsignal in diesem
 // Stand; sie dürfen niemals aus dem vorherigen Snapshot ergänzt werden.
-function favoriteSnapshot(weather: FavWeather, savedAt: string): FavWeatherEntry {
+function favoriteSnapshot(weather: FavWeather): FavWeatherEntry {
   return {
     temp: weather.temp,
     code: weather.code,
     isDay: weather.isDay,
     rainChance: weather.rainChance ?? null,
     hasAlert: weather.hasAlert ?? false,
-    savedAt,
+    sourceFetchedAt: weather.sourceFetchedAt,
+    savedAt: weather.sourceFetchedAt!,
     snapshotVersion: 1,
   };
 }
 
 // Einzel-Eintrag spiegeln ("Gratis-Update"): wenn ohnehin der volle Forecast
-// eines Favoriten geladen wurde, dessen current direkt in den Cache schreiben —
-// der Chip ist damit sofort frisch und fällt im nächsten Batch als nicht-stale
-// heraus. Kein eigener Netzaufruf. placeId-basiert, also unabhängig von der
-// Reihenfolge der Favoriten.
-// savedAt ist bewusst überschreibbar: der Aufrufer kennt den ECHTEN Stand der
-// Daten, die er spiegelt. Wird ein aus dem lokalen Forecast-Cache gezeigter
-// Stand mit "jetzt" gestempelt, gilt er die volle TTL lang als frisch und der
-// reguläre Nachladelauf bleibt aus — der Chip zeigte dann einen alten Wert als
-// aktuellen. Ohne Angabe bleibt es beim bisherigen Verhalten.
-export function cacheFavoriteWeather(id: number, weather: FavWeather, savedAt: string = new Date().toISOString()): void {
+// eines Favoriten geladen wurde, dessen current direkt in den Cache schreiben.
+// Die Frische hängt weiterhin vom ursprünglichen Providerabruf ab.
+// Kein eigener Netzaufruf; placeId-basiert, unabhängig von der Reihenfolge.
+// Der Kopierzeitpunkt ist keine neue Quelle für das Wetteralter.
+export function cacheFavoriteWeather(id: number, weather: FavWeather, _savedAt?: string, nowMs = Date.now()): void {
   // Eine direkte Forecast-Spiegelung ist neuer als jeder laufende Batch für
   // denselben Favoriten, auch wenn dessen Antwort erst danach eintrifft.
   latestBatchById.delete(id);
-  const cache = readFavWeatherCache();
-  cache.set(id, favoriteSnapshot(weather, savedAt));
-  writeFavWeatherCache(cache);
+  const cache = readFavWeatherCache(nowMs);
+  if (weatherAge(weather.sourceFetchedAt, nowMs) !== "expired") cache.set(id, favoriteSnapshot(weather));
+  writeFavWeatherCache(cache, nowMs);
 }
 
 // ── D) Spiegelung aus dem bereits geladenen Vollforecast ───────────────────
@@ -194,6 +192,7 @@ export function favWeatherFromForecast(forecast: Forecast | null | undefined): F
   if (typeof code !== "number" || !Number.isFinite(code)) return null;
   const rain = forecast?.daily?.[0]?.precipitationProbabilityMax;
   return {
+    sourceFetchedAt: forecast?.sourceFetchedAt,
     temp,
     code,
     isDay: current.isDay === true,
@@ -204,9 +203,9 @@ export function favWeatherFromForecast(forecast: Forecast | null | undefined): F
 
 // Gemeinsamer Produktionspfad für Ortswahl und Refresh: sämtliche Chip-Werte
 // aus demselben Vollforecast mit dessen bereits gesetztem Abrufzeitpunkt.
-export function cacheFavoriteForecast(id: number, forecast: Forecast, savedAt: string): void {
+export function cacheFavoriteForecast(id: number, forecast: Forecast, savedAt: string, nowMs = Date.now()): void {
   const weather = favWeatherFromForecast(forecast);
-  if (weather !== null) cacheFavoriteWeather(id, weather, savedAt);
+  if (weather !== null) cacheFavoriteWeather(id, weather, savedAt, nowMs);
 }
 
 export interface FavoriteMirror {
@@ -223,24 +222,24 @@ export interface FavoriteMirror {
 // damit die Regel ohne DOM prüfbar bleibt.
 export function mirrorForNewFavorite(
   forecast: Forecast | null | undefined,
-  updatedAt: string,
+  _updatedAt: string,
   nowMs = Date.now()
 ): FavoriteMirror {
   const weather = favWeatherFromForecast(forecast);
   // Ohne verwertbaren Zeitstempel lässt sich die Frische nicht beurteilen; ein
   // Wert ohne beurteilbares Alter darf nicht in den Cache.
-  if (weather === null || !Number.isFinite(Date.parse(updatedAt))) {
+  if (weather === null || weatherAge(weather.sourceFetchedAt, nowMs) === "expired") {
     return { entry: null, needsFetch: true };
   }
-  const entry: FavWeatherEntry = { ...weather, savedAt: updatedAt, snapshotVersion: 1 };
+  const entry = favoriteSnapshot(weather);
   return { entry, needsFetch: isFavWeatherStale(entry, nowMs) };
 }
 
 // Verwaiste Einträge entfernen: behält nur die Orte, deren placeId in validIds
 // steht, und schreibt den bereinigten Cache zurück. Leere validIds → leerer
 // Cache. Gibt die bereinigte Map zurück, damit Aufrufer den Stand direkt nutzen.
-export function pruneFavWeatherCache(validIds: number[]): Map<number, FavWeatherEntry> {
-  const cache = readFavWeatherCache();
+export function pruneFavWeatherCache(validIds: number[], nowMs = Date.now()): Map<number, FavWeatherEntry> {
+  const cache = readFavWeatherCache(nowMs);
   const valid = new Set(validIds);
   for (const id of latestBatchById.keys()) {
     if (!valid.has(id)) latestBatchById.delete(id);
@@ -252,40 +251,41 @@ export function pruneFavWeatherCache(validIds: number[]): Map<number, FavWeather
       changed = true;
     }
   }
-  if (changed) writeFavWeatherCache(cache);
+  if (changed) writeFavWeatherCache(cache, nowMs);
   return cache;
 }
 
-// ── C) Orchestrierung (reine Funktion, in dieser Etappe noch nicht verdrahtet) ─
+// ── C) Orchestrierung ─────────────────────────────────────────────────────
 // Liest den Cache, lädt NUR die veralteten/fehlenden Orte in einem Batch-Call
 // nach, ersetzt deren Snapshots und gibt die vollständige Map zurück.
-// Ist nichts veraltet → kein Call. Bei Netz-/API-Fehler bleiben die bisherigen
-// Cache-Werte erhalten (leises Scheitern), kein Crash.
-export async function refreshFavoritesWeather(places: Place[]): Promise<Map<number, FavWeatherEntry>> {
+// Ist nichts veraltet → kein Call. Bei Netz-/API-Fehler bleiben ausschließlich
+// noch zulässige Cache-Werte erhalten (leises Scheitern), kein Crash.
+export async function refreshFavoritesWeather(places: Place[], now = () => Date.now()): Promise<Map<number, FavWeatherEntry>> {
   const validIds = places.map((p) => p.id);
   // Nur vor dem Await auf die zu diesem Zeitpunkt übergebenen Favoriten
   // begrenzen. Ein späterer alter Batch darf neu hinzugefügte Orte nicht löschen.
-  const cache = pruneFavWeatherCache(validIds);
+  const cache = pruneFavWeatherCache(validIds, now());
 
   // Nur laden, wenn es Favoriten gibt und etwas veraltet/fehlt — sonst kein Call.
   if (places.length > 0) {
-    const stale = getStaleOrMissingFavorites(places, cache);
+    const stale = getStaleOrMissingFavorites(places, cache, now());
     if (stale.length > 0) {
       const batchSeq = ++favoriteBatchSeq;
       for (const place of stale) latestBatchById.set(place.id, batchSeq);
       try {
         const fresh = await fetchFavoritesWeather(stale);
-        const savedAt = new Date().toISOString();
-        const current = readFavWeatherCache();
+        const nowMs = now();
+        const current = readFavWeatherCache(nowMs);
         let changed = false;
         for (const [id, w] of fresh) {
           if (latestBatchById.get(id) !== batchSeq) continue;
-          current.set(id, favoriteSnapshot(w, savedAt));
+          if (weatherAge(w.sourceFetchedAt, nowMs) === "expired") continue;
+          current.set(id, favoriteSnapshot(w));
           changed = true;
         }
-        if (changed) writeFavWeatherCache(current);
+        if (changed) writeFavWeatherCache(current, nowMs);
       } catch {
-        // Netz/API-Fehler: bestehende Cache-Werte behalten, nicht löschen.
+        // Der abschließende Leseweg behält nur weiterhin zulässige Wetterstände.
       } finally {
         for (const place of stale) {
           if (latestBatchById.get(place.id) === batchSeq) latestBatchById.delete(place.id);
@@ -294,5 +294,5 @@ export async function refreshFavoritesWeather(places: Place[]): Promise<Map<numb
     }
   }
 
-  return readFavWeatherCache();
+  return readFavWeatherCache(now());
 }

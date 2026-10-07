@@ -480,3 +480,31 @@ test('favorites service caches per coordinate and preserves partial provider suc
     ],
   ]);
 });
+
+test('F06 server forecast and favorite hits preserve the original provider timestamp', async () => {
+  let now = Date.parse('2099-07-15T12:00:00Z');
+  Date.now = () => now;
+  const sourceFetchedAt = new Date(now).toISOString();
+  let forecastLoads = 0;
+  let favoriteLoads = 0;
+  service.weatherApiProvider.getForecast = async () => {
+    forecastLoads++;
+    return { sourceFetchedAt, current: { temperature: 20 }, timezone: 'UTC', daily: [{ date: '2099-07-15' }] };
+  };
+  service.weatherApiProvider.getCurrentBatch = async () => {
+    favoriteLoads++;
+    return new Map([[970, { sourceFetchedAt, temp: 20, code: 2, isDay: true }]]);
+  };
+  const places = [{ id: 970, latitude: 20, longitude: 30 }];
+  const first = await service.WeatherService.getForecast(20, 30);
+  const firstFavorite = (await service.WeatherService.getCurrentBatch(places)).get(970);
+  for (const age of [14 * 60_000, 15 * 60_000 - 1]) {
+    now = Date.parse(sourceFetchedAt) + age;
+    assert.strictEqual(await service.WeatherService.getForecast(20, 30), first);
+    assert.strictEqual((await service.WeatherService.getCurrentBatch(places)).get(970), firstFavorite);
+    assert.equal((first as { sourceFetchedAt: string }).sourceFetchedAt, sourceFetchedAt);
+    assert.equal((firstFavorite as { sourceFetchedAt: string }).sourceFetchedAt, sourceFetchedAt);
+  }
+  assert.equal(forecastLoads, 1);
+  assert.equal(favoriteLoads, 1);
+});

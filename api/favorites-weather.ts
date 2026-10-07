@@ -71,7 +71,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const result = await WeatherService.getCurrentBatch(places);
     res.status(200).json(
-      Array.from(result, ([id, w]) => ({ id, temp: w.temp, code: w.code, isDay: w.isDay, rainChance: w.rainChance, hasAlert: w.hasAlert }))
+      Array.from(result, ([id, w]) => ({ id, sourceFetchedAt: w.sourceFetchedAt, temp: w.temp, code: w.code, isDay: w.isDay, rainChance: w.rainChance, hasAlert: w.hasAlert }))
     );
   } catch (err) {
     sendMappedError(res, err);

@@ -818,7 +818,9 @@ test('favorites batch preserves successful provider entries when another request
 
   // Ohne forecast/alerts im Mock fallen die neuen Batch Felder kontrolliert
   // auf rainChance null und hasAlert false zurück.
-  assert.deepEqual([...result.entries()], [[1, { temp: 19, code: 2, isDay: true, rainChance: null, hasAlert: false }]]);
+  const sourceFetchedAt = (result.get(1) as { sourceFetchedAt: string }).sourceFetchedAt;
+  assert.ok(Number.isFinite(Date.parse(sourceFetchedAt)));
+  assert.deepEqual([...result.entries()], [[1, { sourceFetchedAt, temp: 19, code: 2, isDay: true, rainChance: null, hasAlert: false }]]);
   assert.equal(calls.length, 2);
   assert.equal(reservationRequests.length, 2);
 });

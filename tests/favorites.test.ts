@@ -149,8 +149,8 @@ test("same names, hash IDs and legacy links never produce a local provider match
 test("a failed favorites read cannot overwrite the stored list on add or remove", () => {
   const saved = JSON.stringify([place(1, "Ort 1"), place(2, "Ort 2")]);
   storage.setItem("weather:favorites", saved);
-  const savedAt = "2099-07-15T12:00:00.000Z";
-  writeFavWeatherCache(new Map([[1, { temp: 18, code: 1, isDay: true, savedAt }]]));
+  const savedAt = new Date().toISOString();
+  writeFavWeatherCache(new Map([[1, { temp: 18, code: 1, isDay: true, sourceFetchedAt: savedAt, savedAt }]]));
   storage.failReadFor.add("weather:favorites");
   const writes = storage.writes;
   assert.equal(addFavorite(place(3, "Ort 3")), null);
@@ -182,8 +182,8 @@ test("a failed favorites read cannot overwrite the list on undo or move", () => 
 
 test("failed favorites writes report failure and leave favorite weather untouched", () => {
   storage.setItem("weather:favorites", JSON.stringify([place(1, "Ort 1")]));
-  const savedAt = "2099-07-15T12:00:00.000Z";
-  writeFavWeatherCache(new Map([[1, { temp: 18, code: 1, isDay: true, savedAt }]]));
+  const savedAt = new Date().toISOString();
+  writeFavWeatherCache(new Map([[1, { temp: 18, code: 1, isDay: true, sourceFetchedAt: savedAt, savedAt }]]));
   storage.failWriteFor.add("weather:favorites");
   assert.equal(addFavorite(place(2, "Ort 2")), null);
   assert.equal(removeFavoriteAndPruneWeather(1), null);
@@ -241,10 +241,10 @@ test("Undo stellt die alte Position wieder her, solange Platz ist", () => {
 test("gemeinsamer Entfernenpfad bereinigt nur das zugehörige Favoritenwetter", () => {
   addFavorite(place(1, "Ort 1"));
   addFavorite(place(2, "Ort 2"));
-  const savedAt = "2099-07-15T12:00:00.000Z";
+  const savedAt = new Date().toISOString();
   writeFavWeatherCache(new Map([
-    [1, { temp: 18, code: 1, isDay: true, savedAt }],
-    [2, { temp: 20, code: 2, isDay: true, savedAt }],
+    [1, { temp: 18, code: 1, isDay: true, sourceFetchedAt: savedAt, savedAt }],
+    [2, { temp: 20, code: 2, isDay: true, sourceFetchedAt: savedAt, savedAt }],
   ]));
   localStorage.setItem("weather:lang", "tr");
   localStorage.setItem("theme", "dark");

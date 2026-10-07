@@ -455,6 +455,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     aqi: "yes",
     alerts: "yes",
   }));
+  const sourceFetchedAt = new Date(Date.now()).toISOString();
   const location = record(data.location);
   const currentData = record(data.current);
   const forecastDays = record(data.forecast).forecastday;
@@ -565,6 +566,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     .filter(isCompleteDay);
 
   return {
+    sourceFetchedAt,
     current,
     hourly,
     daily,
@@ -676,6 +678,7 @@ async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWea
       aqi: "no",
       alerts: "yes",
     }));
+    const sourceFetchedAt = new Date(Date.now()).toISOString();
     const current = record(data.current);
     const temp = optionalNumber(current.temp_c);
     const code = optionalNumber(record(current.condition).code);
@@ -688,6 +691,7 @@ async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWea
     return {
       id: place.id,
       weather: {
+        sourceFetchedAt,
         temp,
         code: weatherApiCodeToWmo(code),
         isDay: finiteNumber(current.is_day, 1) === 1,

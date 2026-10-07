@@ -1,3 +1,4 @@
+import { weatherAge } from "../lib/weatherAge";
 import type { Place } from "../lib/geocoding";
 import { isFavWeatherStale, type FavWeatherEntry } from "../lib/favoritesWeather";
 import { pickIcon, getWmo } from "../lib/wmo";
@@ -7,6 +8,7 @@ import { t, getLang } from "../i18n/ui";
 import { esc } from "../dom";
 
 export interface FavoritesListOptions {
+  offline?: boolean;
   onSelect(place: Place): void;
   onRemove(place: Place): void;
   onMove(place: Place, dir: "up" | "down"): void;
@@ -17,12 +19,9 @@ export function renderFavoritesList(
   favorites: Place[],
   activeId: number | null,
   opts: FavoritesListOptions,
-  // Gecachtes Favoriten-Wetter, placeId → {temp, code, isDay}. Optional und nur
-  // lesend: fehlt der Eintrag (frisch hinzugefügt, noch nicht geladen), bleiben
-  // Subline und Werteblock LEER, behalten aber per CSS ihre feste Höhe/Breite —
-  // so springt die Zeile beim Nachladen nicht (kein Shimmer, nur reservierter
-  // Platz). Wettercode → Zustand-Label wie in CurrentWeather, Code+isDay → Icon
-  // über dieselbe pickIcon-Zuordnung wie überall sonst.
+  // Wetter wird vor jeder Anzeige auf sein ursprüngliches Abrufalter geprüft.
+  // Fehlende oder abgelaufene Werte erhalten einen verständlichen Hinweis.
+  // Icons verwenden dieselbe pickIcon Zuordnung wie die Hauptansicht.
   weather: ReadonlyMap<number, FavWeatherEntry> = new Map(),
   nowMs = Date.now()
 ): void {
@@ -51,13 +50,17 @@ export function renderFavoritesList(
   el.innerHTML = comparison + favorites
     .map((p, i) => {
       const active = p.id === activeId;
-      const wx = weather.get(p.id);
+      const candidate = weather.get(p.id);
+      const wx = weatherAge(candidate?.sourceFetchedAt, nowMs) === "expired" ? undefined : candidate;
       const stale = wx !== undefined && isFavWeatherStale(wx, nowMs);
       const condition = wx ? weatherLabel(getWmo(wx.code).labelKey, lang) : "";
       const rain = wx && typeof wx.rainChance === "number" ? `${Math.round(wx.rainChance)} %` : "";
-      const sub = wx ? esc([stale ? t("favStale") : "", condition, rain ? `${rain} ${t("favRain")}` : ""].filter(Boolean).join(" · ")) : "";
+      const stamp = stale ? new Intl.DateTimeFormat(lang, { dateStyle: "short", timeStyle: "short" }).format(new Date(wx!.sourceFetchedAt!)) : "";
+      const ageLabel = stale ? t("favStaleAt").replace("{time}", stamp) : "";
+      const missingLabel = t(opts.offline ? "favOffline" : "favNoWeather");
+      const sub = wx ? esc([ageLabel, condition, rain ? `${rain} ${t("favRain")}` : ""].filter(Boolean).join(" · ")) : esc(missingLabel);
       const vals = wx
-        ? `${wx.hasAlert ? `<i data-lucide="triangle-alert" class="fav-row-alert" aria-hidden="true"></i>` : ""}<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-row-wx-ico"></i><span class="fav-row-temp">${esc(formatTemp(wx.temp))}</span>`
+        ? `${wx.hasAlert && !stale ? `<i data-lucide="triangle-alert" class="fav-row-alert" aria-hidden="true"></i>` : ""}<i data-lucide="${pickIcon(wx.code, wx.isDay)}" class="fav-row-wx-ico"></i><span class="fav-row-temp">${esc(formatTemp(wx.temp))}</span>`
         : "";
       // Pfeil hoch in der ersten, Pfeil runter in der letzten Zeile deaktiviert
       // (echtes disabled → nicht fokussierbar/auslösbar, kein Out-of-bounds).
@@ -81,10 +84,10 @@ export function renderFavoritesList(
         : "";
       // data-id: app.ts hebt nach dem Umsortieren die bewegte Zeile darüber hervor.
       return `<li class="fav-row${active ? " fav-row--active" : ""}" data-id="${p.id}">
-        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${stale ? `. ${esc(t("favStale"))}` : ""}${wx?.hasAlert ? `. ${esc(t("favAlert"))}` : ""}">
+        <button type="button" class="fav-row-select" data-idx="${i}" aria-current="${active}" aria-label="${t("favSelectAria").replace("{place}", esc(p.name))}${ageLabel ? `. ${esc(ageLabel)}` : !wx ? `. ${esc(missingLabel)}` : ""}${wx?.hasAlert && !stale ? `. ${esc(t("favAlert"))}` : ""}">
           <span class="fav-row-id">
             <span class="fav-row-name">${esc(p.name)}</span>
-            <span class="fav-row-sub">${sub}</span>
+            <span class="fav-row-sub${stale || !wx ? " fav-row-sub--status" : ""}">${sub}</span>
           </span>
           <span class="fav-row-vals">${vals}</span>
         </button>

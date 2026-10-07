@@ -157,7 +157,9 @@ test("maps favorites temperature, condition, rain chance and alert status", asyn
 
   const result = await weatherApiProvider.getCurrentBatch([{ id: 7, latitude: 50, longitude: 8 }]);
 
+  assert.ok(Number.isFinite(Date.parse(result.get(7)!.sourceFetchedAt!)));
   assert.deepEqual(result.get(7), {
+    sourceFetchedAt: result.get(7)!.sourceFetchedAt,
     temp: 19,
     code: 0,
     isDay: true,
@@ -582,4 +584,21 @@ test("general dry claims require both known probabilities and no precipitation c
   }
   assert.equal(bestWeatherDayKey([{ ...raw.daily[0], weatherCode: 0, tempMax: 22, precipitationProbabilityMax: 0, snowProbabilityMax: null }]), null);
   assert.deepEqual(bestWeatherDayKey([{ ...raw.daily[0], weatherCode: 0, tempMax: 22, precipitationProbabilityMax: 0, snowProbabilityMax: 0 }]), { key: "week_best_today", dayIndex: 0 });
+});
+
+
+test("F06 provider timestamps reflect the actual fetch and not the observation epoch", async () => {
+  const originalNow = Date.now;
+  const now = Date.parse("2026-07-15T12:14:00Z");
+  Date.now = () => now;
+  try {
+    const raw = forecastFixture({ temp: 19 });
+    raw.current.last_updated_epoch = Math.floor((now - 10 * 60_000) / 1000);
+    installProviderFetch(raw);
+    const forecast = await weatherApiProvider.getForecast(51, 9);
+    const favorite = (await weatherApiProvider.getCurrentBatch([{ id: 971, latitude: 51, longitude: 9 }])).get(971)!;
+    assert.equal(forecast.sourceFetchedAt, "2026-07-15T12:14:00.000Z");
+    assert.equal(favorite.sourceFetchedAt, forecast.sourceFetchedAt);
+    assert.notEqual(Date.parse(forecast.sourceFetchedAt!), forecast.current.lastUpdatedEpoch! * 1000);
+  } finally { Date.now = originalNow; }
 });

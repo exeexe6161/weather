@@ -143,6 +143,9 @@ async function harness(initial: Place[], current = A) {
       [favorites[index], favorites[next]] = [favorites[next], favorites[index]];
       return [...favorites];
     },
+    createWeatherClock: () => () => Date.now(),
+    nextWeatherExpiry: () => null,
+    weatherAge: () => "fresh",
     readFavWeatherCache: () => new Map(),
     nextFavWeatherExpiry: () => null,
     refreshFavoritesWeather: () => new Promise(() => {}),
@@ -195,7 +198,7 @@ async function harness(initial: Place[], current = A) {
     return row?.querySelector(`.${cls}`) ?? null;
   };
   return {
-    app, document, button,
+    app, document, button, mocks,
     star: () => document.getElementById("favToggle"),
     favorites: () => [...favorites],
     failWrites: () => { failWrite = true; },
@@ -302,3 +305,22 @@ for (const places of [[A, B], [A]]) {
     assert.equal(h.toast(), "favSaveFailed");
   });
 }
+
+
+test("F06 Undo restores only the place and requests weather without reusing the removed snapshot", async () => {
+  const h = await harness([A, B]);
+  const pruned: number[][] = [];
+  const requests: number[][] = [];
+  h.mocks.pruneFavWeatherCache = (ids: number[]) => pruned.push(ids);
+  h.mocks.cacheFavoriteWeather = () => assert.fail("Undo must not redate a removed weather snapshot");
+  h.mocks.cacheFavoriteForecast = h.mocks.cacheFavoriteWeather;
+  h.mocks.refreshFavoritesWeather = (places: Place[]) => {
+    requests.push(places.map((place) => place.id));
+    return new Promise(() => {});
+  };
+  h.button(B.id, "fav-row-x")!.click();
+  assert.deepEqual(pruned, [[A.id]]);
+  h.undo();
+  assert.deepEqual(h.favorites(), [A, B]);
+  assert.deepEqual(requests, [[A.id, B.id]]);
+});

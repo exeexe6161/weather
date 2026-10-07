@@ -1,3 +1,4 @@
+import { createWeatherClock, weatherAge } from "../src/lib/weatherAge.ts";
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import { MAX_FAVORITES } from "../src/lib/favorites.ts";
@@ -24,6 +25,7 @@ const CACHE_KEY = "weather:weatherapi:forecasts:rain-v2";
 const LEGACY_KEY = "weather:weatherapi:last-forecast";
 const OLDER_LEGACY_KEY = "weather:last-forecast";
 
+const originalNow = Date.now;
 const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 
@@ -58,6 +60,7 @@ const stamp = (offsetMs: number): string => new Date(NOW + offsetMs).toISOString
 
 function forecast(temperature: number): Forecast {
   return {
+    sourceFetchedAt: stamp(0),
     current: {
       time: "2099-07-15T12:00",
       temperature,
@@ -75,7 +78,7 @@ function forecast(temperature: number): Forecast {
 }
 
 function seed(id: number, savedAt: string, temperature = 20): void {
-  putForecast(id, 52.52, 13.405, forecast(temperature), savedAt);
+  putForecast(id, 52.52, 13.405, { ...forecast(temperature), sourceFetchedAt: savedAt }, savedAt);
 }
 
 function linkedPlace(id: number): Place {
@@ -155,12 +158,14 @@ test("only the ambiguous legacy weather cache is invalidated, user choices remai
 });
 
 beforeEach(() => {
+  Date.now = () => NOW;
   storage = new MemoryStorage();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true, writable: true });
   Object.defineProperty(globalThis, "window", { value: {}, configurable: true, writable: true });
 });
 
 after(() => {
+  Date.now = originalNow;
   if (originalStorage) Object.defineProperty(globalThis, "localStorage", originalStorage);
   else delete (globalThis as { localStorage?: unknown }).localStorage;
   if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
@@ -247,15 +252,15 @@ test("never returns the geolocation place, even from a pre-existing entry", () =
 
 test("holds at most MAX_FAVORITES + 1 entries", () => {
   assert.equal(MAX_FORECAST_CACHE_ENTRIES, MAX_FAVORITES + 1);
-  for (let i = 1; i <= MAX_FORECAST_CACHE_ENTRIES + 3; i++) seed(i, stamp(i * 1000));
+  for (let i = 1; i <= MAX_FORECAST_CACHE_ENTRIES + 3; i++) seed(i, stamp((i - 10) * 1000));
 
   assert.equal(readForecastCache().size, MAX_FORECAST_CACHE_ENTRIES);
 });
 
 test("drops the oldest entry when the limit is exceeded", () => {
-  for (let i = 1; i <= MAX_FORECAST_CACHE_ENTRIES; i++) seed(i, stamp(i * 1000));
+  for (let i = 1; i <= MAX_FORECAST_CACHE_ENTRIES; i++) seed(i, stamp((i - 10) * 1000));
   // Ort 1 ist der älteste Stand und muss dem neuen Ort weichen.
-  seed(99, stamp(MAX_FORECAST_CACHE_ENTRIES * 1000 + 1000));
+  seed(99, stamp(0));
 
   const cache = readForecastCache();
   assert.equal(cache.size, MAX_FORECAST_CACHE_ENTRIES);
@@ -301,6 +306,7 @@ test("rejects valid JSON with an unusable forecast shape", () => {
 
 test("accepts the minimal rendered forecast shape without newer optional fields", () => {
   const minimal = {
+    sourceFetchedAt: stamp(0),
     current: {
       time: "2099-07-15T12:00", temperature: 20, apparentTemperature: 21,
       humidity: 50, windSpeed: 10, weatherCode: 1000, isDay: true,
@@ -327,7 +333,8 @@ test("same day cached forecast remains fresh for its exact place", () => {
 test("Tokyo midnight changes calendar validity without extending the 60 minute cache", () => {
   const saved = Date.parse("2099-07-15T14:40:00Z"); // 23:40 in Tokyo
   const now = Date.parse("2099-07-15T15:10:00Z"); // 00:10 next day in Tokyo
-  const data = { ...forecast(20), timezone: "Asia/Tokyo" };
+  Date.now = () => now;
+  const data = { ...forecast(20), sourceFetchedAt: new Date(saved).toISOString(), timezone: "Asia/Tokyo" };
   putForecast(7, 35.7, 139.7, data, new Date(saved).toISOString());
   const entry = getRecentForecast(7, now)!;
   assert.equal(localDateAt(data.timezone, saved), "2099-07-15");
@@ -376,4 +383,53 @@ test("prunes expired entries and keeps the still valid ones", () => {
 
   assert.deepEqual([...kept.keys()], [2]);
   assert.deepEqual([...readForecastCache().keys()], [2]);
+});
+
+test("F06 receiving a 14 minute server cache hit does not restart its forecast lifetime", () => {
+  const sourceFetchedAt = stamp(-14 * 60_000);
+  putForecast(7, 50, 8, { ...forecast(20), sourceFetchedAt }, stamp(0));
+  assert.equal(getRecentForecast(7, NOW)?.savedAt, sourceFetchedAt);
+  assert.ok(getRecentForecast(7, NOW + 46 * 60_000));
+  assert.equal(getRecentForecast(7, NOW + 46 * 60_000 + 1), null);
+  assert.equal(readForecastCache(NOW + 46 * 60_000 + 1).size, 0);
+});
+
+test("F06 forecast legacy and future provenance cannot be replaced by local savedAt", () => {
+  for (const sourceFetchedAt of [undefined, "invalid", stamp(1)]) {
+    storage.setItem(CACHE_KEY, JSON.stringify({ 7: { placeId: 7, latitude: 50, longitude: 8, savedAt: stamp(0), forecast: { ...forecast(20), sourceFetchedAt } } }));
+    assert.equal(getRecentForecast(7, NOW), null);
+  }
+});
+
+test("F06 failed storage cleanup does not make an expired forecast usable", () => {
+  seed(7, stamp(-60 * 60_000));
+  storage.failOnWrite = true;
+  assert.equal(getRecentForecast(7, NOW + 1), null);
+  assert.match(storage.getItem(CACHE_KEY)!, /sourceFetchedAt/);
+  assert.equal(readForecastCache(NOW + 1).size, 0);
+});
+
+
+test("F06 wall clock rollback never extends lifetime within an open app session", () => {
+  let wall = NOW;
+  let elapsed = 0;
+  const clock = createWeatherClock(() => wall, () => elapsed);
+  const source = stamp(0);
+  assert.equal(weatherAge(source, clock()), "fresh");
+  elapsed += 16 * 60_000;
+  wall -= 24 * 60 * 60_000;
+  assert.equal(weatherAge(source, clock()), "stale");
+  elapsed += 44 * 60_000 + 1;
+  assert.equal(weatherAge(source, clock()), "expired");
+  wall = NOW + 3 * 24 * 60 * 60_000;
+  assert.equal(weatherAge(source, clock()), "expired");
+  wall = NOW;
+  assert.equal(weatherAge(source, clock()), "expired");
+});
+
+test("F06 UTC elapsed age is independent of DST and offset notation", () => {
+  const source = "2026-10-25T02:30:00+02:00";
+  assert.equal(weatherAge(source, Date.parse("2026-10-25T02:30:00+01:00")), "stale");
+  assert.equal(weatherAge(source, Date.parse("2026-10-25T02:30:00.001+01:00")), "expired");
+  assert.equal(weatherAge(source, Date.parse("2026-10-25T00:45:00Z")), "fresh");
 });

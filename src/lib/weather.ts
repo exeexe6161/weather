@@ -81,6 +81,8 @@ export interface WeatherAlert {
   instruction?: string | null; // Handlungshinweis, falls die API einen liefert
 }
 export interface Forecast {
+  // Originaler Providerabruf. Optional nur für die Erkennung alter Cacheformate.
+  sourceFetchedAt?: string;
   current: CurrentWeather;
   hourly: HourlyEntry[];
   daily: DailyEntry[];

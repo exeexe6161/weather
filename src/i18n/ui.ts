@@ -212,6 +212,9 @@ export const uiLabels: Record<string, Record<Lang, string>> = {
   favDriest:         { de: "Geringste Regenchance", en: "Lowest rain chance", tr: "En düşük yağmur olasılığı" },
   favRain:           { de: "Regen", en: "rain", tr: "yağmur" },
   favAlert:          { de: "Warnung vorhanden", en: "Alert available", tr: "Uyarı mevcut" },
+  favStaleAt:        { de: "Stand {time} · älter", en: "As of {time} · older data", tr: "{time} itibarıyla · eski veriler" },
+  favNoWeather:      { de: "Keine aktuellen Wetterdaten", en: "No current weather data", tr: "Güncel hava durumu verisi yok" },
+  favOffline:        { de: "Offline · keine aktuellen Wetterdaten", en: "Offline · no current weather data", tr: "Çevrimdışı · güncel hava durumu verisi yok" },
   favStale:          { de: "Älterer Stand", en: "Older data", tr: "Eski veriler" },
   // ── Tageszusammenfassung, Ebene 1: fertige Sätze (exakt, nicht umformulieren)
   sum1_mild_sunny_day:    { de: "Mild und sonnig, zieh am Abend was über.", en: "Mild and sunny, take a layer for the evening.", tr: "Hava ılık ve güneşli, akşama bir şeyler al yanına." },

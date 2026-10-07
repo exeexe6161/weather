@@ -10,6 +10,7 @@
 // Gleiche Bauform wie favoritesWeather.ts (eigener Schlüssel, Map über placeId,
 // defekter Inhalt gilt als leer, Schreibfehler werden geschluckt) — der Cache
 // ist Beschleunigung, nie Quelle der Wahrheit.
+import { weatherAge, WEATHER_MAX_MS } from "./weatherAge";
 import { GEO_PLACE_ID } from "./geocoding";
 import { MAX_FAVORITES } from "./favorites";
 import type { Forecast } from "./weather";
@@ -25,10 +26,9 @@ const FORECAST_CACHE_KEY = "weather:weatherapi:forecasts:rain-v2";
 // Abruf ohnehin sofort wieder da, eine Migration wäre reine Altlastpflege.
 const LEGACY_FORECAST_CACHE_KEYS = ["weather:weatherapi:last-forecast", "weather:last-forecast", "weather:weatherapi:forecasts"];
 
-// Unverändert aus app.ts übernommen: ein Stand, der älter ist, wird nicht mehr
-// als Sofort-Anzeige gezeigt. Eine tagealte Vorhersage als "Stand" wäre
-// irreführend. Keine Verlängerung gegenüber dem bisherigen Verhalten.
-export const MAX_FORECAST_CACHE_AGE_MS = 60 * 60 * 1000;
+// Die absolute Maximalgültigkeit beginnt beim Providerabruf. Lokales Speichern
+// oder Übernehmen aus dem Servercache verlängert sie nicht.
+export const MAX_FORECAST_CACHE_AGE_MS = WEATHER_MAX_MS;
 
 // Ein Platz je möglichem Favoriten plus einer für den aktuell angezeigten Ort,
 // der kein Favorit sein muss. Gemessen belegt ein Eintrag rund 10 KB, das
@@ -39,7 +39,7 @@ export interface ForecastCacheEntry {
   placeId: number;
   latitude: number;
   longitude: number;
-  savedAt: string; // ISO-Zeit, gleiche Rolle wie savedAt in FavWeatherEntry
+  savedAt: string; // Kompatibilitätsfeld, bei neuen Einträgen identisch mit forecast.sourceFetchedAt
   forecast: Forecast;
 }
 
@@ -85,7 +85,7 @@ function isEntry(value: unknown, id: number): value is ForecastCacheEntry {
 // Liest den Cache. Verworfen wird dabei alles, was nie hätte dort liegen dürfen
 // oder nicht mehr verwertbar ist: defektes JSON, fremde Struktur, nicht
 // parsebare Zeitstempel und der Geolocation-Ort (Datenschutzzusage). Wirft nie.
-export function readForecastCache(): Map<number, ForecastCacheEntry> {
+export function readForecastCache(nowMs = Date.now()): Map<number, ForecastCacheEntry> {
   const map = new Map<number, ForecastCacheEntry>();
   try {
     for (const key of LEGACY_FORECAST_CACHE_KEYS) localStorage.removeItem(key);
@@ -98,8 +98,11 @@ export function readForecastCache(): Map<number, ForecastCacheEntry> {
       // Der Geo-Ort wird nie geschrieben; läge er trotzdem hier (Altlast einer
       // früheren Version), fällt genau dieser Eintrag raus statt des ganzen Caches.
       if (!Number.isInteger(id) || id === GEO_PLACE_ID) continue;
-      if (isEntry(value, id)) map.set(id, value);
+      if (isEntry(value, id) && weatherAge(value.forecast.sourceFetchedAt, nowMs) !== "expired") {
+        map.set(id, { ...value, savedAt: value.forecast.sourceFetchedAt! });
+      }
     }
+    if (JSON.stringify(parsed) !== JSON.stringify(Object.fromEntries(map))) writeForecastCache(map, nowMs);
   } catch {
     // defektes JSON → leere Map
   }
@@ -108,9 +111,11 @@ export function readForecastCache(): Map<number, ForecastCacheEntry> {
 
 // Schreibt den Cache zurück. localStorage-Fehler (Quota, privater Modus) werden
 // geschluckt — ohne Cache ist die App langsamer, aber vollständig funktionsfähig.
-export function writeForecastCache(cache: Map<number, ForecastCacheEntry>): void {
+export function writeForecastCache(cache: Map<number, ForecastCacheEntry>, nowMs = Date.now()): void {
   const record: Record<string, ForecastCacheEntry> = {};
-  for (const [id, entry] of cache) record[String(id)] = entry;
+  for (const [id, entry] of cache) {
+    if (weatherAge(entry.forecast.sourceFetchedAt, nowMs) !== "expired") record[String(id)] = entry;
+  }
   try {
     localStorage.setItem(FORECAST_CACHE_KEY, JSON.stringify(record));
   } catch {
@@ -119,15 +124,13 @@ export function writeForecastCache(cache: Map<number, ForecastCacheEntry>): void
 }
 
 export function isForecastEntryTooOld(savedAt: string, nowMs = Date.now()): boolean {
-  const savedMs = Date.parse(savedAt);
-  if (!Number.isFinite(savedMs)) return true;
-  return nowMs - savedMs > MAX_FORECAST_CACHE_AGE_MS;
+  return weatherAge(savedAt, nowMs) === "expired";
 }
 
 export type ForecastCacheState = "fresh" | "calendar-stale" | "expired";
 
 export function forecastCacheState(entry: ForecastCacheEntry, nowMs = Date.now()): ForecastCacheState {
-  if (isForecastEntryTooOld(entry.savedAt, nowMs)) return "expired";
+  if (weatherAge(entry.forecast.sourceFetchedAt, nowMs) === "expired") return "expired";
   return isForecastForCurrentLocalDay(entry.forecast, nowMs) ? "fresh" : "calendar-stale";
 }
 
@@ -136,7 +139,7 @@ export function forecastCacheState(entry: ForecastCacheEntry, nowMs = Date.now()
 // darf deshalb auch nicht aus einem Cache zurückkommen.
 export function getUsableForecast(placeId: number, nowMs = Date.now()): ForecastCacheEntry | null {
   if (placeId === GEO_PLACE_ID) return null;
-  const entry = readForecastCache().get(placeId);
+  const entry = readForecastCache(nowMs).get(placeId);
   if (!entry || forecastCacheState(entry, nowMs) !== "fresh") return null;
   return entry;
 }
@@ -145,7 +148,7 @@ export function getUsableForecast(placeId: number, nowMs = Date.now()): Forecast
 // Stand lesbar. Der Aufrufer darf ihn nur ohne relative Heute-Aussagen zeigen.
 export function getRecentForecast(placeId: number, nowMs = Date.now()): ForecastCacheEntry | null {
   if (placeId === GEO_PLACE_ID) return null;
-  const entry = readForecastCache().get(placeId);
+  const entry = readForecastCache(nowMs).get(placeId);
   return entry && forecastCacheState(entry, nowMs) !== "expired" ? entry : null;
 }
 
@@ -158,11 +161,12 @@ export function putForecast(
   latitude: number,
   longitude: number,
   forecast: Forecast,
-  savedAt: string = new Date().toISOString()
+  _savedAt?: string,
+  nowMs = Date.now()
 ): void {
-  if (placeId === GEO_PLACE_ID) return;
-  const cache = readForecastCache();
-  cache.set(placeId, { placeId, latitude, longitude, savedAt, forecast });
+  if (placeId === GEO_PLACE_ID || weatherAge(forecast.sourceFetchedAt, nowMs) === "expired") return;
+  const cache = readForecastCache(nowMs);
+  cache.set(placeId, { placeId, latitude, longitude, savedAt: forecast.sourceFetchedAt!, forecast });
   while (cache.size > MAX_FORECAST_CACHE_ENTRIES) {
     let oldestId: number | null = null;
     let oldestMs = Infinity;
@@ -176,7 +180,7 @@ export function putForecast(
     if (oldestId === null) break; // kann nicht eintreten, schützt vor Endlosschleife
     cache.delete(oldestId);
   }
-  writeForecastCache(cache);
+  writeForecastCache(cache, nowMs);
 }
 
 // Verwaiste Einträge entfernen: behält nur die Orte aus validIds. Aufrufer gibt
@@ -201,14 +205,5 @@ export function pruneForecastCache(validIds: number[]): Map<number, ForecastCach
 // liegen zu lassen: sie enthalten Koordinaten und sind ohnehin nicht mehr
 // anzeigbar. Ersetzt die frühere Einzelschlüssel-Aufräumung in initApp.
 export function pruneExpiredForecasts(nowMs = Date.now()): Map<number, ForecastCacheEntry> {
-  const cache = readForecastCache();
-  let changed = false;
-  for (const [id, entry] of [...cache]) {
-    if (isForecastEntryTooOld(entry.savedAt, nowMs)) {
-      cache.delete(id);
-      changed = true;
-    }
-  }
-  if (changed) writeForecastCache(cache);
-  return cache;
+  return readForecastCache(nowMs);
 }

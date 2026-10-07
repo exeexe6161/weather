@@ -1,3 +1,4 @@
+import { weatherAge, nextWeatherExpiry } from "../src/lib/weatherAge.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -117,7 +118,7 @@ function installDom(): { elements: Map<string, ElementDouble>; location: URL; do
   Object.assign(globalThis, {
     document,
     location,
-    window: { matchMedia: () => ({ matches: false }) },
+    window: { addEventListener: document.addEventListener, matchMedia: () => ({ matches: false }) },
     history: { state: null, replaceState(_state: unknown, _title: string, url: URL) {
       location.href = String(url);
     } },
@@ -137,6 +138,7 @@ function installDom(): { elements: Map<string, ElementDouble>; location: URL; do
 const A = { id: 1, name: "Altstadt", latitude: 1, longitude: 1, country: "DE", countryCode: "DE" };
 const B = { id: 2, name: "Neustadt", latitude: 2, longitude: 2, country: "DE", countryCode: "DE" };
 const forecast = (temperature: number) => ({
+  sourceFetchedAt: new Date(Date.now()).toISOString(),
   current: { temperature, weatherCode: 0 }, hourly: [], daily: [], timezone: "UTC", airQuality: null, alerts: [],
 });
 async function flush(): Promise<void> {
@@ -145,7 +147,7 @@ async function flush(): Promise<void> {
   await Promise.resolve();
 }
 
-async function appHarness() {
+async function appHarness(checkAge = false) {
   const dom = installDom();
   const searches: Array<{ query: string; reply: Resolver<any[]> }> = [];
   const weathers: Array<Resolver<any>> = [];
@@ -163,6 +165,9 @@ async function appHarness() {
     initSearchBar: (_root: unknown, options: any) => { searchOptions = options; },
     getFavorites: () => [],
     readFavoritesForMutation: () => [],
+    createWeatherClock: () => () => Date.now(),
+    nextWeatherExpiry: () => null,
+    weatherAge: checkAge ? weatherAge : () => "fresh",
     readFavWeatherCache: () => new Map(),
     getRecentForecast: () => null,
     isForecastForCurrentLocalDay: () => true,
@@ -242,7 +247,7 @@ test("expired tab return keeps the previous 60 minute offline boundary", async (
   h.weathers[0].resolve(forecast(11));
   await flush();
   h.mocks.isForecastForCurrentLocalDay = () => false;
-  h.mocks.isForecastEntryTooOld = () => true;
+  h.mocks.weatherAge = () => "expired";
   h.document.dispatch("visibilitychange");
   assert.equal(h.weathers.length, 2);
   assert.equal(h.module.raceProbe.getState().forecast, null);
@@ -492,4 +497,95 @@ test("closed search and stale geolocation callbacks cannot commit", async () => 
     h.geoFailure({ code: 1, PERMISSION_DENIED: 1 });
     assert.equal(h.status.textContent, "");
   } finally { h.restore(); }
+});
+
+for (const duration of [60 * 60_000 + 1, 3 * 24 * 60 * 60_000]) {
+  test(`F06 resume after ${duration} ms removes same day RAM data before a failed refresh`, async () => {
+    const oldNow = Date.now;
+    let now = Date.parse("2099-07-15T12:00:00Z");
+    Date.now = () => now;
+    try {
+      const h = await appHarness(true);
+      h.module.selectPlace(A);
+      h.weathers[0].resolve(forecast(11));
+      await flush();
+      assert.equal(h.module.raceProbe.getState().forecast.current.temperature, 11);
+      now += duration;
+      h.document.hidden = true;
+      h.document.dispatch("visibilitychange");
+      h.document.hidden = false;
+      h.document.dispatch("visibilitychange");
+      assert.equal(h.module.raceProbe.getState().forecast, null);
+      assert.equal(h.elements.get("weatherContent")?.hidden, true);
+      h.weathers[1].reject(new Error("provider unavailable"));
+      await flush();
+      assert.equal(h.module.raceProbe.getState().forecast, null);
+    } finally { Date.now = oldNow; }
+  });
+}
+
+test("F06 open tab ages RAM and alerts at boundaries, then recovers on online event", async () => {
+  const oldNow = Date.now;
+  const oldSetTimeout = globalThis.setTimeout;
+  const oldClearTimeout = globalThis.clearTimeout;
+  let now = Date.parse("2099-07-15T12:00:00Z");
+  Date.now = () => now;
+  let nextTick: (() => void) | undefined;
+  let delay: number | undefined;
+  globalThis.setTimeout = ((fn: () => void, ms: number) => { nextTick = fn; delay = ms; return 1; }) as any;
+  globalThis.clearTimeout = (() => { nextTick = undefined; }) as any;
+  try {
+    const h = await appHarness(true);
+    h.mocks.nextWeatherExpiry = nextWeatherExpiry;
+    let shownAlerts: unknown;
+    h.mocks.renderWeatherAlerts = (_el: unknown, _heading: unknown, alerts: unknown) => { shownAlerts = alerts; };
+    h.module.selectPlace(A);
+    const source = forecast(11);
+    h.weathers[0].resolve({ ...source, alerts: [{ event: "Wind" }] });
+    await flush();
+    assert.deepEqual(shownAlerts, [{ event: "Wind" }]);
+    assert.equal(delay, 15 * 60_000 + 1);
+    now += 15 * 60_000 + 1;
+    nextTick!();
+    assert.equal(shownAlerts, undefined);
+    assert.equal(h.module.raceProbe.getState().freshness, "stale");
+    assert.equal(h.module.raceProbe.getState().updatedAt, source.sourceFetchedAt);
+    assert.equal(delay, 45 * 60_000);
+    now += 45 * 60_000;
+    nextTick!();
+    assert.equal(h.module.raceProbe.getState().forecast, null);
+    assert.equal(h.elements.get("weatherContent")?.hidden, true);
+    assert.equal(nextTick, undefined);
+    h.document.dispatch("online");
+    assert.equal(h.weathers.length, 2);
+    h.weathers[1].resolve(forecast(22));
+    await flush();
+    assert.equal(h.module.raceProbe.getState().forecast.current.temperature, 22);
+    assert.equal(h.elements.get("weatherContent")?.hidden, false);
+  } finally {
+    Date.now = oldNow;
+    globalThis.setTimeout = oldSetTimeout;
+    globalThis.clearTimeout = oldClearTimeout;
+  }
+});
+
+test("F06 late main forecast cannot be mirrored or stored after 60 minutes", async () => {
+  const oldNow = Date.now;
+  let now = Date.parse("2099-07-15T12:00:00Z");
+  Date.now = () => now;
+  try {
+    const h = await appHarness(true);
+    let writes = 0;
+    h.mocks.putForecast = () => writes++;
+    h.mocks.cacheFavoriteForecast = () => writes++;
+    h.mocks.isFavorite = () => true;
+    h.module.selectPlace(A);
+    const source = forecast(11);
+    now += 60 * 60_000 + 1;
+    h.weathers[0].resolve(source);
+    await flush();
+    assert.equal(writes, 0);
+    assert.equal(h.module.raceProbe.getState().forecast, null);
+    assert.equal(h.elements.get("weatherContent")?.hidden, true);
+  } finally { Date.now = oldNow; }
 });

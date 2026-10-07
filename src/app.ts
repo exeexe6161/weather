@@ -1,6 +1,7 @@
 // WeatherApp: hält State (Ort, Forecast) und orchestriert die Komponenten.
 // Local first: letzter Ort + letzter Forecast liegen in localStorage, damit
 // die App offline mit den zuletzt geladenen Daten startet.
+import { weatherAge, nextWeatherExpiry, createWeatherClock } from "./lib/weatherAge";
 import { GEO_PLACE_ID, searchCity, type Place } from "./lib/geocoding";
 import { fetchWeather, type Forecast, type DailyEntry } from "./lib/weather";
 import { classifyLoadError, failTitleKey, type LoadErrorKind } from "./lib/loadError";
@@ -28,7 +29,7 @@ import { renderRainChart, type RainChartInput } from "./components/RainChart";
 import { renderDailyForecast, resetDailyPanelToToday } from "./components/DailyForecast";
 import { renderFavoritesList } from "./components/FavoritesList";
 import { readFavWeatherCache, refreshFavoritesWeather, cacheFavoriteWeather, cacheFavoriteForecast, pruneFavWeatherCache, mirrorForNewFavorite, nextFavWeatherExpiry } from "./lib/favoritesWeather";
-import { getRecentForecast, isForecastEntryTooOld, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
+import { getRecentForecast, putForecast, pruneForecastCache, pruneExpiredForecasts } from "./lib/forecastCache";
 import { isForecastForCurrentLocalDay } from "./lib/forecastDay";
 import { bestWeatherDayKey } from "./lib/weekSummary";
 import { renderIcons } from "./icons";
@@ -58,6 +59,8 @@ interface State {
   failReason: LoadErrorKind | null;
   updatedAt: string;
 }
+
+const weatherNow = createWeatherClock();
 
 const state: State = { place: null, forecast: null, pollen: POLLEN_LOADING, freshness: "fresh", failReason: null, updatedAt: "" };
 
@@ -113,7 +116,8 @@ function writeJson(key: string, value: unknown): void {
 export function prepareStoredStart(): Place | null {
   pruneGeoFavorites();
   const lastPlace = readStoredLastPlace();
-  pruneExpiredForecasts();
+  pruneExpiredForecasts(weatherNow());
+  readFavWeatherCache(weatherNow());
   try { localStorage.removeItem("weather:forecast-days"); } catch {}
   return lastPlace;
 }
@@ -284,19 +288,21 @@ function renderFavorites(): void {
 export function removeFavoriteAndPruneWeather(id: number): Place[] | null {
   const remaining = removeFavorite(id);
   if (remaining === null) return null;
-  pruneFavWeatherCache(remaining.map((place) => place.id));
+  pruneFavWeatherCache(remaining.map((place) => place.id), weatherNow());
   return remaining;
 }
 
 let favoritesExpiryTimer: ReturnType<typeof setTimeout> | undefined;
 
 function paintFavorites(): void {
-  // Wetter NUR aus dem Cache (Etappe 2: keine Netzaufrufe hier — der Auto-Load,
-  // der den Cache füllt, kommt in Etappe 3). Leerer Cache → leere Map → Chips
-  // zeigen wie bisher nur den Namen.
-  const weather = readFavWeatherCache();
+  // Wetter aus dem Cache lesen und beide Altersgrenzen vor der Anzeige prüfen.
+  const now = weatherNow();
+  pruneExpiredForecasts(now);
+  expireCurrentWeather(now);
+  const weather = readFavWeatherCache(now);
   const favorites = getFavorites();
   renderFavoritesList(byId("favoritesList"), favorites, state.place?.id ?? null, {
+    offline: !isOnline(),
     onSelect: (place) => selectPlace(place),
     onRemove: (place) => {
       // Position VOR dem Entfernen merken: Rückgängig stellt die alte
@@ -377,18 +383,22 @@ function paintFavorites(): void {
         .querySelector<HTMLElement>(`#favoritesList .fav-row[data-id="${place.id}"]`)
         ?.classList.add("fav-row--moved");
     },
-  }, weather);
+  }, weather, now);
   // Auch ohne neue Anfrage alte Werte rechtzeitig kennzeichnen und aus dem
   // Vergleich nehmen. Bei jedem Render den einen bestehenden Timer ersetzen.
   if (favoritesExpiryTimer !== undefined) clearTimeout(favoritesExpiryTimer);
-  const nextExpiry = nextFavWeatherExpiry(favorites.flatMap((place) => {
+  const favoriteExpiry = nextFavWeatherExpiry(favorites.flatMap((place) => {
     const entry = weather.get(place.id);
     return entry ? [entry] : [];
-  }));
+  }), now);
+  const currentExpiry = nextWeatherExpiry(state.forecast?.sourceFetchedAt, now);
+  const expiries = [favoriteExpiry, currentExpiry].filter((value): value is number => value !== null);
+  const nextExpiry = expiries.length ? Math.min(...expiries) : null;
   favoritesExpiryTimer = nextExpiry === null ? undefined : setTimeout(() => {
     renderFavorites();
+    renderContent();
     renderIcons();
-  }, Math.min(Math.max(0, nextExpiry - Date.now()), 2_147_483_647));
+  }, Math.min(Math.max(0, nextExpiry - weatherNow()), 2_147_483_647));
 }
 
 // Favoriten-Wetter im Hintergrund laden: refreshFavoritesWeather macht EINEN
@@ -400,11 +410,11 @@ function paintFavorites(): void {
 function loadFavoritesWeather(): void {
   const favs = getFavorites();
   if (favs.length === 0) return; // kein Call ohne Favoriten
-  refreshFavoritesWeather(favs)
+  refreshFavoritesWeather(favs, weatherNow)
     .then(() => {
       // Während des Abrufs entfernte Favoriten nicht erneut im Cache behalten.
       const current = readFavoritesForMutation();
-      if (current !== null) pruneFavWeatherCache(current.map((place) => place.id));
+      if (current !== null) pruneFavWeatherCache(current.map((place) => place.id), weatherNow());
       renderFavorites(); // liest den jetzt gefüllten Cache
       renderIcons();     // neue data-lucide Wetter-Icons hydrieren
     })
@@ -461,7 +471,7 @@ function renderStarterData(calendarStale: boolean): void {
   renderAirQuality(byId("airQuality"), byId("airQualityHeading"), state.forecast.airQuality);
   // freshness mitgeben: eine Entwarnung darf nur erscheinen, wenn der letzte
   // Abruf nicht gescheitert ist (siehe alertsSectionState).
-  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), state.forecast.alerts, state.forecast.timezone, calendarStale ? "failed" : state.freshness, !calendarStale);
+  renderWeatherAlerts(byId("weatherAlerts"), byId("alertsHeading"), weatherAge(state.forecast.sourceFetchedAt, weatherNow()) === "fresh" ? state.forecast.alerts : undefined, state.forecast.timezone, calendarStale ? "failed" : state.freshness, !calendarStale);
 }
 
 // Wochenüberblick-Aussage über der Tagesliste. Immer die nächsten ~7 Tage,
@@ -545,9 +555,21 @@ function settleCards(): void {
   el.classList.add("cards-settling");
 }
 
+// Vor jedem Gebrauch erneut prüfen, auch wenn Timer im Hintergrund pausierten.
+function expireCurrentWeather(now = weatherNow()): boolean {
+  if (!state.forecast || weatherAge(state.forecast.sourceFetchedAt, now) !== "expired") return false;
+  state.forecast = null;
+  state.updatedAt = "";
+  state.failReason = null;
+  showErrorView(isOnline() ? "favNoWeather" : "favOffline");
+  return true;
+}
+
 function renderContent(): void {
+  if (expireCurrentWeather()) return;
   if (!state.place || !state.forecast) return;
-  const calendarStale = !isForecastForCurrentLocalDay(state.forecast);
+  if (weatherAge(state.forecast.sourceFetchedAt, weatherNow()) === "stale" && state.freshness === "fresh") state.freshness = "stale";
+  const calendarStale = !isForecastForCurrentLocalDay(state.forecast, weatherNow());
   updateDocTitle(calendarStale); // deckt Ortswahl, frischen Abruf und Sprachwechsel ab
   updateTopStamp(calendarStale); // obere Zeitstempel-Caption (Ortswahl, Refresh, Sprachwechsel)
   renderPollen(); // deckt auch den Sprachwechsel ab (Labels neu)
@@ -649,8 +671,8 @@ function renderContent(): void {
         showToast(t("favSaveFailed"));
         return;
       }
-      const mirror = mirrorForNewFavorite(state.forecast, state.updatedAt);
-      if (mirror.entry !== null) cacheFavoriteWeather(place.id, mirror.entry, mirror.entry.savedAt);
+      const mirror = mirrorForNewFavorite(state.forecast, state.updatedAt, weatherNow());
+      if (mirror.entry !== null) cacheFavoriteWeather(place.id, mirror.entry, mirror.entry.savedAt, weatherNow());
       mirrorNeedsFetch = mirror.needsFetch;
     } else {
       if (removeFavoriteAndPruneWeather(place.id) === null) {
@@ -802,20 +824,22 @@ function refreshCurrentPlace(): void {
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
-      if (!isForecastForCurrentLocalDay(forecast)) throw new Error("Forecast day is no longer current");
+      if (weatherAge(forecast.sourceFetchedAt, weatherNow()) === "expired") throw new Error("Forecast source expired or unverified");
+      if (!isForecastForCurrentLocalDay(forecast, weatherNow())) throw new Error("Forecast day is no longer current");
       state.forecast = forecast;
       state.freshness = "fresh";
       state.failReason = null;
-      state.updatedAt = new Date().toISOString();
+      state.updatedAt = forecast.sourceFetchedAt!;
       // Stand dieses Orts ablegen (ein Eintrag je Ort). Der Geo-Ort wird in
       // putForecast selbst abgewiesen, der Guard hier ist die erste Linie.
       if (place.id !== GEO_PLACE_ID) {
-        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt);
+        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt, weatherNow());
       }
       // Gratis-Update: aktueller Ort, wenn Favorit, ohne extra Call spiegeln.
       if (isFavorite(place.id)) {
-        cacheFavoriteForecast(place.id, forecast, state.updatedAt);
+        cacheFavoriteForecast(place.id, forecast, state.updatedAt, weatherNow());
       }
+      setView("content");
       renderContent(); // Beobachtungszeit oder neutraler gespeicherter Stand
       renderFavorites();
       renderIcons();
@@ -826,6 +850,7 @@ function refreshCurrentPlace(): void {
     })
     .catch((err: unknown) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return;
+      expireCurrentWeather();
       if (state.forecast) {
         // Ehrlich benennen, woran es lag. Vorher stand hier für JEDEN Grund
         // "Keine Verbindung", auch bei Serverfehler oder Ratenbegrenzung.
@@ -892,7 +917,7 @@ export function selectPlace(place: Place): void {
   // Vorhersage als "Stand" wäre irreführend. Dann greift online der frische
   // Abruf, offline der ehrliche Fehlerzustand. Für den Geo-Ort gibt es nie
   // einen Treffer, sein Standort wird nicht gespeichert (Datenschutzzusage).
-  const usableCache = getRecentForecast(place.id);
+  const usableCache = getRecentForecast(place.id, weatherNow());
   const showedFromCache = usableCache !== null;
   if (usableCache !== null) {
     state.forecast = usableCache.forecast;
@@ -931,18 +956,19 @@ export function selectPlace(place: Place): void {
   fetchWeather(place.latitude, place.longitude)
     .then((forecast) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return; // überholt oder anderer Ort
-      if (!isForecastForCurrentLocalDay(forecast)) throw new Error("Forecast day is no longer current");
+      if (weatherAge(forecast.sourceFetchedAt, weatherNow()) === "expired") throw new Error("Forecast source expired or unverified");
+      if (!isForecastForCurrentLocalDay(forecast, weatherNow())) throw new Error("Forecast day is no longer current");
       state.forecast = forecast;
       state.freshness = "fresh";
       state.failReason = null;
-      state.updatedAt = new Date().toISOString();
+      state.updatedAt = forecast.sourceFetchedAt!;
       if (!isGeoPlace) {
-        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt);
+        putForecast(place.id, place.latitude, place.longitude, forecast, state.updatedAt, weatherNow());
       }
       // Gratis-Update: ist der geladene Ort ein Favorit, dessen Forecast direkt in
       // den Favoriten-Cache spiegeln (kein extra Call; Geo-Ort ist nie Favorit).
       if (isFavorite(place.id)) {
-        cacheFavoriteForecast(place.id, forecast, state.updatedAt);
+        cacheFavoriteForecast(place.id, forecast, state.updatedAt, weatherNow());
       }
       // Lautloser Tausch: die Sektionen werden synchron in place neu gefüllt,
       // ohne Loading-Zwischenzustand — kein Flackern, kein Scroll-Sprung
@@ -955,6 +981,7 @@ export function selectPlace(place: Place): void {
     .catch((err: unknown) => {
       if (mySeq !== loadSeq || state.place?.id !== place.id) return;
       const kind = classifyLoadError(err, isOnline());
+      expireCurrentWeather();
       if (state.forecast && state.freshness === "stale") {
         // Sofort-Anzeige steht bereits: nur den Hinweis von "Stand HH:MM" auf
         // den zur Ursache passenden Hinweis umstellen, die Anzeige selbst
@@ -1045,24 +1072,37 @@ export function initApp(): void {
     },
   });
   renderFavorites();
-  // Hintergrundtabs können Timer pausieren. Beim Wiederöffnen die Frische der
-  // Favoriten neu bewerten, ohne weitere Wetteranfragen auszulösen.
-  document.addEventListener("visibilitychange", () => {
+  // Hintergrundtabs und die native WebView können Timer pausieren.
+  const resumeWeather = (): void => {
     if (document.hidden) return;
     renderFavorites();
+    renderContent();
     renderIcons();
+    if (state.place && !state.forecast && activeForecastRequestSeq === null && !refreshing && isOnline()) selectPlace(state.place);
     if (!state.place || !state.forecast || activeForecastRequestSeq !== null || refreshing) return;
-    if (isForecastForCurrentLocalDay(state.forecast)) return;
+    if (isForecastForCurrentLocalDay(state.forecast, weatherNow())) return;
     // Nach Ortsmitternacht ist ein offener Forecast kein heutiger Stand mehr.
     // Der vorhandene Load Guard schützt auch diesen erneuten Abruf vor Ortsrennen.
-    if (isForecastEntryTooOld(state.updatedAt)) selectPlace(state.place);
-    else {
-      state.freshness = "stale";
-      state.failReason = null;
-      renderContent();
-      renderIcons();
-      refreshCurrentPlace();
-    }
+    state.freshness = "stale";
+    state.failReason = null;
+    renderContent();
+    renderIcons();
+    refreshCurrentPlace();
+  };
+  document.addEventListener("visibilitychange", resumeWeather);
+  document.addEventListener("resume", resumeWeather);
+  window.addEventListener("pageshow", resumeWeather);
+  window.addEventListener("focus", resumeWeather);
+  window.addEventListener("online", () => {
+    renderFavorites();
+    renderContent();
+    loadFavoritesWeather();
+    if (state.place && activeForecastRequestSeq === null && !refreshing) refreshCurrentPlace();
+  });
+  window.addEventListener("offline", () => {
+    renderFavorites();
+    renderContent();
+    renderIcons();
   });
   renderEmptyCities();
   renderIcons();

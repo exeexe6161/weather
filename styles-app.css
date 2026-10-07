@@ -840,6 +840,8 @@ html[data-theme="dark"] .wordmark-img--dark{display:inline-block;}
 /* Zustand-Subline ("bedeckt"): klein, gedämpft. min-height hält die Zeile auch
    leer (Wetter noch nicht geladen), damit nichts springt, wenn das Label kommt. */
 .fav-row-sub{font-size:var(--fs-xs);color:var(--l4);min-height:1.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Altersangabe und fehlende Daten auch auf schmalen Geräten vollständig zeigen. */
+.fav-row-sub--status{white-space:normal;overflow-wrap:anywhere;}
 /* Rechter Werteblock: Symbol + Temperatur nebeneinander, rechtsbündig. Feste
    min-width + tabular-nums → die Spalte springt beim Nachladen der Temperatur
    nicht (kein CLS). */
