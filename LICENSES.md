@@ -1,6 +1,6 @@
 # Lizenzen und Attributionen
 
-Stand: 6. Juli 2026
+Stand: 7. Oktober 2026
 
 ## Wetterdaten — WeatherAPI.com
 
@@ -10,8 +10,13 @@ Stand: 6. Juli 2026
 - Attribution im Footer der App: `Wetterdaten von WeatherAPI.com`
 - Die von WeatherAPI verlangte Endnutzerinformation zur Unsicherheit von
   Wettervorhersagen steht sichtbar im Footer und ausführlich im Impressum.
-- API Antworten werden entsprechend den Anbieterbedingungen höchstens 60 Minuten
-  für aktuelle Werte und höchstens 24 Stunden für Vorhersagen zwischengespeichert.
+- Anbieterbedingungen, abgerufen am 7. Oktober 2026: aktuelle Werte höchstens
+  60 Minuten, Vorhersagen höchstens 24 Stunden zwischenspeichern.
+- Offener Abgleich: Lokales Favoritenwetter kann auch nach 60 Minuten noch als
+  älterer Stand angezeigt werden. Cacheeinträge werden nicht durchgehend nach
+  Ablauf gelöscht. Die bisherige pauschale Bestätigung der Einhaltung war daher
+  nicht belegt. Aufbewahrung, Offline Nutzung und Weitergabe über Teilen müssen
+  mit den geltenden Vertragsbedingungen abgeglichen werden (NEEDS_DECISION).
 
 ## Schriftart — Inter (SIL OFL 1.1)
 
@@ -34,12 +39,20 @@ Stand: 6. Juli 2026
 - Lizenz: ISC License, © Lucide Contributors
 - Volltext lokal unter `/licenses/lucide-ISC.txt`
 
-## Native App Runtime — Capacitor und Cordova (MIT)
+## Native App Runtime — Capacitor (MIT)
 
 - Quelle: https://github.com/ionic-team/capacitor
-- Version: 8.4.0, eingebunden über Swift Package Manager
+- Version: 8.4.3, eingebunden über Swift Package Manager
 - Lizenz: MIT License, © 2017-present Drifty Co.
 - Volltext lokal unter `/licenses/capacitor-MIT.txt`
+
+## Native Kompatibilitätsschicht — Cordova (Apache 2.0)
+
+- Enthalten im Cordova Produkt von `capacitor-swift-pm` 8.4.3.
+- Lizenzbeleg im mitgelieferten Quellcode: https://github.com/ionic-team/capacitor/blob/8.4.3/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVPlugin.h
+- Die Cordova Quelldateien tragen Apache 2.0 Hinweise. Die MIT Lizenz von Capacitor ersetzt diese Hinweise nicht.
+- Unveränderter Lizenzvolltext: `/licenses/cordova-Apache-2.0.txt`, Quelle: https://www.apache.org/licenses/LICENSE-2.0.txt
+- Die genaue Zuordnung zusätzlicher NOTICE Hinweise des nativen Binärpakets bleibt vor einer Store Veröffentlichung zu prüfen. Das SPM Paket verweist auf eine NOTICE Datei, liefert diese aber im geprüften Checkout nicht mit.
 
 ## Build Tooling
 

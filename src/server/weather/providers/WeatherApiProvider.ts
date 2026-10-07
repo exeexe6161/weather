@@ -23,9 +23,15 @@ function finiteNumber(value: unknown, fallback = 0): number {
 }
 
 function optionalNumber(value: unknown): number | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
+  // Keine Ersatznull aus Booleans, Arrays oder reinem Leerraum erzeugen.
+  if (typeof value !== "number" && (typeof value !== "string" || value.trim() === "")) return undefined;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function rainProbability(value: unknown): number | undefined {
+  const parsed = optionalNumber(value);
+  return parsed !== undefined && Number.isInteger(parsed) && parsed >= 0 && parsed <= 100 ? parsed : undefined;
 }
 
 function optionalProbability(value: unknown): number | undefined {
@@ -505,7 +511,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         ...(timeEpoch !== undefined ? { timeEpoch } : {}),
         temperature,
         apparentTemperature: apparentTemperature(temperature, humidity, windSpeed),
-        precipitationProbability: optionalNumber(hour.chance_of_rain) ?? null,
+        precipitationProbability: rainProbability(hour.chance_of_rain) ?? null,
         snowProbability: optionalProbability(hour.chance_of_snow) ?? null,
         weatherCode: conditionCode(hour.condition),
         windSpeed,
@@ -539,7 +545,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
         weatherCode: conditionCode(day.condition),
         tempMax: requiredNumber(day.maxtemp_c, "day.maxtemp_c"),
         tempMin: requiredNumber(day.mintemp_c, "day.mintemp_c"),
-        precipitationProbabilityMax: optionalNumber(day.daily_chance_of_rain) ?? null,
+        precipitationProbabilityMax: rainProbability(day.daily_chance_of_rain) ?? null,
         snowProbabilityMax: optionalProbability(day.daily_chance_of_snow) ?? null,
         sunrise: astroIso(date, astro.sunrise),
         sunset: astroIso(date, astro.sunset),
@@ -593,7 +599,9 @@ async function searchPlaces(query: string, _language: string): Promise<Place[]> 
     const place = record(rawPlace);
     const latitude = optionalNumber(place.lat);
     const longitude = optionalNumber(place.lon);
-    if (latitude === undefined || longitude === undefined || stringValue(place.name) === "") return [];
+    if (latitude === undefined || latitude < -90 || latitude > 90 ||
+      longitude === undefined || longitude < -180 || longitude > 180 ||
+      stringValue(place.name).trim() === "") return [];
     const providerId = providerPlaceId(place.id);
     return [{
       id: stablePlaceId(place),
@@ -615,7 +623,7 @@ function normalizedPollen(pollen: JsonRecord, kind: PollenKind): number | null {
   const value = normalized.get(kind.replace(/[^a-z]/g, ""))
     ?? normalized.get(`${kind}pollen`);
   const parsed = optionalNumber(value);
-  return parsed ?? null;
+  return parsed !== undefined && parsed >= 0 ? parsed : null;
 }
 
 // `null` bedeutet hier GENAU EINES: der Abruf war erfolgreich, aber der
@@ -683,7 +691,7 @@ async function getCurrentBatch(places: BatchPlace[]): Promise<Map<number, FavWea
         temp,
         code: weatherApiCodeToWmo(code),
         isDay: finiteNumber(current.is_day, 1) === 1,
-        rainChance: optionalNumber(day.daily_chance_of_rain) ?? null,
+        rainChance: rainProbability(day.daily_chance_of_rain) ?? null,
         hasAlert: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.country)).length > 0,
       },
     };

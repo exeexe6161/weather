@@ -288,6 +288,13 @@ for (const [name, input, expected] of [
   ["explicit null", null, null],
   ["empty provider value", "", null],
   ["invalid numeric provider value", "not-a-number", null],
+  ["negative probability", -1, null],
+  ["probability over 100", 101, null],
+  ["boolean is not a probability", false, null],
+  ["array is not a probability", [], null],
+  ["whitespace is not zero", "   ", null],
+  ["numeric string remains supported", "67", 67],
+  ["upper boundary", 100, 100],
 ] as const) {
   test(`rain probability keeps its meaning in full forecast and batch: ${name}`, async () => {
     installProviderFetch(providerRainFixture(input));

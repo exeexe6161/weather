@@ -176,6 +176,23 @@ test("favorites reject more than five entries and unknown POST fields", async ()
   assert.equal(extraField.status, 400);
 });
 
+test("favorites reject duplicate IDs before they can mix coordinates in the shared cache", async () => {
+  let calls = 0;
+  WeatherService.getCurrentBatch = async () => {
+    calls++;
+    return new Map();
+  };
+  const places = [
+    { id: 7, latitude: 50, longitude: 8 },
+    { id: 7, latitude: 40, longitude: 20 },
+  ];
+  const get = await invoke(favoritesHandler, request("GET", { query: { places: JSON.stringify(places) } }));
+  const post = await invoke(favoritesHandler, jsonRequest("POST", places));
+  assert.equal(get.status, 400);
+  assert.equal(post.status, 400);
+  assert.equal(calls, 0);
+});
+
 test("POST rejects a non-JSON Content-Type in a controlled way", async () => {
   const result = await invoke(weatherHandler, request("POST", {
     headers: { "content-type": "text/plain" },

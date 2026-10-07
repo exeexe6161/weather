@@ -10,6 +10,7 @@ function parsePlaces(parsed: unknown, strictFields: boolean): BatchPlace[] | nul
   if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > MAX_PLACES) return null;
 
   const places: BatchPlace[] = [];
+  const ids = new Set<number>();
   for (const entry of parsed) {
     if (
       strictFields &&
@@ -25,12 +26,15 @@ function parsePlaces(parsed: unknown, strictFields: boolean): BatchPlace[] | nul
     const latitude = (entry as { latitude?: unknown })?.latitude;
     const longitude = (entry as { longitude?: unknown })?.longitude;
     if (
-      typeof id !== "number" || !Number.isFinite(id) ||
+      typeof id !== "number" || !Number.isFinite(id) || ids.has(id) ||
       typeof latitude !== "number" || !isValidLatitude(latitude) ||
       typeof longitude !== "number" || !isValidLongitude(longitude)
     ) {
       return null;
     }
+    // Der Provider ordnet Ergebnisse per ID zu. Doppelte IDs könnten sonst
+    // den Wetterwert eines Orts unter den Koordinaten eines anderen cachen.
+    ids.add(id);
     places.push({ id, latitude, longitude });
   }
   return places;

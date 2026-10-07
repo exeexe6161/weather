@@ -314,6 +314,26 @@ test('pollen normalizes real fields and returns null for empty provider data', a
   assert.equal(empty, null);
 });
 
+test('pollen rejects negative concentrations and nonnumeric types without inventing zero', async () => {
+  useFetch(() => jsonResponse({ current: { pollen: {
+    alder: -1, birch: false, grass: [], mugwort: '  ', hazel: 0, oak: '8.5', ragweed: 350,
+  } } }));
+  assert.deepEqual(await provider.getPollen(48, 10), {
+    alder: null, birch: null, grass: null, mugwort: null, hazel: 0, oak: 8.5, ragweed: 350,
+  });
+});
+
+test('geocoding rejects out of range coordinates and preserves valid boundary values', async () => {
+  useFetch(() => jsonResponse([
+    { id: 1, name: 'Invalid latitude', lat: 91, lon: 10 },
+    { id: 2, name: 'Invalid longitude', lat: 48, lon: -181 },
+    { id: 3, name: 'Invalid type', lat: false, lon: 10 },
+    { id: 4, name: 'Boundary north', lat: 90, lon: 180 },
+    { id: 5, name: 'Boundary south', lat: -90, lon: -180 },
+  ]));
+  assert.deepEqual((await provider.searchPlaces('Boundary', 'de')).map((p) => p.id), [4, 5]);
+});
+
 test('pollen reicht technische Fehler durch, statt sie als Leerzustand auszugeben', async () => {
   // Frueher lieferten Zeitueberschreitung, defektes JSON und ein Providerstatus
   // allesamt `null`, also dasselbe Ergebnis wie eine erfolgreiche Antwort ohne
