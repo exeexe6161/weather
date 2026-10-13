@@ -14,6 +14,10 @@
   // umgeleitet, damit keine falschsprachige Seite aufblitzt. Deutsch ist die
   // Basisdatei ohne Suffix, EN/TR liegen unter -en/-tr.
   var legalBase = html.getAttribute("data-legal");
+  // Gleicher Bridge-Vertrag wie src/lib/platform.ts, ohne Modul-Bundle auf Rechtsseiten.
+  var cap = window.Capacitor;
+  var nativeLegal = !!legalBase && !!cap &&
+    (typeof cap.isNativePlatform === "function" ? cap.isNativePlatform() : cap.isNative === true);
   if (legalBase) {
     try {
       var appLang = localStorage.getItem("weather:lang");
@@ -21,7 +25,7 @@
         (appLang === "de" || appLang === "en" || appLang === "tr") &&
         appLang !== html.getAttribute("lang")
       ) {
-        location.replace("./" + legalBase + (appLang === "de" ? "" : "-" + appLang));
+        location.replace("./" + legalBase + (appLang === "de" ? "" : "-" + appLang) + (nativeLegal ? ".html" : ""));
       }
     } catch (_) {}
   }
@@ -103,6 +107,13 @@
   }
 
   ready(function () {
+    // Nur lokale Rechtslinks anpassen, Rückweg und externe Verweise beibehalten.
+    if (nativeLegal) {
+      document.querySelectorAll("a[href]").forEach(function (link) {
+        var href = link.getAttribute("href");
+        if (/^\.\/(datenschutz|impressum)(-en|-tr)?$/.test(href)) link.setAttribute("href", href + ".html");
+      });
+    }
     var btn = document.getElementById("themeBtn");
     // Icon zeigt den AKTUELLEN Modus (Zustand, nicht die Aktion):
     // hell → Sonne, dunkel → Mond, system → Sonne+Mond.

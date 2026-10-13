@@ -113,7 +113,15 @@ export const WeatherService = {
     }
 
     if (missing.length > 0) {
-      const fresh = await provider.getCurrentBatch(missing);
+      let fresh: Map<number, FavWeather>;
+      try {
+        fresh = await provider.getCurrentBatch(missing);
+      } catch (error) {
+        // Frische Cachetreffer bleiben nutzbar, ohne Zeitstempel oder TTL
+        // zu erneuern. Ohne Treffer bleibt die bisherige Fehlersemantik bestehen.
+        if (result.size === 0) throw error;
+        return result;
+      }
       for (const place of missing) {
         const weather = fresh.get(place.id);
         if (!weather) continue;

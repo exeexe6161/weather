@@ -28,6 +28,7 @@ const directTests = [
   "errorMapping.test.ts",
   "race-control.test.ts",
   "favorites-focus.test.ts",
+  "hourly-focus.test.ts",
   "legalHref.test.ts",
   "build-immutability.test.mjs",
   "legal-css-version.test.mjs",

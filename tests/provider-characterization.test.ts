@@ -602,3 +602,109 @@ test("F06 provider timestamps reflect the actual fetch and not the observation e
     assert.notEqual(Date.parse(forecast.sourceFetchedAt!), forecast.current.lastUpdatedEpoch! * 1000);
   } finally { Date.now = originalNow; }
 });
+
+// N04 uses the internal forecast directly, without provider or network calls.
+function summaryDaylightFixture(isDay: boolean, hour = 6, temperature = 18): Forecast {
+  const stamp = (h: number, minute = "00") => `2026-10-13T${String(h).padStart(2, "0")}:${minute}`;
+  return {
+    timezone: "Europe/Berlin", yesterdayTempMax: null,
+    current: {
+      time: stamp(hour, "30"), temperature, apparentTemperature: temperature,
+      humidity: 40, windSpeed: 5, weatherCode: 0, isDay,
+    },
+    hourly: [hour, Math.min(hour + 1, 23), 18].filter((h) => h >= hour).map((h) => ({
+      time: stamp(h), temperature, apparentTemperature: temperature, weatherCode: 0,
+      precipitationProbability: 0, snowProbability: 0,
+    })),
+    daily: [{
+      date: "2026-10-13", weatherCode: 0, tempMax: temperature, tempMin: 10,
+      precipitationProbabilityMax: 0, snowProbabilityMax: 0,
+      sunrise: stamp(7, "45"), sunset: stamp(18, "30"), uvIndexMax: 0,
+    }],
+  };
+}
+
+for (const coolEvening of [false, true]) {
+  test(`N04 summary: 06:30 before sunrise needs daylight for mild sunny wording, cool evening ${coolEvening}`, (context) => {
+    context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-10-13T04:30:00Z") });
+    for (const weatherCode of [0, 1]) {
+      const forecast = summaryDaylightFixture(false);
+      forecast.current.weatherCode = weatherCode;
+      if (coolEvening) forecast.hourly.at(-1)!.apparentTemperature = 12;
+      assert.equal(forecast.current.time, "2026-10-13T06:30");
+      assert.equal(forecast.daily[0].sunrise, "2026-10-13T07:45");
+      assert.deepEqual(summaryFor(forecast), {
+        kind: "modular", temp: "sum_t_mild", sky: weatherCode === 0 ? "sum_s_clear" : "sum_s_friendly",
+        extra: undefined, closer: undefined,
+      });
+      // Identical inputs apart from the authoritative daylight flag.
+      assert.deepEqual(summaryFor({ ...forecast, current: { ...forecast.current, isDay: true } }), {
+        kind: "fixed", key: coolEvening ? "sum1_mild_sunny_day" : "sum1_mild_sunny",
+      });
+    }
+  });
+}
+
+for (const hour of [7, 19, 23]) {
+  test(`N04 summary: clear weather at ${hour}:30 without daylight never claims sunshine`, (context) => {
+    context.mock.timers.enable({ apis: ["Date"], now: Date.parse(`2026-10-13T${String(hour - 2).padStart(2, "0")}:30:00Z`) });
+    const result = summaryFor(summaryDaylightFixture(false, hour));
+    assert.deepEqual(result, hour === 23
+      ? { kind: "fixed", key: "sum1_night_mild_clear" }
+      : { kind: "modular", temp: "sum_t_mild", sky: "sum_s_clear", extra: undefined, closer: undefined });
+  });
+}
+
+test("N04 summary: rain and overcast rules remain unchanged with either daylight flag", (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-10-13T04:30:00Z") });
+  for (const isDay of [false, true]) {
+    for (const [weatherCode, key] of [[61, "sum1_rain_mild"], [3, "sum1_mild_grey"]] as const) {
+      const forecast = summaryDaylightFixture(isDay);
+      forecast.current.weatherCode = weatherCode;
+      assert.deepEqual(summaryFor(forecast), { kind: "fixed", key });
+    }
+  }
+});
+
+test("N04 summary: warm sunny UV wording requires actual daylight", (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-10-13T04:30:00Z") });
+  for (const uvIndexMax of [0, 8]) {
+    for (const weatherCode of [0, 1]) {
+      const forecast = summaryDaylightFixture(false, 6, 24);
+      forecast.current.weatherCode = weatherCode;
+      forecast.daily[0].uvIndexMax = uvIndexMax;
+      assert.deepEqual(summaryFor(forecast), { kind: "fixed", key: "sum1_warm_clear" });
+      assert.deepEqual(summaryFor({ ...forecast, current: { ...forecast.current, isDay: true } }), {
+        kind: "fixed", key: uvIndexMax ? "sum1_warm_sunny_uv" : "sum1_warm_sunny",
+      });
+    }
+  }
+});
+
+test("N04 summary: high daily UV cannot displace the hot dry wording before sunrise", (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-10-13T04:30:00Z") });
+  const forecast = summaryDaylightFixture(false, 6, 30);
+  forecast.daily[0].uvIndexMax = 8;
+  assert.deepEqual(summaryFor(forecast), { kind: "fixed", key: "sum1_hot_dry" });
+  assert.deepEqual(summaryFor({ ...forecast, current: { ...forecast.current, isDay: true } }), {
+    kind: "modular", temp: "sum_t_hot", sky: "sum_s_sunny", extra: undefined, closer: "sum_c_sun",
+  });
+});
+
+test("N04 summary: modular sun protection needs daylight even when daily UV is high", (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-10-13T04:30:00Z") });
+  for (const isDay of [false, true]) {
+    for (const weatherCode of [0, 1]) {
+      const forecast = summaryDaylightFixture(isDay);
+      forecast.current.weatherCode = weatherCode;
+      forecast.daily[0].uvIndexMax = 8;
+      // Unknown precipitation prevents a fixed dry sentence, reaching the modular path.
+      forecast.hourly[0].precipitationProbability = null;
+      assert.deepEqual(summaryFor(forecast), {
+        kind: "modular", temp: "sum_t_mild",
+        sky: weatherCode === 1 ? "sum_s_friendly" : isDay ? "sum_s_sunny" : "sum_s_clear",
+        extra: undefined, closer: isDay ? "sum_c_sun" : undefined,
+      });
+    }
+  }
+});

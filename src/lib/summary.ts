@@ -175,16 +175,17 @@ export function summaryFor(forecast: Forecast): Summary | null {
   if (band === "hot" && humid) return { kind: "fixed", key: "sum1_hot_humid" };
   // Heiß plus hohe UV tagsüber: der Sonnenschutz-Schluss schlägt den fertigen
   // "viel trinken" Satz → Ebene 2 ("Heiß und sonnig, denk an Sonnenschutz.")
-  if (band === "hot" && dry && !(uvHigh && tod === "day" && clearish)) {
+  if (band === "hot" && dry && !(uvHigh && tod === "day" && c.isDay === true && clearish)) {
     return { kind: "fixed", key: "sum1_hot_dry" };
   }
-  if (band === "warm" && clearish && uvHigh && tod === "day") return { kind: "fixed", key: "sum1_warm_sunny_uv" };
+  if (band === "warm" && clearish && uvHigh && tod === "day" && c.isDay === true) return { kind: "fixed", key: "sum1_warm_sunny_uv" };
   // "sonnig" nur bei echtem Tag (c.isDay, sonnenstandbasiert wie das Icon); nach
   // Sonnenuntergang (z. B. abends vor 22 Uhr) die Klar-Variante, kein Widerspruch.
   if (band === "warm" && clearish && dry) {
     return { kind: "fixed", key: c.isDay ? "sum1_warm_sunny" : "sum1_warm_clear" };
   }
-  if (band === "mild" && clearish && dry && tod === "day") {
+  // Das Uhrzeitfenster allein bestätigt kein Tageslicht, etwa vor Sonnenaufgang.
+  if (band === "mild" && clearish && dry && tod === "day" && c.isDay === true) {
     // Abend-Zusatz nur, wenn die Abendstunden laut hourly wirklich kühl werden.
     return { kind: "fixed", key: eveningTurnsCool ? "sum1_mild_sunny_day" : "sum1_mild_sunny" };
   }
@@ -245,7 +246,7 @@ function modular(band: Band, sky: Sky, ctx: ModularContext): Summary | null {
   const closer =
     ctx.rainNow || ctx.rainLater || ctx.thunderRainLater
       ? "sum_c_umbrella"
-      : ctx.uvHigh && ctx.tod === "day" && (sky === "sunny" || sky === "friendly")
+      : ctx.uvHigh && ctx.tod === "day" && ctx.isDay === true && (sky === "sunny" || sky === "friendly")
         ? "sum_c_sun"
         : band === "frosty" || band === "cold"
           ? "sum_c_warm"

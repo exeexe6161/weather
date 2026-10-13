@@ -9,6 +9,11 @@ const RESULT_COUNT = 5;
 const MAX_QUERY_LEN = 100;
 // History ist optional und soll vom 12-Sekunden-Clientbudget nur einen kleinen Teil nutzen.
 const HISTORY_BUDGET_MS = 3_000;
+// Optionale Anreicherung nur innerhalb von 10 Sekunden ab Providerbeginn,
+// einschließlich Hauptquota und Mapping. Zum 12-Sekunden-Clientlimit bleiben
+// nominell 2 Sekunden für Verarbeitung und Übertragung, keine Laufzeitgarantie.
+// Das eigene Timeout des zwingenden Hauptforecasts bleibt unverändert.
+const FORECAST_ENRICHMENT_BUDGET_MS = 10_000;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -105,12 +110,14 @@ function untilAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
-async function requestJson(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<unknown> {
+async function requestJson(path: string, params: Record<string, string>, signal?: AbortSignal, deadline?: number): Promise<unknown> {
   const url = apiUrl(path, params);
   const reservation = signal ? reserveWeatherProviderQuota(Date.now(), signal) : reserveWeatherProviderQuota();
   if (signal) await untilAbort(reservation, signal);
   else await reservation;
-  if (signal?.aborted) throw abortError();
+  // Eine späte Quotaauflösung kann vor dem bereits fälligen Timercallback
+  // weiterlaufen. Auch dann darf kein optionaler Providerabruf mehr starten.
+  if (signal?.aborted || (deadline !== undefined && performance.now() >= deadline)) throw abortError();
   const response = signal ? await untilAbort(fetch(url, { signal }), signal) : await fetchWithTimeout(url);
   if (signal?.aborted) throw abortError();
   if (!response.ok) throw new ProviderHttpError(response.status);
@@ -429,14 +436,19 @@ function yesterdayDate(localtime: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function getYesterdayMax(latitude: number, longitude: number, localtime: string): Promise<number | null> {
+async function getYesterdayMax(latitude: number, longitude: number, localtime: string, deadline: number): Promise<number | null> {
+  const now = performance.now();
+  const budget = Math.min(HISTORY_BUDGET_MS, deadline - now);
+  if (budget <= 0) return null;
+  const historyDeadline = now + budget;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HISTORY_BUDGET_MS);
+  const timeout = setTimeout(() => controller.abort(), budget);
   try {
     const data = record(await requestJson("history.json", {
       q: `${latitude},${longitude}`,
       dt: yesterdayDate(localtime),
-    }, controller.signal));
+    }, controller.signal, historyDeadline));
+    if (performance.now() >= historyDeadline) return null;
     const days = record(data.forecast).forecastday;
     if (!Array.isArray(days) || days.length === 0) return null;
     const value = optionalNumber(record(record(days[0]).day).maxtemp_c);
@@ -444,11 +456,13 @@ async function getYesterdayMax(latitude: number, longitude: number, localtime: s
   } catch {
     return null;
   } finally {
+    if (performance.now() >= historyDeadline) controller.abort();
     clearTimeout(timeout);
   }
 }
 
 async function getForecast(latitude: number, longitude: number): Promise<Forecast> {
+  const deadline = performance.now() + FORECAST_ENRICHMENT_BUDGET_MS;
   const data = record(await requestJson("forecast.json", {
     q: `${latitude},${longitude}`,
     days: "7",
@@ -573,7 +587,7 @@ async function getForecast(latitude: number, longitude: number): Promise<Forecas
     timezone: stringValue(location.tz_id, "UTC"),
     airQuality: airQuality(currentData.air_quality),
     alerts: weatherAlerts(data.alerts, stringValue(location.region), stringValue(location.country)),
-    yesterdayTempMax: await getYesterdayMax(latitude, longitude, localtime),
+    yesterdayTempMax: await getYesterdayMax(latitude, longitude, localtime, deadline),
   };
 }
 

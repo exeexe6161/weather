@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { watchServiceWorkerUpdates } from "../src/lib/serviceWorkerUpdate.ts";
-import { uiLabels } from "../src/i18n/ui.ts";
+import { loadBundledModule } from "./testHarness.ts";
+
+const { uiLabels } = await loadBundledModule<typeof import("../src/i18n/ui.ts")>(`
+  export { uiLabels } from './src/i18n/ui.ts';
+`);
 
 test("first control is silent; a later controller change offers one voluntary reload", () => {
   const first = {};

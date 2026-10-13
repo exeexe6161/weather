@@ -1,5 +1,6 @@
 // UI Sprachmechanik: data-i18n Attribute im statischen Markup,
 // Sprachwahl in localStorage, live Umschaltung ohne Reload.
+import { isNativeApp } from "../lib/platform.js";
 
 export type Lang = "de" | "en" | "tr";
 
@@ -22,7 +23,9 @@ const LANG_KEY = "weather:lang";
 export type LegalBase = "impressum" | "datenschutz";
 
 export function legalHref(base: LegalBase, lang: Lang): string {
-  return lang === "de" ? `./${base}` : `./${base}-${lang}`;
+  const path = lang === "de" ? `./${base}` : `./${base}-${lang}`;
+  // Capacitor routet endungslose Pfade zur Hauptapp statt zur lokalen Rechtsseite.
+  return path + (typeof window !== "undefined" && isNativeApp() ? ".html" : "");
 }
 
 export const uiLabels: Record<string, Record<Lang, string>> = {

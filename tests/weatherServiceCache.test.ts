@@ -508,3 +508,172 @@ test('F06 server forecast and favorite hits preserve the original provider times
   assert.equal(forecastLoads, 1);
   assert.equal(favoriteLoads, 1);
 });
+
+const N02_NOW = Date.parse('2099-10-13T12:00:00Z');
+const N02_FAVORITE_TTL = 15 * 60_000;
+
+function n02Place(id: number) {
+  // Eigene Koordinaten, damit der modulweite Cache andere Tests nicht berührt.
+  return { id, latitude: id - 1_000, longitude: -40 };
+}
+
+function n02Weather(temp: number, fetchedAt = N02_NOW) {
+  return Object.freeze({
+    sourceFetchedAt: new Date(fetchedAt).toISOString(),
+    temp, code: 2, isDay: true, rainChance: 0, hasAlert: false,
+  });
+}
+
+function n02CacheKey(place: ReturnType<typeof n02Place>) {
+  return service.buildCacheKey('WEATHER_API', ['favorites-weather', place.latitude, place.longitude]);
+}
+
+test('N02 A preserves fresh cached A when the provider rejects missing B', async () => {
+  Date.now = () => N02_NOW;
+  const a = n02Place(1_001);
+  const b = n02Place(1_002);
+  const cached = n02Weather(18);
+  service.set(n02CacheKey(a), cached, N02_FAVORITE_TTL);
+  const batches: unknown[] = [];
+  service.weatherApiProvider.getCurrentBatch = async (places) => {
+    batches.push(places);
+    throw new Error('synthetic provider failure');
+  };
+
+  const result = await service.WeatherService.getCurrentBatch([a, b]);
+
+  assert.deepEqual([...result], [[a.id, cached]]);
+  assert.strictEqual(result.get(a.id), cached);
+  assert.equal(result.has(b.id), false);
+  assert.deepEqual(batches, [[b]]);
+});
+
+test('N02 B rethrows the original error when no valid cache result exists', async () => {
+  Date.now = () => N02_NOW;
+  const places = [n02Place(1_003), n02Place(1_004)];
+  const errors = [
+    new Error('synthetic provider failure'),
+    Object.assign(new Error('synthetic quota failure'), { name: 'WeatherQuotaProtectionError' }),
+  ];
+  for (const error of errors) {
+    service.weatherApiProvider.getCurrentBatch = async () => { throw error; };
+
+    await assert.rejects(service.WeatherService.getCurrentBatch(places), (actual) => actual === error);
+    for (const place of places) assert.equal(service.get(n02CacheKey(place)), undefined);
+  }
+});
+
+test('N02 C preserves multiple cache hits in order after a missing place fails', async () => {
+  Date.now = () => N02_NOW;
+  const places = [n02Place(1_007), n02Place(1_005), n02Place(1_006)];
+  const missing = n02Place(1_020);
+  const expected = places.map((place) => [place.id, n02Weather(place.latitude)] as const);
+  places.forEach((place, index) => service.set(n02CacheKey(place), expected[index][1], N02_FAVORITE_TTL));
+  const batches: unknown[] = [];
+  service.weatherApiProvider.getCurrentBatch = async (batch) => {
+    batches.push(batch);
+    throw new Error('synthetic provider failure');
+  };
+
+  assert.deepEqual([...await service.WeatherService.getCurrentBatch([missing, ...places])], expected);
+  assert.deepEqual([...await service.WeatherService.getCurrentBatch(places)], expected);
+  assert.deepEqual(batches, [[missing]], 'cached places must not trigger another provider call');
+});
+
+test('N02 D keeps existing ordering and absent entries in a mixed partial batch', async () => {
+  Date.now = () => N02_NOW;
+  const [a, b, c, d] = [1_008, 1_009, 1_010, 1_011].map(n02Place);
+  const cachedA = n02Weather(18);
+  const cachedC = n02Weather(20);
+  const freshB = n02Weather(0);
+  service.set(n02CacheKey(a), cachedA, N02_FAVORITE_TTL);
+  service.set(n02CacheKey(c), cachedC, N02_FAVORITE_TTL);
+  const batches: unknown[] = [];
+  service.weatherApiProvider.getCurrentBatch = async (missing) => {
+    batches.push(missing);
+    return new Map([[b.id, freshB]]);
+  };
+  const places = [b, c, d, a];
+
+  const result = await service.WeatherService.getCurrentBatch(places);
+
+  // Bestehender Vertrag: Cachetreffer zuerst, danach geladene fehlende Orte.
+  assert.deepEqual([...result], [[c.id, cachedC], [a.id, cachedA], [b.id, freshB]]);
+  assert.deepEqual(batches, [[b, d]]);
+  assert.deepEqual(places, [b, c, d, a]);
+  assert.equal(result.has(d.id), false);
+  assert.equal(service.get(n02CacheKey(d)), undefined);
+  assert.strictEqual(service.get(n02CacheKey(b)), freshB);
+});
+
+test('N02 E never returns an expired cache entry as a fresh fallback', async () => {
+  let now = N02_NOW;
+  Date.now = () => now;
+  const [expired, valid, missing] = [1_012, 1_013, 1_014].map(n02Place);
+  service.set(n02CacheKey(expired), n02Weather(12), N02_FAVORITE_TTL);
+  now += N02_FAVORITE_TTL;
+  const cached = n02Weather(13, now);
+  service.set(n02CacheKey(valid), cached, N02_FAVORITE_TTL);
+  const error = new Error('synthetic provider failure');
+  const batches: unknown[] = [];
+  service.weatherApiProvider.getCurrentBatch = async (places) => {
+    batches.push(places);
+    throw error;
+  };
+
+  const result = await service.WeatherService.getCurrentBatch([expired, valid, missing]);
+
+  assert.deepEqual([...result], [[valid.id, cached]]);
+  assert.deepEqual(batches, [[expired, missing]]);
+  assert.equal(service.get(n02CacheKey(expired)), undefined);
+  await assert.rejects(service.WeatherService.getCurrentBatch([expired]), (actual) => actual === error);
+});
+
+test('N02 F preserves successful provider values and their subsequent cache hits', async () => {
+  let now = N02_NOW;
+  Date.now = () => now;
+  const [a, b] = [1_015, 1_016].map(n02Place);
+  const weatherA = n02Weather(-3);
+  const weatherB = n02Weather(0);
+  let calls = 0;
+  service.weatherApiProvider.getCurrentBatch = async () => {
+    calls++;
+    return new Map([[b.id, weatherB], [a.id, weatherA]]);
+  };
+
+  assert.deepEqual([...await service.WeatherService.getCurrentBatch([a, b])], [[a.id, weatherA], [b.id, weatherB]]);
+  now += 5 * 60_000;
+  assert.deepEqual([...await service.WeatherService.getCurrentBatch([b, a])], [[b.id, weatherB], [a.id, weatherA]]);
+  assert.equal(calls, 1);
+  assert.strictEqual(service.get(n02CacheKey(a)), weatherA);
+  assert.strictEqual(service.get(n02CacheKey(b)), weatherB);
+});
+
+test('N02 G provider failure neither mutates cache values nor renews their expiry', async () => {
+  let now = N02_NOW;
+  Date.now = () => now;
+  const [a, b, unrelated] = [1_017, 1_018, 1_019].map(n02Place);
+  const cached = n02Weather(17);
+  const other = n02Weather(19);
+  service.set(n02CacheKey(a), cached, N02_FAVORITE_TTL);
+  service.set(n02CacheKey(unrelated), other, N02_FAVORITE_TTL);
+  const error = new Error('synthetic provider failure');
+  const batches: unknown[] = [];
+  service.weatherApiProvider.getCurrentBatch = async (places) => {
+    batches.push(places);
+    throw error;
+  };
+  now += N02_FAVORITE_TTL - 1;
+
+  const result = await service.WeatherService.getCurrentBatch([a, b]);
+
+  assert.strictEqual(result.get(a.id), cached);
+  assert.strictEqual(service.get(n02CacheKey(a)), cached);
+  assert.strictEqual(service.get(n02CacheKey(unrelated)), other);
+  assert.equal(service.get(n02CacheKey(b)), undefined);
+  assert.equal(cached.sourceFetchedAt, new Date(N02_NOW).toISOString());
+  now++;
+  assert.equal(service.get(n02CacheKey(a)), undefined, 'original expiry must not move');
+  await assert.rejects(service.WeatherService.getCurrentBatch([a, b]), (actual) => actual === error);
+  assert.deepEqual(batches, [[b], [a, b]]);
+});

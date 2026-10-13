@@ -158,12 +158,12 @@ function bindHourlyStrip(el: HTMLElement): void {
     buttons[next].focus();
   });
 
-  // Escape schließt und gibt den Fokus zur Zelle zurück. Der Handler greift nur
-  // bei offenem Panel; das Sprachmenü ist seit dem Disclosure-Umbau ebenso
-  // geguardet und wirft den Fokus ebenfalls zurück, deshalb kapert keiner der
-  // beiden dokumentweiten Escape-Handler den Fokus des anderen.
+  // Escape gehört nur dem fokussierten Panel oder seiner aktiven Zelle.
+  // Ein automatisch geöffnetes Panel darf unabhängigen Fokus nicht übernehmen.
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && panelOpen()) closeHourDetail(true);
+    if (e.key !== "Escape" || !panelOpen()) return;
+    const focused = document.activeElement;
+    if (getPanel()?.contains(focused) || focused === activeButton) closeHourDetail(true);
   });
   // Klick außerhalb schließt — aber NICHT der Klick, der gerade geöffnet hat.
   // Daher KEIN dauerhafter document-Listener mehr (der wäre vom öffnenden Klick

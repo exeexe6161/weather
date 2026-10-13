@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import { afterEach, beforeEach, test } from 'node:test';
+import { afterEach, beforeEach, test, type TestContext } from 'node:test';
 import { blockUnexpectedNetwork, loadBundledModule } from './testHarness.ts';
 import { formatObservationStampInZone, formatStampInZone } from '../src/lib/format.ts';
 
 interface ProviderModule {
+  WeatherService: {
+    getForecast(latitude: number, longitude: number): Promise<Record<string, unknown>>;
+  };
   weatherApiProvider: {
     getForecast(latitude: number, longitude: number): Promise<Record<string, unknown>>;
     getPollen(latitude: number, longitude: number): Promise<Record<string, number | null> | null>;
@@ -22,6 +25,7 @@ interface QuotaReservationAdapter {
 }
 
 const providerModule = await loadBundledModule<ProviderModule>(`
+  export { WeatherService } from './src/server/weather/WeatherService.ts';
   export { weatherApiProvider } from './src/server/weather/providers/WeatherApiProvider.ts';
   export { setQuotaReservationAdapterForTesting } from './src/server/weather/quotaGuard.ts';
 `);
@@ -89,6 +93,29 @@ function captureHistoryBudget(): () => void {
     assert.ok(expire, 'history budget timer was started');
     expire();
   };
+}
+
+const N03_START = Date.parse('2026-07-15T12:00:00Z');
+
+function n03Clock(context: TestContext) {
+  context.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: N03_START });
+  context.mock.method(performance, 'now', () => Date.now() - N03_START);
+  return {
+    tick: (ms: number) => context.mock.timers.tick(ms),
+    // Verstrichene Zeit ohne Timercallback: bildet eine späte Fortsetzung ab,
+    // die noch vor der nächsten Timerphase der Ereignisschleife läuft.
+    elapse: (ms: number) => context.mock.timers.setTime(Date.now() + ms),
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+function quotaApproval(request: QuotaReservationRequest) {
+  return { status: 'reserved', burstRemaining: 299, monthlyRemaining: 1_999_999, month: request.month };
 }
 
 function forecastFixture(): Record<string, unknown> {
@@ -861,4 +888,301 @@ test('favorites batch: unbrauchbare Nutzlast bleibt ein leeres Ergebnis, kein Fe
   const result = await provider.getCurrentBatch([{ id: 1, latitude: 48, longitude: 10 }]);
 
   assert.equal(result.size, 0);
+});
+
+test('N03 A fast main and history retain both values and the main source timestamp', async (context) => {
+  const clock = n03Clock(context);
+  const calls = useFetch((url) => {
+    if (url.includes('history.json')) {
+      clock.tick(200);
+      return jsonResponse({ forecast: { forecastday: [{ day: { maxtemp_c: 24 } }] } });
+    }
+    clock.tick(100);
+    return jsonResponse(forecastFixture());
+  });
+
+  const forecast = await provider.getForecast(48, 10);
+
+  assert.equal((forecast.current as { temperature: number }).temperature, 20);
+  assert.equal(forecast.yesterdayTempMax, 24);
+  assert.equal(forecast.sourceFetchedAt, new Date(N03_START + 100).toISOString());
+  assert.equal(Date.now() - N03_START, 300);
+  assert.equal(calls.length, 2);
+  assert.equal(reservationRequests.length, 2);
+});
+
+test('N03 B a 9500 ms main leaves only 500 ms for history and aborts its transport', async (context) => {
+  const clock = n03Clock(context);
+  const started = deferred<AbortSignal>();
+  let transportAborted = false;
+  const calls = useFetch((url, init) => {
+    if (!url.includes('history.json')) {
+      clock.tick(9_500);
+      return jsonResponse(forecastFixture());
+    }
+    const signal = init?.signal;
+    assert.ok(signal);
+    return new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        transportAborted = true;
+        reject(new DOMException('synthetic history abort', 'AbortError'));
+      }, { once: true });
+      started.resolve(signal);
+    });
+  });
+
+  const pending = provider.getForecast(48, 10);
+  const signal = await started.promise;
+  clock.tick(499);
+  assert.equal(signal.aborted, false);
+  clock.tick(1);
+  assert.equal(signal.aborted, true);
+  const forecast = await pending;
+
+  assert.equal(transportAborted, true);
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal((forecast.hourly as unknown[]).length, 2);
+  assert.equal(Date.now() - N03_START, 10_000);
+  assert.equal(calls.length, 2);
+});
+
+test('N03 C an exhausted total budget skips history and its quota reservation', async (context) => {
+  const clock = n03Clock(context);
+  for (const mainDuration of [10_000, 11_000]) {
+    const quotaBefore = reservationRequests.length;
+    const calls = useFetch((url) => {
+      if (url.includes('history.json')) return jsonResponse({ forecast: { forecastday: [{ day: { maxtemp_c: 24 } }] } });
+      clock.tick(mainDuration);
+      return jsonResponse(forecastFixture());
+    });
+
+    const forecast = await provider.getForecast(48, 10);
+
+    assert.equal(forecast.yesterdayTempMax, null);
+    assert.equal((forecast.current as { temperature: number }).temperature, 20);
+    assert.equal(calls.length, 1);
+    assert.equal(reservationRequests.length - quotaBefore, 1);
+  }
+});
+
+test('N03 C total timing includes the main quota reservation before the main fetch', async (context) => {
+  const clock = n03Clock(context);
+  let reservations = 0;
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve(request) {
+      reservations++;
+      clock.tick(1_000);
+      return quotaApproval(request);
+    },
+  });
+  const calls = useFetch((url) => {
+    if (url.includes('history.json')) return jsonResponse({ forecast: { forecastday: [{ day: { maxtemp_c: 24 } }] } });
+    clock.tick(9_000);
+    return jsonResponse(forecastFixture());
+  });
+
+  const forecast = await provider.getForecast(48, 10);
+
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal(Date.now() - N03_START, 10_000);
+  assert.equal(calls.length, 1);
+  assert.equal(reservations, 1);
+});
+
+test('N03 D a fast main still limits history to exactly 3000 ms', async (context) => {
+  const clock = n03Clock(context);
+  const started = deferred<AbortSignal>();
+  let transportAborted = false;
+  useFetch((url, init) => {
+    if (!url.includes('history.json')) {
+      clock.tick(100);
+      return jsonResponse(forecastFixture());
+    }
+    const signal = init?.signal;
+    assert.ok(signal);
+    return new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        transportAborted = true;
+        reject(new DOMException('synthetic history abort', 'AbortError'));
+      }, { once: true });
+      started.resolve(signal);
+    });
+  });
+
+  const pending = provider.getForecast(48, 10);
+  const signal = await started.promise;
+  clock.tick(2_999);
+  assert.equal(signal.aborted, false);
+  clock.tick(1);
+  assert.equal(signal.aborted, true);
+  const forecast = await pending;
+
+  assert.equal(transportAborted, true);
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal(Date.now() - N03_START, 3_100);
+});
+
+test('N03 E the remaining budget aborts history quota and prevents a fetch after late approval', async (context) => {
+  const clock = n03Clock(context);
+  const started = deferred<AbortSignal>();
+  const approval = deferred<unknown>();
+  let historyRequest!: QuotaReservationRequest;
+  let reservations = 0;
+  providerModule.setQuotaReservationAdapterForTesting({
+    reserve(request, signal) {
+      reservations++;
+      if (reservations === 1) return Promise.resolve(quotaApproval(request));
+      assert.ok(signal);
+      historyRequest = request;
+      started.resolve(signal);
+      return approval.promise;
+    },
+  });
+  const calls = useFetch(() => {
+    clock.tick(9_500);
+    return jsonResponse(forecastFixture());
+  });
+
+  const pending = provider.getForecast(48, 10);
+  const signal = await started.promise;
+  clock.tick(500);
+  assert.equal(signal.aborted, true);
+  const forecast = await pending;
+  approval.resolve(quotaApproval(historyRequest));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal(reservations, 2);
+  assert.equal(calls.length, 1);
+  assert.equal(Date.now() - N03_START, 10_000);
+});
+
+test('N03 E expired quota approval cannot start history before a delayed timer callback', async (context) => {
+  const clock = n03Clock(context);
+  let reservations = 0;
+  let historySignal: AbortSignal | undefined;
+  providerModule.setQuotaReservationAdapterForTesting({
+    async reserve(request, signal) {
+      reservations++;
+      if (reservations === 2) {
+        historySignal = signal;
+        clock.elapse(500);
+      }
+      return quotaApproval(request);
+    },
+  });
+  const calls = useFetch((url) => {
+    if (url.includes('history.json')) return jsonResponse({ forecast: { forecastday: [{ day: { maxtemp_c: 99 } }] } });
+    clock.tick(9_500);
+    return jsonResponse(forecastFixture());
+  });
+
+  const forecast = await provider.getForecast(48, 10);
+
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal(historySignal?.aborted, true);
+  assert.equal(calls.length, 1);
+  assert.equal(reservations, 2);
+});
+
+test('N03 E a body completed beyond the deadline is aborted and never adopted', async (context) => {
+  const clock = n03Clock(context);
+  let historySignal: AbortSignal | null | undefined;
+  useFetch((url, init) => {
+    if (!url.includes('history.json')) {
+      clock.tick(9_500);
+      return jsonResponse(forecastFixture());
+    }
+    historySignal = init?.signal;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => {
+        clock.elapse(500);
+        return { forecast: { forecastday: [{ day: { maxtemp_c: 99 } }] } };
+      },
+    } as Response;
+  });
+
+  const forecast = await provider.getForecast(48, 10);
+
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal(historySignal?.aborted, true);
+});
+
+test('N03 F history HTTP failure remains optional with a valid main forecast', async (context) => {
+  n03Clock(context);
+  const calls = useFetch((url) => url.includes('history.json')
+    ? jsonResponse({}, 503)
+    : jsonResponse(forecastFixture()));
+
+  const forecast = await provider.getForecast(48, 10);
+
+  assert.equal(forecast.yesterdayTempMax, null);
+  assert.equal((forecast.current as { temperature: number }).temperature, 20);
+  assert.equal(calls.length, 2);
+  assert.equal(reservationRequests.length, 2);
+});
+
+test('N03 G main failures retain their error semantics and never start history', async (context) => {
+  n03Clock(context);
+  const error = new DOMException('synthetic main timeout', 'AbortError');
+  const networkCalls = useFetch(() => { throw error; });
+  await assert.rejects(provider.getForecast(48, 10), (actual) => actual === error);
+  assert.equal(networkCalls.length, 1);
+
+  const httpCalls = useFetch(() => jsonResponse({}, 502));
+  await assert.rejects(provider.getForecast(48, 10), (actual: Error & { status?: number }) =>
+    actual.name === 'ProviderHttpError' && actual.status === 502);
+  assert.equal(httpCalls.length, 1);
+
+  const invalid = forecastFixture();
+  delete (invalid.current as Record<string, unknown>).temp_c;
+  const invalidCalls = useFetch(() => jsonResponse(invalid));
+  await assert.rejects(provider.getForecast(48, 10), /missing current.temp_c/);
+  assert.equal(invalidCalls.length, 1);
+  assert.equal(reservationRequests.length, 3);
+});
+
+test('N03 H a server cache hit keeps the original forecast without new provider requests', async (context) => {
+  const clock = n03Clock(context);
+  const calls = useFetch((url) => jsonResponse(url.includes('history.json')
+    ? { forecast: { forecastday: [{ day: { maxtemp_c: 24 } }] } }
+    : forecastFixture()));
+
+  const first = await providerModule.WeatherService.getForecast(45.25, 11.5);
+  clock.tick(60_000);
+  const second = await providerModule.WeatherService.getForecast(45.25, 11.5);
+
+  assert.strictEqual(second, first);
+  assert.equal(second.sourceFetchedAt, new Date(N03_START).toISOString());
+  assert.equal(second.yesterdayTempMax, 24);
+  assert.equal(calls.length, 2);
+  assert.equal(reservationRequests.length, 2);
+});
+
+test('N03 I history still uses the location calendar across midnight and DST', async (context) => {
+  n03Clock(context);
+  const cases = [
+    ['2026-01-01 00:10', 'Pacific/Kiritimati', '2025-12-31'],
+    ['2026-07-14 23:30', 'America/Los_Angeles', '2026-07-13'],
+    ['2026-10-25 02:30', 'Europe/Berlin', '2026-10-24'],
+  ];
+  for (const [localtime, timezone, yesterday] of cases) {
+    const payload = forecastFixture();
+    Object.assign(payload.location as Record<string, unknown>, { localtime, tz_id: timezone });
+    let requestedDate: string | null = null;
+    useFetch((url) => {
+      if (!url.includes('history.json')) return jsonResponse(payload);
+      requestedDate = new URL(url).searchParams.get('dt');
+      return jsonResponse({ forecast: { forecastday: [{ day: { maxtemp_c: 0 } }] } });
+    });
+
+    const forecast = await provider.getForecast(48, 10);
+
+    assert.equal(requestedDate, yesterday);
+    assert.equal(forecast.timezone, timezone);
+    assert.equal(forecast.yesterdayTempMax, 0);
+  }
 });
